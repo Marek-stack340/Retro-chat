@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RETRO CHAT</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-wrapper">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-title">
+                    <h1>RETRO CHAT</h1>
+                    <div class="status-light"></div>
+                </div>
+                <div class="user-info">
+                    <span id="username-display" class="username-tag">CONNECTING...</span>
+                    <span id="user-count" class="user-count">Users: 0</span>
+                </div>
+            </header>
+
+            <!-- Join Modal -->
+            <div id="join-modal" class="modal active">
+                <div class="modal-content">
+                    <h2>>>> WELCOME TO RETRO CHAT <<<</h2>
+                    <p class="retro-text">ENTER YOUR USERNAME:</p>
+                    <input 
+                        type="text" 
+                        id="username-input" 
+                        placeholder="YOUR USERNAME"
+                        maxlength="20"
+                    >
+                    <button id="join-btn" class="retro-button">ENTER CHAT</button>
+                    <p class="retro-text small">PRESS ENTER OR CLICK BUTTON</p>
+                </div>
+            </div>
+
+            <!-- Main Chat -->
+            <div id="chat-container" class="chat-container hidden">
+                <!-- Messages Display -->
+                <div class="messages-wrapper">
+                    <div id="messages" class="messages"></div>
+                </div>
+
+                <!-- Typing Indicator -->
+                <div id="typing-indicator" class="typing-indicator hidden">
+                    <span id="typing-user"></span> is typing...
+                </div>
+
+                <!-- Users List -->
+                <aside class="users-list-sidebar">
+                    <h3>CONNECTED USERS</h3>
+                    <ul id="users-list" class="users-list"></ul>
+                </aside>
+            </div>
+
+            <!-- Input Area -->
+            <div id="input-area" class="input-area hidden">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="TYPE YOUR MESSAGE..."
+                        disabled
+                    >
+                    <button id="send-btn" class="retro-button send-btn" disabled>SEND</button>
+                </div>
+                <div class="help-text">ESC TO QUIT | ENTER TO SEND</div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <p>:: RETRO CHAT v1.0 :: REAL-TIME COMMUNICATION :: 1984 VIBES ::</p>
+            </footer>
+        </div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>
