@@ -12,55 +12,29 @@ const io = socketIo(server, {
   }
 });
 
-const fs = require('fs');
-const usersFile = path.join(__dirname, 'users.json');
-
+const db = require('./db');
 app.use(express.json());
 
-function loadRegisteredUsers() {
+// Registration endpoint (username, email, password)
+app.post('/register', async (req, res) => {
   try {
-    if (!fs.existsSync(usersFile)) return [];
-    const raw = fs.readFileSync(usersFile, 'utf8');
-    return JSON.parse(raw || '[]');
+    const { username, email, password } = req.body || {};
+    if (!username || !email) return res.status(400).json({ error: 'Username and email required' });
+    const normalized = username.toString().trim().toUpperCase();
+    const normalizedEmail = email.toString().trim().toLowerCase();
+    if (!normalized) return res.status(400).json({ error: 'Empty username' });
+
+    const existingUser = await db.findUserByUsername(normalized);
+    if (existingUser) return res.status(409).json({ error: 'Username already registered' });
+    const existingEmail = await db.findUserByEmail(normalizedEmail);
+    if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
+
+    const user = await db.createUser({ username: normalized, email: normalizedEmail, password });
+    return res.json({ ok: true, user });
   } catch (err) {
-    console.error('Failed to load users.json', err);
-    return [];
+    console.error('Registration error', err);
+    return res.status(500).json({ error: 'Registration failed' });
   }
-}
-
-function saveRegisteredUsers(list) {
-  try {
-    fs.writeFileSync(usersFile, JSON.stringify(list, null, 2));
-    return true;
-  } catch (err) {
-    console.error('Failed to save users.json', err);
-    return false;
-  }
-}
-
-// Ensure admin user exists
-let registeredUsers = loadRegisteredUsers();
-if (!registeredUsers.find(u => u.username === 'MAREKC')) {
-  registeredUsers.push({ id: 'admin-1', username: 'MAREKC', role: 'admin', createdAt: new Date().toISOString() });
-  saveRegisteredUsers(registeredUsers);
-}
-
-// Registration endpoint
-app.post('/register', (req, res) => {
-  const { username } = req.body || {};
-  if (!username || typeof username !== 'string') return res.status(400).json({ error: 'Invalid username' });
-  const normalized = username.trim().toUpperCase();
-  if (!normalized) return res.status(400).json({ error: 'Empty username' });
-
-  registeredUsers = loadRegisteredUsers();
-  if (registeredUsers.find(u => u.username === normalized)) {
-    return res.status(409).json({ error: 'Username already registered' });
-  }
-
-  const newUser = { id: `u-${Date.now()}`, username: normalized, role: 'user', createdAt: new Date().toISOString() };
-  registeredUsers.push(newUser);
-  if (!saveRegisteredUsers(registeredUsers)) return res.status(500).json({ error: 'Failed to save' });
-  return res.json({ ok: true, user: newUser });
 });
 
 // Serve static files
@@ -75,10 +49,15 @@ io.on('connection', (socket) => {
   console.log(`New user connected: ${socket.id}`);
 
   // Listen for user joining
-  socket.on('user-join', (username) => {
-    // Resolve role from registered users if present
-    const reg = registeredUsers.find(u => u.username === (username || '').toString().toUpperCase());
-    const role = reg ? reg.role : 'user';
+  socket.on('user-join', async (username) => {
+    // Resolve role from registered users in DB if present
+    let role = 'user';
+    try {
+      const reg = await db.findUserByUsername((username || '').toString().toUpperCase());
+      if (reg && reg.role) role = reg.role;
+    } catch (err) {
+      console.error('DB lookup error', err);
+    }
     users.set(socket.id, {
       id: socket.id,
       username: username,
@@ -151,6 +130,16 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🎮 Retro Chat Server running on http://localhost:${PORT}`);
-});
+
+// Initialize DB and ensure admin, then start server
+db.init()
+  .then(() => db.ensureAdmin('MAREKC'))
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log(`🎮 Retro Chat Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to initialize DB', err);
+    process.exit(1);
+  });
