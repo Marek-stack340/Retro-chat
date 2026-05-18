@@ -10,3 +10,4 @@ dist/
 build/
 .replit
 replit.nix
+database.sqlite
