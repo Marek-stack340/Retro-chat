@@ -21,6 +21,8 @@ const openRegisterBtn = document.getElementById('open-register-btn');
 const registerModal = document.getElementById('register-modal');
 const registerBtn = document.getElementById('register-btn');
 const registerUsername = document.getElementById('register-username');
+const registerEmail = document.getElementById('register-email');
+const registerPassword = document.getElementById('register-password');
 const closeRegisterBtn = document.getElementById('close-register-btn');
 
 let currentUsername = '';
@@ -173,18 +175,25 @@ if (closeRegisterBtn) {
 if (registerBtn) {
     registerBtn.addEventListener('click', async () => {
         const name = registerUsername.value.trim();
+        const email = registerEmail.value.trim();
+        const password = registerPassword.value;
         if (!name) return alert('Enter a username to register');
+        if (!email) return alert('Enter a valid email');
+        if (!password || password.length < 6) return alert('Password must be at least 6 characters');
         try {
             const res = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: name })
+                body: JSON.stringify({ username: name, email, password })
             });
             const data = await res.json();
             if (!res.ok) return alert(data.error || 'Registration failed');
             alert('Registered: ' + data.user.username + ' (role: ' + data.user.role + ')');
             // Pre-fill join input with registered username
             usernameInput.value = data.user.username;
+            registerUsername.value = '';
+            registerEmail.value = '';
+            registerPassword.value = '';
             registerModal.classList.add('hidden');
             joinModal.classList.remove('hidden');
             usernameInput.focus();
