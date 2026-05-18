@@ -175,7 +175,22 @@ body {
 #username-input::placeholder {
     color: rgba(255, 140, 0, 0.5);
 }
+.register-status {
+    margin-top: 12px;
+    font-size: 11px;
+    min-height: 20px;
+    color: var(--text-color);
+    text-transform: none;
+    letter-spacing: 0.5px;
+}
 
+.register-status.error {
+    color: #d22;
+}
+
+.register-status.success {
+    color: #227722;
+}
 /* BUTTONS */
 .retro-button {
     background: var(--primary-color);

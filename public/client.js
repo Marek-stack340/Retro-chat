@@ -24,6 +24,7 @@ const registerUsername = document.getElementById('register-username');
 const registerEmail = document.getElementById('register-email');
 const registerPassword = document.getElementById('register-password');
 const closeRegisterBtn = document.getElementById('close-register-btn');
+const registerStatus = document.getElementById('register-status');
 
 let currentUsername = '';
 let typingTimeout = null;
@@ -177,29 +178,51 @@ if (registerBtn) {
         const name = registerUsername.value.trim();
         const email = registerEmail.value.trim();
         const password = registerPassword.value;
-        if (!name) return alert('Enter a username to register');
-        if (!email) return alert('Enter a valid email');
-        if (!password || password.length < 6) return alert('Password must be at least 6 characters');
+        registerStatus.textContent = '';
+        registerStatus.classList.remove('error');
+        if (!name) {
+            registerStatus.textContent = 'Enter a username';
+            registerStatus.classList.add('error');
+            return;
+        }
+        if (!email) {
+            registerStatus.textContent = 'Enter a valid email';
+            registerStatus.classList.add('error');
+            return;
+        }
+        if (!password || password.length < 6) {
+            registerStatus.textContent = 'Password must be at least 6 characters';
+            registerStatus.classList.add('error');
+            return;
+        }
         try {
-            const res = await fetch('/register', {
+            const res = await fetch('/api/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: name, email, password })
             });
             const data = await res.json();
-            if (!res.ok) return alert(data.error || 'Registration failed');
-            alert('Registered: ' + data.user.username + ' (role: ' + data.user.role + ')');
-            // Pre-fill join input with registered username
+            if (!res.ok) {
+                registerStatus.textContent = data.error || 'Registration failed';
+                registerStatus.classList.add('error');
+                return;
+            }
+            registerStatus.textContent = 'Registered successfully! Use your username to join.';
+            registerStatus.classList.remove('error');
+            registerStatus.classList.add('success');
             usernameInput.value = data.user.username;
             registerUsername.value = '';
             registerEmail.value = '';
             registerPassword.value = '';
-            registerModal.classList.add('hidden');
-            joinModal.classList.remove('hidden');
-            usernameInput.focus();
+            setTimeout(() => {
+                registerModal.classList.add('hidden');
+                joinModal.classList.remove('hidden');
+                usernameInput.focus();
+            }, 800);
         } catch (err) {
             console.error(err);
-            alert('Registration error');
+            registerStatus.textContent = 'Registration error';
+            registerStatus.classList.add('error');
         }
     });
 }

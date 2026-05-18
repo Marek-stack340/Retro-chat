@@ -16,20 +16,23 @@ const db = require('./db');
 app.use(express.json());
 
 // Registration endpoint (username, email, password)
-app.post('/register', async (req, res) => {
+app.post(['/register', '/api/register'], async (req, res) => {
   try {
     const { username, email, password } = req.body || {};
-    if (!username || !email) return res.status(400).json({ error: 'Username and email required' });
+    if (!username || !email || !password) return res.status(400).json({ error: 'Username, email and password are required' });
     const normalized = username.toString().trim().toUpperCase();
     const normalizedEmail = email.toString().trim().toLowerCase();
+    const trimmedPassword = password.toString();
     if (!normalized) return res.status(400).json({ error: 'Empty username' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return res.status(400).json({ error: 'Invalid email address' });
+    if (trimmedPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
     const existingUser = await db.findUserByUsername(normalized);
     if (existingUser) return res.status(409).json({ error: 'Username already registered' });
     const existingEmail = await db.findUserByEmail(normalizedEmail);
     if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
 
-    const user = await db.createUser({ username: normalized, email: normalizedEmail, password });
+    const user = await db.createUser({ username: normalized, email: normalizedEmail, password: trimmedPassword });
     return res.json({ ok: true, user });
   } catch (err) {
     console.error('Registration error', err);
