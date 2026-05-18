@@ -15,6 +15,20 @@ const io = socketIo(server, {
 const db = require('./db');
 app.use(express.json());
 
+const profanityList = [
+  'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'hell',
+  'kurva', 'jebat', 'hovno', 'sračka', 'srac', 'kokot', 'piča', 'pica',
+  'kkt', 'hajzel', 'cipa', 'srát', 'srať', 'sraj', 'zkurvysyn'
+];
+
+function sanitizeText(text) {
+  if (!text || typeof text !== 'string') return text;
+  return profanityList.reduce((current, badWord) => {
+    const regex = new RegExp(`\\b${badWord}\\b`, 'gi');
+    return current.replace(regex, (match) => '#'.repeat(match.length));
+  }, text);
+}
+
 // Registration endpoint (username, email, password)
 app.post(['/register', '/api/register'], async (req, res) => {
   try {
@@ -86,10 +100,11 @@ io.on('connection', (socket) => {
   socket.on('send-message', (data) => {
     const user = users.get(socket.id);
     if (user) {
+      const sanitizedText = sanitizeText(data.text);
       const message = {
         id: Date.now(),
         username: user.username,
-        text: data.text,
+        text: sanitizedText,
         timestamp: new Date(),
         userId: socket.id
       };
@@ -98,7 +113,7 @@ io.on('connection', (socket) => {
 
       // Broadcast message to all users
       io.emit('receive-message', message);
-      console.log(`Message from ${user.username}: ${data.text}`);
+      console.log(`Message from ${user.username}: ${sanitizedText}`);
     }
   });
 
