@@ -12,6 +12,57 @@ const io = socketIo(server, {
   }
 });
 
+const fs = require('fs');
+const usersFile = path.join(__dirname, 'users.json');
+
+app.use(express.json());
+
+function loadRegisteredUsers() {
+  try {
+    if (!fs.existsSync(usersFile)) return [];
+    const raw = fs.readFileSync(usersFile, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (err) {
+    console.error('Failed to load users.json', err);
+    return [];
+  }
+}
+
+function saveRegisteredUsers(list) {
+  try {
+    fs.writeFileSync(usersFile, JSON.stringify(list, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Failed to save users.json', err);
+    return false;
+  }
+}
+
+// Ensure admin user exists
+let registeredUsers = loadRegisteredUsers();
+if (!registeredUsers.find(u => u.username === 'MAREKC')) {
+  registeredUsers.push({ id: 'admin-1', username: 'MAREKC', role: 'admin', createdAt: new Date().toISOString() });
+  saveRegisteredUsers(registeredUsers);
+}
+
+// Registration endpoint
+app.post('/register', (req, res) => {
+  const { username } = req.body || {};
+  if (!username || typeof username !== 'string') return res.status(400).json({ error: 'Invalid username' });
+  const normalized = username.trim().toUpperCase();
+  if (!normalized) return res.status(400).json({ error: 'Empty username' });
+
+  registeredUsers = loadRegisteredUsers();
+  if (registeredUsers.find(u => u.username === normalized)) {
+    return res.status(409).json({ error: 'Username already registered' });
+  }
+
+  const newUser = { id: `u-${Date.now()}`, username: normalized, role: 'user', createdAt: new Date().toISOString() };
+  registeredUsers.push(newUser);
+  if (!saveRegisteredUsers(registeredUsers)) return res.status(500).json({ error: 'Failed to save' });
+  return res.json({ ok: true, user: newUser });
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -25,9 +76,13 @@ io.on('connection', (socket) => {
 
   // Listen for user joining
   socket.on('user-join', (username) => {
+    // Resolve role from registered users if present
+    const reg = registeredUsers.find(u => u.username === (username || '').toString().toUpperCase());
+    const role = reg ? reg.role : 'user';
     users.set(socket.id, {
       id: socket.id,
       username: username,
+      role: role,
       joinedAt: new Date()
     });
 
@@ -37,6 +92,7 @@ io.on('connection', (socket) => {
     // Notify all users that someone joined
     io.emit('user-joined', {
       username: username,
+      role: role,
       userCount: users.size,
       users: Array.from(users.values())
     });

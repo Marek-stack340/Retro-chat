@@ -17,6 +17,11 @@ const usernameDisplay = document.getElementById('username-display');
 const userCount = document.getElementById('user-count');
 const chatContainer = document.getElementById('chat-container');
 const inputArea = document.getElementById('input-area');
+const openRegisterBtn = document.getElementById('open-register-btn');
+const registerModal = document.getElementById('register-modal');
+const registerBtn = document.getElementById('register-btn');
+const registerUsername = document.getElementById('register-username');
+const closeRegisterBtn = document.getElementById('close-register-btn');
 
 let currentUsername = '';
 let typingTimeout = null;
@@ -145,6 +150,50 @@ joinBtn.addEventListener('click', joinChat);
 usernameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') joinChat();
 });
+
+// Open registration modal
+if (openRegisterBtn) {
+    openRegisterBtn.addEventListener('click', () => {
+        registerModal.classList.remove('hidden');
+        joinModal.classList.add('hidden');
+        registerUsername.focus();
+    });
+}
+
+// Close registration modal
+if (closeRegisterBtn) {
+    closeRegisterBtn.addEventListener('click', () => {
+        registerModal.classList.add('hidden');
+        joinModal.classList.remove('hidden');
+        usernameInput.focus();
+    });
+}
+
+// Handle registration
+if (registerBtn) {
+    registerBtn.addEventListener('click', async () => {
+        const name = registerUsername.value.trim();
+        if (!name) return alert('Enter a username to register');
+        try {
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: name })
+            });
+            const data = await res.json();
+            if (!res.ok) return alert(data.error || 'Registration failed');
+            alert('Registered: ' + data.user.username + ' (role: ' + data.user.role + ')');
+            // Pre-fill join input with registered username
+            usernameInput.value = data.user.username;
+            registerModal.classList.add('hidden');
+            joinModal.classList.remove('hidden');
+            usernameInput.focus();
+        } catch (err) {
+            console.error(err);
+            alert('Registration error');
+        }
+    });
+}
 
 // Event Listeners - Chat Input
 sendBtn.addEventListener('click', sendMessage);

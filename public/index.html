@@ -34,7 +34,20 @@
                         maxlength="20"
                     >
                     <button id="join-btn" class="retro-button">ENTER CHAT</button>
+                    <button id="open-register-btn" class="retro-button" style="margin-top:10px;background:transparent;color:var(--primary-color);border-color:var(--primary-color);">REGISTER</button>
                     <p class="retro-text small">PRESS ENTER OR CLICK BUTTON</p>
+                </div>
+            </div>
+
+            <!-- Registration Modal -->
+            <div id="register-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h2>>> REGISTER <<<</h2>
+                    <p class="retro-text">CHOOSE A USERNAME:</p>
+                    <input type="text" id="register-username" placeholder="USERNAME" maxlength="20">
+                    <button id="register-btn" class="retro-button" style="margin-top:10px;">REGISTER</button>
+                    <p class="retro-text small">After registering, use the name to enter the chat.</p>
+                    <button id="close-register-btn" class="retro-button" style="margin-top:8px;background:transparent;color:var(--primary-color);border-color:var(--primary-color);">CLOSE</button>
                 </div>
             </div>
 
