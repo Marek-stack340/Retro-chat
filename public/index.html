@@ -103,6 +103,19 @@
         </div>
     </div>
 
+    <!-- Private Message Modal -->
+    <div id="dm-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:480px;">
+            <h2 id="dm-title">Súkromná správa</h2>
+            <div id="dm-messages" style="max-height:300px;overflow:auto;margin:10px 0;padding:8px;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,0.04);"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <input id="dm-input" type="text" placeholder="Napíš súkromnú správu..." style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);">
+                <button id="dm-send" class="retro-button">POŠLIŤ</button>
+            </div>
+            <button id="dm-close" class="retro-button" style="margin-top:10px;background:transparent;color:var(--primary-color);border:1px solid var(--border-color);">ZAVRIEŤ</button>
+        </div>
+    </div>
+
     <script src="client.js"></script>
 </body>
 </html>

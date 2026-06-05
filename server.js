@@ -145,6 +145,32 @@ io.on('connection', (socket) => {
   socket.on('user-stop-typing', () => {
     socket.broadcast.emit('user-stop-typing');
   });
+
+  // Listen for private messages
+  socket.on('private-message', (data) => {
+    try {
+      const user = users.get(socket.id);
+      if (!user) return;
+      const toId = data && data.to;
+      const text = sanitizeText((data && data.text) || '');
+      const payload = {
+        from: user.username,
+        fromId: socket.id,
+        text: text,
+        timestamp: new Date()
+      };
+
+      // send to recipient if connected
+      if (toId && io.sockets.sockets.get(toId)) {
+        io.to(toId).emit('private-message', payload);
+      }
+
+      // also send to sender for local display
+      socket.emit('private-message', payload);
+    } catch (err) {
+      console.error('Private message error', err);
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;

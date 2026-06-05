@@ -28,6 +28,14 @@ const registerStatus = document.getElementById('register-status');
 
 let currentUsername = '';
 let typingTimeout = null;
+let dmModal = document.getElementById('dm-modal');
+let dmTitle = document.getElementById('dm-title');
+let dmMessages = document.getElementById('dm-messages');
+let dmInput = document.getElementById('dm-input');
+let dmSend = document.getElementById('dm-send');
+let dmClose = document.getElementById('dm-close');
+let currentDM = null; // { id, username }
+const dmHistory = new Map();
 
 // Auto-scroll messages to bottom
 function scrollToBottom() {
@@ -85,11 +93,74 @@ function updateUsersList(users) {
     users.forEach(user => {
         const li = document.createElement('li');
         li.className = 'user-item';
-        li.textContent = user.username;
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = user.username;
+        nameSpan.style.flex = '1';
+
+        const dmBtn = document.createElement('button');
+        dmBtn.className = 'retro-button';
+        dmBtn.style.padding = '6px 10px';
+        dmBtn.style.fontSize = '11px';
+        dmBtn.textContent = 'DM';
+        dmBtn.title = `Súkromná správa ${user.username}`;
+        dmBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDM(user);
+        });
+
+        li.appendChild(nameSpan);
+        li.appendChild(dmBtn);
         usersList.appendChild(li);
     });
     userCount.textContent = `Users: ${users.length}`;
 }
+
+// Open DM modal
+function openDM(user) {
+    if (!user || !user.id) return;
+    currentDM = { id: user.id, username: user.username };
+    dmTitle.textContent = `Súkromná: ${user.username}`;
+    dmModal.classList.remove('hidden');
+    renderDM();
+    dmInput.focus();
+}
+
+function closeDM() {
+    currentDM = null;
+    dmModal.classList.add('hidden');
+}
+
+function renderDM() {
+    dmMessages.innerHTML = '';
+    if (!currentDM) return;
+    const history = dmHistory.get(currentDM.id) || [];
+    history.forEach(m => {
+        const d = document.createElement('div');
+        d.style.marginBottom = '6px';
+        d.innerHTML = `<strong>${escapeHtml(m.from)}:</strong> ${escapeHtml(m.text)} <span style="color:rgba(0,0,0,0.4);font-size:11px">${formatTime(m.timestamp)}</span>`;
+        dmMessages.appendChild(d);
+    });
+    dmMessages.scrollTop = dmMessages.scrollHeight;
+}
+
+// Send private message
+function sendPrivateMessage() {
+    if (!currentDM) return;
+    const text = dmInput.value.trim();
+    if (!text) return;
+    socket.emit('private-message', { to: currentDM.id, text });
+    // add to local history as sent
+    const entry = { from: currentUsername, text, timestamp: new Date().toISOString() };
+    const history = dmHistory.get(currentDM.id) || [];
+    history.push(entry);
+    dmHistory.set(currentDM.id, history);
+    dmInput.value = '';
+    renderDM();
+}
+
+dmSend.addEventListener('click', sendPrivateMessage);
+dmClose.addEventListener('click', closeDM);
+dmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendPrivateMessage(); });
 
 // Join chat
 function joinChat() {
@@ -283,6 +354,23 @@ socket.on('user-typing', (data) => {
 
 socket.on('user-stop-typing', () => {
     typingIndicator.classList.add('hidden');
+});
+
+// Receive private message
+socket.on('private-message', (payload) => {
+    // payload: { from, fromId, text, timestamp }
+    const id = payload.fromId || payload.from;
+    const other = payload.from;
+    const entry = { from: other, text: payload.text, timestamp: payload.timestamp || new Date().toISOString() };
+    const history = dmHistory.get(id) || [];
+    history.push(entry);
+    dmHistory.set(id, history);
+    // If DM modal with this user open, render; otherwise show system message
+    if (currentDM && currentDM.id === id) {
+        renderDM();
+    } else {
+        addSystemMessage(`Súkromná správa od ${other}`);
+    }
 });
 
 socket.on('disconnect', () => {
