@@ -149,15 +149,18 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Initialize DB and ensure admin, then start server
-db.init()
-  .then(() => db.ensureAdmin('MAREKC'))
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`🎮 Oddych Chat Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('Failed to initialize DB', err);
-    process.exit(1);
-  });
+// Start server immediately so platforms (Cloud Run) get a quick HTTP response.
+server.listen(PORT, () => {
+  console.log(`🎮 Oddych Chat Server running on http://localhost:${PORT}`);
+});
+
+// Initialize DB and ensure admin asynchronously; log errors but keep server running.
+(async () => {
+  try {
+    await db.init();
+    await db.ensureAdmin('MAREKC');
+    console.log('✅ Database initialized and admin ensured');
+  } catch (err) {
+    console.error('DB initialization failed (continuing):', err);
+  }
+})();
