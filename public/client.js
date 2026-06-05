@@ -25,17 +25,22 @@ const registerEmail = document.getElementById('register-email');
 const registerPassword = document.getElementById('register-password');
 const closeRegisterBtn = document.getElementById('close-register-btn');
 const registerStatus = document.getElementById('register-status');
+const openOdkazovacBtn = document.getElementById('open-odkazovac-btn');
+const odkazovacDot = document.getElementById('odkazovac-dot');
 
 let currentUsername = '';
 let typingTimeout = null;
-let dmModal = document.getElementById('dm-modal');
-let dmTitle = document.getElementById('dm-title');
-let dmMessages = document.getElementById('dm-messages');
-let dmInput = document.getElementById('dm-input');
-let dmSend = document.getElementById('dm-send');
-let dmClose = document.getElementById('dm-close');
-let currentDM = null; // { id, username }
-const dmHistory = new Map();
+let odkazovacModal = document.getElementById('odkazovac-modal');
+let odkazovacTitle = document.getElementById('odkazovac-title');
+let odkazovacRecipient = document.getElementById('odkazovac-recipient');
+let odkazovacWarning = document.getElementById('odkazovac-warning');
+let odkazovacUserList = document.getElementById('odkazovac-user-list');
+let odkazovacMessages = document.getElementById('odkazovac-messages');
+let odkazovacInput = document.getElementById('odkazovac-input');
+let odkazovacSend = document.getElementById('odkazovac-send');
+let odkazovacClose = document.getElementById('odkazovac-close');
+let currentOdkazovac = null; // { id, username }
+const odkazovacHistory = new Map();
 
 // Call (WebRTC) elements and state
 let callModal = document.getElementById('call-modal');
@@ -109,17 +114,6 @@ function updateUsersList(users) {
         nameSpan.textContent = user.username;
         nameSpan.style.flex = '1';
 
-        const dmBtn = document.createElement('button');
-        dmBtn.className = 'retro-button';
-        dmBtn.style.padding = '6px 10px';
-        dmBtn.style.fontSize = '11px';
-        dmBtn.textContent = 'DM';
-        dmBtn.title = `Súkromná správa ${user.username}`;
-        dmBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openDM(user);
-        });
-
         const callBtn = document.createElement('button');
         callBtn.className = 'retro-button';
         callBtn.style.padding = '6px 10px';
@@ -131,60 +125,136 @@ function updateUsersList(users) {
             openCall(user);
         });
 
+        const chatBtn = document.createElement('button');
+        chatBtn.className = 'retro-button';
+        chatBtn.style.padding = '6px 10px';
+        chatBtn.style.fontSize = '11px';
+        chatBtn.textContent = 'NAPÍŠ';
+        chatBtn.title = `Otvoriť odkazovač pre ${user.username}`;
+        chatBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openOdkazovacWithUser(user);
+        });
+
         li.appendChild(nameSpan);
-        li.appendChild(dmBtn);
+        li.appendChild(chatBtn);
         li.appendChild(callBtn);
         usersList.appendChild(li);
     });
-    userCount.textContent = `Users: ${users.length}`;
+renderOdkazovacUsers(users);
+    odkazovacUserList.innerHTML = '';
+    users.forEach(user => {
+        if (user.username === currentUsername) return;
+        const li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
+        li.style.padding = '8px 6px';
+        li.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = user.username;
+        nameSpan.style.flex = '1';
+        nameSpan.style.fontWeight = '600';
+        nameSpan.style.color = 'var(--text-color)';
+
+        const selectBtn = document.createElement('button');
+        selectBtn.className = 'retro-button';
+        selectBtn.style.padding = '6px 10px';
+        selectBtn.style.fontSize = '11px';
+        selectBtn.textContent = 'NAPÍŠ';
+        selectBtn.addEventListener('click', () => openOdkazovacWithUser(user));
+
+        li.appendChild(nameSpan);
+        li.appendChild(selectBtn);
+        odkazovacUserList.appendChild(li);
+    });
 }
 
-// Open DM modal
-function openDM(user) {
+function openOdkazovacWithUser(user) {
     if (!user || !user.id) return;
-    currentDM = { id: user.id, username: user.username };
-    dmTitle.textContent = `Súkromná: ${user.username}`;
-    dmModal.classList.remove('hidden');
-    renderDM();
-    dmInput.focus();
+    currentOdkazovac = { id: user.id, username: user.username };
+    odkazovacTitle.textContent = `Odkazovač: ${user.username}`;
+    odkazovacRecipient.textContent = `Príjemca: ${user.username}`;
+    odkazovacModal.classList.remove('hidden');
+    renderOdkazovacMessages();
+    odkazovacInput.focus();
+    clearOdkazovacAlert();
 }
 
-function closeDM() {
-    currentDM = null;
-    dmModal.classList.add('hidden');
+function openOdkazovac() {
+    currentOdkazovac = null;
+    odkazovacModal.classList.remove('hidden');
+    odkazovacTitle.textContent = 'ODKAZOVAČ';
+    odkazovacRecipient.textContent = 'Príjemca: (vyber používateľa)';
+    renderOdkazovacMessages();
+    odkazovacInput.focus();
+    clearOdkazovacAlert();
 }
 
-function renderDM() {
-    dmMessages.innerHTML = '';
-    if (!currentDM) return;
-    const history = dmHistory.get(currentDM.id) || [];
+function closeOdkazovac() {
+    currentOdkazovac = null;
+    odkazovacModal.classList.add('hidden');
+    clearOdkazovacAlert();
+}
+
+function renderOdkazovacMessages() {
+    odkazovacMessages.innerHTML = '';
+    if (!currentOdkazovac) {
+        odkazovacMessages.innerHTML = '<p style="color:rgba(0,0,0,0.5);font-size:13px;">Vyber používateľa v zozname na ľavej strane. Správu odošleš až po vybraní príjemcu.</p>';
+        return;
+    }
+    const history = odkazovacHistory.get(currentOdkazovac.id) || [];
     history.forEach(m => {
         const d = document.createElement('div');
-        d.style.marginBottom = '6px';
-        d.innerHTML = `<strong>${escapeHtml(m.from)}:</strong> ${escapeHtml(m.text)} <span style="color:rgba(0,0,0,0.4);font-size:11px">${formatTime(m.timestamp)}</span>`;
-        dmMessages.appendChild(d);
+        d.style.marginBottom = '10px';
+        d.innerHTML = `<strong>${escapeHtml(m.from)}:</strong> ${escapeHtml(m.text)} <div style="color:rgba(0,0,0,0.45);font-size:11px;margin-top:3px;">${formatTime(m.timestamp)}</div>`;
+        odkazovacMessages.appendChild(d);
     });
-    dmMessages.scrollTop = dmMessages.scrollHeight;
+    odkazovacMessages.scrollTop = odkazovacMessages.scrollHeight;
 }
 
-// Send private message
-function sendPrivateMessage() {
-    if (!currentDM) return;
-    const text = dmInput.value.trim();
+function setOdkazovacAlert() {
+    if (odkazovacDot) odkazovacDot.classList.remove('hidden');
+    if (openOdkazovacBtn) openOdkazovacBtn.classList.add('blink-red');
+}
+
+function clearOdkazovacAlert() {
+    if (odkazovacDot) odkazovacDot.classList.add('hidden');
+    if (openOdkazovacBtn) openOdkazovacBtn.classList.remove('blink-red');
+    if (odkazovacWarning) odkazovacWarning.classList.add('hidden');
+}
+
+function showOdkazovacAlert(message) {
+    if (odkazovacWarning) {
+        odkazovacWarning.textContent = message;
+        odkazovacWarning.classList.remove('hidden');
+    }
+}
+
+function sendOdkazovacMessage() {
+    if (!currentOdkazovac) {
+        alert('Vyber používateľa pre odkazovač.');
+        return;
+    }
+    const text = odkazovacInput.value.trim();
     if (!text) return;
-    socket.emit('private-message', { to: currentDM.id, text });
-    // add to local history as sent
+    socket.emit('private-message', { to: currentOdkazovac.id, text });
     const entry = { from: currentUsername, text, timestamp: new Date().toISOString() };
-    const history = dmHistory.get(currentDM.id) || [];
+    const history = odkazovacHistory.get(currentOdkazovac.id) || [];
     history.push(entry);
-    dmHistory.set(currentDM.id, history);
-    dmInput.value = '';
-    renderDM();
+    odkazovacHistory.set(currentOdkazovac.id, history);
+    odkazovacInput.value = '';
+    renderOdkazovacMessages();
 }
 
-dmSend.addEventListener('click', sendPrivateMessage);
-dmClose.addEventListener('click', closeDM);
-dmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendPrivateMessage(); });
+openOdkazovacBtn.addEventListener('click', () => {
+    openOdkazovac();
+});
+
+odkazovacSend.addEventListener('click', sendOdkazovacMessage);
+odkazovacClose.addEventListener('click', closeOdkazovac);
+odkazovacInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendOdkazovacMessage(); });
 
 // Call controls
 callHangup.addEventListener('click', () => {
@@ -482,14 +552,16 @@ socket.on('private-message', (payload) => {
     const id = payload.fromId || payload.from;
     const other = payload.from;
     const entry = { from: other, text: payload.text, timestamp: payload.timestamp || new Date().toISOString() };
-    const history = dmHistory.get(id) || [];
+    const history = odkazovacHistory.get(id) || [];
     history.push(entry);
-    dmHistory.set(id, history);
-    // If DM modal with this user open, render; otherwise show system message
-    if (currentDM && currentDM.id === id) {
-        renderDM();
+    odkazovacHistory.set(id, history);
+
+    if (currentOdkazovac && currentOdkazovac.id === id) {
+        renderOdkazovacMessages();
+        showOdkazovacAlert(`Nová správa od ${other}`);
     } else {
-        addSystemMessage(`Súkromná správa od ${other}`);
+        setOdkazovacAlert();
+        addSystemMessage(`Nová správa v odkazovači od ${other}`);
     }
 });
 

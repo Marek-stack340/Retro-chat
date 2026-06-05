@@ -25,6 +25,28 @@ body {
     letter-spacing: 0.2px;
 }
 
+.notification-dot {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    width: 10px;
+    height: 10px;
+    background: #d9534f;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(217,83,79,0.7);
+}
+
+.blink-red {
+    animation: blink-red 1s infinite;
+    border-color: #d9534f !important;
+    color: #d9534f !important;
+}
+
+@keyframes blink-red {
+    0%, 100% { box-shadow: 0 0 8px rgba(217,83,79,0.8); }
+    50% { box-shadow: 0 0 20px rgba(217,83,79,0.5); }
+}
+
 .container {
     display: flex;
     justify-content: center;

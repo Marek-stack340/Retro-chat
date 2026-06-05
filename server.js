@@ -12,8 +12,41 @@ const io = socketIo(server, {
   }
 });
 
+const nodemailer = require('nodemailer');
 const db = require('./db');
 app.use(express.json());
+
+const mailTransport = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || '',
+  port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: process.env.SMTP_USER && process.env.SMTP_PASS ? {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  } : undefined
+});
+
+function emailEnabled() {
+  return process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.EMAIL_FROM;
+}
+
+async function sendNotificationEmail(toEmail, subject, text) {
+  if (!emailEnabled()) {
+    console.warn('Email not sent: SMTP not configured');
+    return;
+  }
+  try {
+    await mailTransport.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: toEmail,
+      subject,
+      text
+    });
+    console.log(`Email notification sent to ${toEmail}`);
+  } catch (err) {
+    console.error('Failed to send email notification', err);
+  }
+}
 
 const profanityList = [
   'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'hell',
@@ -147,7 +180,7 @@ io.on('connection', (socket) => {
   });
 
   // Listen for private messages
-  socket.on('private-message', (data) => {
+  socket.on('private-message', async (data) => {
     try {
       const user = users.get(socket.id);
       if (!user) return;
@@ -167,6 +200,21 @@ io.on('connection', (socket) => {
 
       // also send to sender for local display
       socket.emit('private-message', payload);
+
+      // send email notification if recipient is registered
+      if (toId && io.sockets.sockets.get(toId)) {
+        const recipientSocket = users.get(toId);
+        if (recipientSocket && recipientSocket.username) {
+          const recipientUser = await db.findUserByUsername(recipientSocket.username.toUpperCase());
+          if (recipientUser && recipientUser.email) {
+            sendNotificationEmail(
+              recipientUser.email,
+              `Nová správa v odkazovači od ${user.username}`,
+              `Ahoj ${recipientUser.username},\n\n${user.username} ti poslal(a) správu v odkazovači:\n\n${text}\n\nPrihlás sa do Oddych chatu, aby si ju prečítal(a).`
+            );
+          }
+        }
+      }
     } catch (err) {
       console.error('Private message error', err);
     }
