@@ -1,5 +1,5 @@
 {
-  "name": "retro-chat",
+  "name": "oddych-chat",
   "version": "1.0.0",
   "description": "A retro-style chat application for multiple users",
   "main": "server.js",

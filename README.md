@@ -1,6 +1,6 @@
-# Retro-chat
+# Oddych chat
 
-Retro-chat is a retro-themed multi-user chat web app built with Node.js, Express, Socket.io, SQLite, and vanilla frontend JavaScript.
+Oddych chat is a retro-themed multi-user chat web app built with Node.js, Express, Socket.io, SQLite, and vanilla frontend JavaScript.
 
 ## Google Cloud Run Deployment
 
@@ -13,18 +13,18 @@ This repository includes a `Dockerfile` and `cloudbuild.yaml` to deploy the app 
    - `gcloud config set project YOUR_PROJECT_ID`
 
 2. Build the container image with Cloud Build:
-   - `gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/retro-chat`
+   - `gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/oddych-chat`
 
 3. Deploy to Cloud Run:
-   - `gcloud run deploy retro-chat --image gcr.io/YOUR_PROJECT_ID/retro-chat --platform managed --region YOUR_REGION --allow-unauthenticated`
+   - `gcloud run deploy oddych-chat --image gcr.io/YOUR_PROJECT_ID/oddych-chat --platform managed --region YOUR_REGION --allow-unauthenticated`
 
 ### Local Docker run
 
 To test locally with Docker:
 
 ```bash
-docker build -t retro-chat .
-docker run -p 3000:3000 retro-chat
+docker build -t oddych-chat .
+docker run -p 3000:3000 oddych-chat
 ```
 
 Then open `http://localhost:3000`.

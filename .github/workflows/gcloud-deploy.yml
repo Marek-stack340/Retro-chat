@@ -16,11 +16,11 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT }}
 
-      - run: gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT }}/retro-chat .
+      - run: gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT }}/oddych-chat .
 
       - run: |
-          gcloud run deploy retro-chat \
-            --image gcr.io/${{ secrets.GCP_PROJECT }}/retro-chat \
+          gcloud run deploy oddych-chat \
+            --image gcr.io/${{ secrets.GCP_PROJECT }}/oddych-chat \
             --platform managed \
             --region ${{ secrets.GCP_REGION }} \
             --allow-unauthenticated

@@ -154,7 +154,7 @@ db.init()
   .then(() => db.ensureAdmin('MAREKC'))
   .then(() => {
     server.listen(PORT, () => {
-      console.log(`🎮 Retro Chat Server running on http://localhost:${PORT}`);
+      console.log(`🎮 Oddych Chat Server running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
