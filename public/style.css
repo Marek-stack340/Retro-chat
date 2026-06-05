@@ -244,6 +244,20 @@ body {
     cursor: not-allowed;
 }
 
+/* AI call icon styling */
+.call-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    fill: #ffffff;
+}
+.retro-button.call-ai {
+    padding: 6px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* CHAT CONTAINER */
 .chat-container {
     flex: 1;

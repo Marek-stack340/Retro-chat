@@ -118,8 +118,15 @@ function updateUsersList(users) {
         callBtn.className = 'retro-button';
         callBtn.style.padding = '6px 10px';
         callBtn.style.fontSize = '11px';
-        callBtn.textContent = 'CALL';
-        callBtn.title = `Zavolať ${user.username}`;
+        // For AI bot show a call icon
+        if (user.id === 'ai' || user.role === 'bot' || (user.username && user.username.toLowerCase().includes('ai'))) {
+            callBtn.innerHTML = '<svg class="call-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg>';
+            callBtn.title = `Zavolať ${user.username}`;
+            callBtn.classList.add('call-ai');
+        } else {
+            callBtn.textContent = 'CALL';
+            callBtn.title = `Zavolať ${user.username}`;
+        }
         callBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             openCall(user);
