@@ -184,6 +184,7 @@ function openOdkazovacWithUser(user) {
     currentOdkazovac = { id: user.id, username: user.username };
     odkazovacTitle.textContent = `Odkazovač: ${user.username}`;
     odkazovacRecipient.textContent = `Príjemca: ${user.username}`;
+    odkazovacInput.value = `Ahoj ${user.username}, práve som ti posielal správu cez odkazovač. Ako ide deň?`;
     odkazovacModal.classList.remove('hidden');
     renderOdkazovacMessages();
     odkazovacInput.focus();
@@ -195,6 +196,7 @@ function openOdkazovac() {
     odkazovacModal.classList.remove('hidden');
     odkazovacTitle.textContent = 'ODKAZOVAČ';
     odkazovacRecipient.textContent = 'Príjemca: (vyber používateľa)';
+    odkazovacInput.value = 'Vyber používateľa a napíš mu správu...';
     renderOdkazovacMessages();
     odkazovacInput.focus();
     clearOdkazovacAlert();
