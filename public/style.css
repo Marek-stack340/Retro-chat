@@ -94,26 +94,6 @@ body {
 }
 
 /* Rainbow animated text for playful highlight */
-.rainbow {
-    font-size: 28px;
-    font-weight: 800;
-    margin-left: 12px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    animation: rainbow 3s linear infinite;
-    text-transform: lowercase;
-}
-
-@keyframes rainbow {
-    0% { color: #ff0000; }
-    14% { color: #ff7f00; }
-    28% { color: #ffff00; }
-    42% { color: #00ff00; }
-    56% { color: #0000ff; }
-    70% { color: #4b0082; }
-    84% { color: #8b00ff; }
-    100% { color: #ff0000; }
-}
 
 .status-light {
     width: 12px;

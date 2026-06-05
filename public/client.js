@@ -270,6 +270,12 @@ callMute.addEventListener('click', () => {
 
 async function openCall(user) {
     if (!user || !user.id) return;
+    // If the target is the AI bot, open simulated AI call
+    if (user.id === 'ai' || user.role === 'bot' || (typeof user.username === 'string' && user.username.toLowerCase().includes('ai'))) {
+        openAICall(user);
+        return;
+    }
+
     currentCall = { id: user.id, username: user.username };
     callTitle.textContent = `Hovor s ${user.username}`;
     callModal.classList.remove('hidden');
@@ -283,6 +289,42 @@ async function openCall(user) {
     } catch (err) {
         console.error('Offer error', err);
     }
+}
+
+// ------ AI Call (simulated) ------
+function openAICall(user) {
+    currentCall = { id: user.id, username: user.username };
+    callTitle.textContent = `Hovor s ${user.username}`;
+    callModal.classList.remove('hidden');
+    // hide video elements (this is a simulated call)
+    remoteVideo.style.display = 'none';
+    localVideo.style.display = 'none';
+    const aiArea = document.getElementById('ai-call-area');
+    const aiMessages = document.getElementById('ai-call-messages');
+    const aiInput = document.getElementById('ai-call-input');
+    const aiSend = document.getElementById('ai-call-send');
+    aiArea.classList.remove('hidden');
+    aiMessages.innerHTML = '';
+
+    // Start session on server
+    socket.emit('start-ai-call', {});
+
+    // send on button click
+    const sendFn = () => {
+        const text = aiInput.value.trim();
+        if (!text) return;
+        // display local
+        const d = document.createElement('div');
+        d.style.margin = '6px 0';
+        d.innerHTML = `<strong>${currentUsername}:</strong> ${escapeHtml(text)}`;
+        aiMessages.appendChild(d);
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+        socket.emit('ai-call-send', { text });
+        aiInput.value = '';
+    };
+
+    aiSend.addEventListener('click', sendFn);
+    aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendFn(); });
 }
 
 function closeCallUI() {
@@ -348,6 +390,13 @@ async function endCall() {
         console.error('endCall error', err);
     } finally {
         currentCall = null;
+        // restore UI
+        const aiArea = document.getElementById('ai-call-area');
+        if (aiArea) {
+            aiArea.classList.add('hidden');
+        }
+        remoteVideo.style.display = '';
+        localVideo.style.display = '';
         closeCallUI();
     }
 }
@@ -607,6 +656,27 @@ socket.on('webrtc-candidate', async (payload) => {
 
 socket.on('webrtc-end', (payload) => {
     endCall();
+});
+
+// AI call replies
+socket.on('ai-call-reply', (payload) => {
+    try {
+        const aiMessages = document.getElementById('ai-call-messages');
+        if (!aiMessages) return;
+        const d = document.createElement('div');
+        d.style.margin = '6px 0';
+        d.innerHTML = `<strong>${escapeHtml(payload.from)}:</strong> ${escapeHtml(payload.text)}`;
+        aiMessages.appendChild(d);
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+        // speak using browser TTS
+        if ('speechSynthesis' in window) {
+            const u = new SpeechSynthesisUtterance(payload.text);
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(u);
+        }
+    } catch (err) {
+        console.error('ai-call-reply handler error', err);
+    }
 });
 
 socket.on('disconnect', () => {

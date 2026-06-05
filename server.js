@@ -93,6 +93,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Store users and messages
 const users = new Map();
 const messages = [];
+// Simple AI bot user (not a socket)
+const aiUser = { id: 'ai', username: 'Oddych-AI', role: 'bot' };
+
+function generateAIReply(text) {
+  // Basic canned reply. If you set OPENAI_API_KEY env, this could be upgraded.
+  if (!text || !text.trim()) return 'Ahoj! Ako ti môžem pomôcť?';
+  // friendly echo with small transformation
+  const cleaned = text.trim();
+  return `Reagujem ako AI: "${cleaned}" — povedz mi viac alebo sa spýtaj na niečo konkrétne.`;
+}
 
 // Socket.io events
 io.on('connection', (socket) => {
@@ -119,12 +129,15 @@ io.on('connection', (socket) => {
     socket.emit('load-messages', messages);
 
     // Notify all users that someone joined
-    io.emit('user-joined', {
-      username: username,
-      role: role,
-      userCount: users.size,
-      users: Array.from(users.values())
-    });
+      // Notify all users that someone joined (include AI bot in user list)
+      const usersArray = Array.from(users.values());
+      usersArray.push(aiUser);
+      io.emit('user-joined', {
+        username: username,
+        role: role,
+        userCount: users.size,
+        users: usersArray
+      });
 
     console.log(`${username} joined. Total users: ${users.size}`);
   });
@@ -160,6 +173,13 @@ io.on('connection', (socket) => {
         userCount: users.size,
         users: Array.from(users.values())
       });
+        const usersArray = Array.from(users.values());
+        usersArray.push(aiUser);
+        io.emit('user-left', {
+          username: user.username,
+          userCount: users.size,
+          users: usersArray
+        });
       console.log(`${user.username} left. Total users: ${users.size}`);
     }
   });
@@ -194,9 +214,18 @@ io.on('connection', (socket) => {
       };
 
       // send to recipient if connected
-      if (toId && io.sockets.sockets.get(toId)) {
-        io.to(toId).emit('private-message', payload);
-      }
+        // If recipient is the AI bot id (ai), handle locally
+        if (toId === 'ai' || toId === 'AI' || toId === aiUser.id || (typeof toId === 'string' && toId.toLowerCase && toId.toLowerCase() === 'ai')) {
+          // send bot reply back to sender via private-message event
+          const reply = generateAIReply(text);
+          const botPayload = { from: aiUser.username, fromId: aiUser.id, text: reply, timestamp: new Date() };
+          socket.emit('private-message', botPayload);
+          return;
+        }
+
+        if (toId && io.sockets.sockets.get(toId)) {
+          io.to(toId).emit('private-message', payload);
+        }
 
       // also send to sender for local display
       socket.emit('private-message', payload);
@@ -217,6 +246,23 @@ io.on('connection', (socket) => {
       }
     } catch (err) {
       console.error('Private message error', err);
+    }
+  });
+
+  // Simple AI call flow (simulated, using socket text + speech on client)
+  socket.on('start-ai-call', (data) => {
+    // acknowledge start
+    socket.emit('ai-call-started', { bot: aiUser.username });
+  });
+
+  socket.on('ai-call-send', (data) => {
+    try {
+      const text = (data && data.text) || '';
+      const reply = generateAIReply(text);
+      // send reply back
+      socket.emit('ai-call-reply', { from: aiUser.username, text: reply, timestamp: new Date() });
+    } catch (err) {
+      console.error('ai-call-send error', err);
     }
   });
 
