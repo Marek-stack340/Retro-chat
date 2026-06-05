@@ -441,6 +441,13 @@ function sendMessage() {
     const text = messageInput.value.trim();
     
     if (!text) return;
+    // If user typed the command to call AI, open the AI call instead
+    if (text.toLowerCase() === '.callai') {
+        const aiUserObj = { id: 'ai', username: 'Oddych-AI', role: 'bot' };
+        messageInput.value = '';
+        openAICall(aiUserObj);
+        return;
+    }
 
     socket.emit('send-message', { text });
     messageInput.value = '';
