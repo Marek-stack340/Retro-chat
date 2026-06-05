@@ -314,6 +314,20 @@ function openAICall(user) {
     aiArea.classList.remove('hidden');
     aiMessages.innerHTML = '';
 
+    // Make title icon clickable: click to toggle call
+    const icon = callTitle.querySelector('.call-head-icon');
+    if (icon) {
+        icon.style.cursor = 'pointer';
+        icon.onclick = () => {
+            if (!currentCall) {
+                ensureAIInUserList();
+                openAICall({ id: 'ai', username: 'Oddych-AI' });
+            } else {
+                endCall();
+            }
+        };
+    }
+
     // Start session on server
     socket.emit('start-ai-call', {});
 
