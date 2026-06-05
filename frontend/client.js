@@ -432,9 +432,19 @@ function handleTyping() {
 
 // Event Listeners - Join Modal
 joinBtn.addEventListener('click', joinChat);
-usernameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') joinChat();
+usernameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        joinChat();
+    }
 });
+
+function handleRegisterEnter(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        registerBtn.click();
+    }
+}
 
 // Open registration modal
 if (openRegisterBtn) {
@@ -453,6 +463,10 @@ if (closeRegisterBtn) {
         usernameInput.focus();
     });
 }
+
+if (registerUsername) registerUsername.addEventListener('keydown', handleRegisterEnter);
+if (registerEmail) registerEmail.addEventListener('keydown', handleRegisterEnter);
+if (registerPassword) registerPassword.addEventListener('keydown', handleRegisterEnter);
 
 // Handle registration
 if (registerBtn) {
