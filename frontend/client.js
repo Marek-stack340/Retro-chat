@@ -397,6 +397,16 @@ function sendMessage() {
     
     if (!text) return;
 
+    if (text.toLowerCase() === '.vymaz') {
+        messagesDiv.innerHTML = '';
+        addSystemMessage('Okno bolo vymazané.');
+        messageInput.value = '';
+        messageInput.focus();
+        socket.emit('user-stop-typing');
+        typingIndicator.classList.add('hidden');
+        return;
+    }
+
     socket.emit('send-message', { text });
     messageInput.value = '';
     messageInput.focus();
