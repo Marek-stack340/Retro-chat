@@ -258,6 +258,18 @@ body {
     justify-content: center;
 }
 
+/* Highlight animation for AI entry */
+.ai-highlight {
+    animation: ai-pulse 2s ease-in-out;
+    box-shadow: 0 6px 20px rgba(106,168,79,0.12);
+}
+
+@keyframes ai-pulse {
+    0% { transform: translateY(0); background: rgba(255,255,255,0); }
+    50% { transform: translateY(-4px); background: rgba(255,250,200,0.08); }
+    100% { transform: translateY(0); background: rgba(255,255,255,0); }
+}
+
 /* CHAT CONTAINER */
 .chat-container {
     flex: 1;

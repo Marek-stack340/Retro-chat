@@ -334,6 +334,43 @@ function openAICall(user) {
     aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendFn(); });
 }
 
+// Ensure AI appears in users list (if missing) and highlight its entry briefly
+function ensureAIInUserList() {
+    const existing = Array.from(document.querySelectorAll('#users-list li')).find(li => li.textContent && li.textContent.toLowerCase().includes('oddych-ai'));
+    if (existing) {
+        // flash highlight
+        existing.classList.add('ai-highlight');
+        setTimeout(() => existing.classList.remove('ai-highlight'), 2200);
+        return;
+    }
+    // Create a lightweight entry for AI
+    const li = document.createElement('li');
+    li.className = 'user-item ai-temp';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = 'Oddych-AI';
+    nameSpan.style.flex = '1';
+    const chatBtn = document.createElement('button');
+    chatBtn.className = 'retro-button';
+    chatBtn.textContent = 'NAPÍŠ';
+    chatBtn.addEventListener('click', () => openOdkazovacWithUser({ id: 'ai', username: 'Oddych-AI' }));
+    const callBtn = document.createElement('button');
+    callBtn.className = 'retro-button call-ai';
+    callBtn.innerHTML = '<svg class="call-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg>';
+    callBtn.title = 'Zavolať Oddych-AI';
+    callBtn.addEventListener('click', () => openAICall({ id: 'ai', username: 'Oddych-AI' }));
+
+    li.appendChild(nameSpan);
+    li.appendChild(chatBtn);
+    li.appendChild(callBtn);
+    const usersListEl = document.getElementById('users-list');
+    if (usersListEl) {
+        usersListEl.insertBefore(li, usersListEl.firstChild);
+        // highlight
+        li.classList.add('ai-highlight');
+        setTimeout(() => li.classList.remove('ai-highlight'), 2200);
+    }
+}
+
 function closeCallUI() {
     callModal.classList.add('hidden');
     remoteVideo.srcObject = null;
@@ -445,6 +482,8 @@ function sendMessage() {
     if (text.toLowerCase() === '.callai') {
         const aiUserObj = { id: 'ai', username: 'Oddych-AI', role: 'bot' };
         messageInput.value = '';
+        // ensure AI entry visible then open AI call
+        ensureAIInUserList();
         openAICall(aiUserObj);
         return;
     }
