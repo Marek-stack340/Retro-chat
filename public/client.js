@@ -26,7 +26,6 @@ const registerPassword = document.getElementById('register-password');
 const closeRegisterBtn = document.getElementById('close-register-btn');
 const registerStatus = document.getElementById('register-status');
 const openOdkazovacBtn = document.getElementById('open-odkazovac-btn');
-const aiCallBtn = document.getElementById('ai-call-btn');
 const odkazovacDot = document.getElementById('odkazovac-dot');
 
 let currentUsername = '';
@@ -119,15 +118,8 @@ function updateUsersList(users) {
         callBtn.className = 'retro-button';
         callBtn.style.padding = '6px 10px';
         callBtn.style.fontSize = '11px';
-        // For AI bot show a call icon
-        if (user.id === 'ai' || user.role === 'bot' || (user.username && user.username.toLowerCase().includes('ai'))) {
-            callBtn.innerHTML = '<svg class="call-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg>';
-            callBtn.title = `Zavolať ${user.username}`;
-            callBtn.classList.add('call-ai');
-        } else {
-            callBtn.textContent = 'CALL';
-            callBtn.title = `Zavolať ${user.username}`;
-        }
+        callBtn.textContent = 'CALL';
+        callBtn.title = `Zavolať ${user.username}`;
         callBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             openCall(user);
@@ -262,12 +254,6 @@ openOdkazovacBtn.addEventListener('click', () => {
     openOdkazovac();
 });
 
-if (aiCallBtn) {
-    aiCallBtn.addEventListener('click', () => {
-        openAICall({ id: 'ai', username: 'Oddych-AI' });
-    });
-}
-
 odkazovacSend.addEventListener('click', sendOdkazovacMessage);
 odkazovacClose.addEventListener('click', closeOdkazovac);
 odkazovacInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendOdkazovacMessage(); });
@@ -307,93 +293,6 @@ async function openCall(user) {
     }
 }
 
-// ------ AI Call (simulated) ------
-function openAICall(user) {
-    currentCall = { id: user.id, username: user.username };
-    // show phone icon in call title for AI
-    callTitle.innerHTML = `<svg class="call-head-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg> Hovor s ${escapeHtml(user.username)}`;
-    callModal.classList.remove('hidden');
-    // hide video elements (this is a simulated call)
-    remoteVideo.style.display = 'none';
-    localVideo.style.display = 'none';
-    const aiArea = document.getElementById('ai-call-area');
-    const aiMessages = document.getElementById('ai-call-messages');
-    const aiInput = document.getElementById('ai-call-input');
-    const aiSend = document.getElementById('ai-call-send');
-    aiArea.classList.remove('hidden');
-    aiMessages.innerHTML = '';
-
-    // Make title icon clickable: click to toggle call
-    const icon = callTitle.querySelector('.call-head-icon');
-    if (icon) {
-        icon.style.cursor = 'pointer';
-        icon.onclick = () => {
-            if (!currentCall) {
-                ensureAIInUserList();
-                openAICall({ id: 'ai', username: 'Oddych-AI' });
-            } else {
-                endCall();
-            }
-        };
-    }
-
-    // Start session on server
-    socket.emit('start-ai-call', {});
-
-    // send on button click
-    const sendFn = () => {
-        const text = aiInput.value.trim();
-        if (!text) return;
-        // display local
-        const d = document.createElement('div');
-        d.style.margin = '6px 0';
-        d.innerHTML = `<strong>${currentUsername}:</strong> ${escapeHtml(text)}`;
-        aiMessages.appendChild(d);
-        aiMessages.scrollTop = aiMessages.scrollHeight;
-        socket.emit('ai-call-send', { text });
-        aiInput.value = '';
-    };
-
-    aiSend.addEventListener('click', sendFn);
-    aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendFn(); });
-}
-
-// Ensure AI appears in users list (if missing) and highlight its entry briefly
-function ensureAIInUserList() {
-    const existing = Array.from(document.querySelectorAll('#users-list li')).find(li => li.textContent && li.textContent.toLowerCase().includes('oddych-ai'));
-    if (existing) {
-        // flash highlight
-        existing.classList.add('ai-highlight');
-        setTimeout(() => existing.classList.remove('ai-highlight'), 2200);
-        return;
-    }
-    // Create a lightweight entry for AI
-    const li = document.createElement('li');
-    li.className = 'user-item ai-temp';
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = 'Oddych-AI';
-    nameSpan.style.flex = '1';
-    const chatBtn = document.createElement('button');
-    chatBtn.className = 'retro-button';
-    chatBtn.textContent = 'NAPÍŠ';
-    chatBtn.addEventListener('click', () => openOdkazovacWithUser({ id: 'ai', username: 'Oddych-AI' }));
-    const callBtn = document.createElement('button');
-    callBtn.className = 'retro-button call-ai';
-    callBtn.innerHTML = '<svg class="call-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg>';
-    callBtn.title = 'Zavolať Oddych-AI';
-    callBtn.addEventListener('click', () => openAICall({ id: 'ai', username: 'Oddych-AI' }));
-
-    li.appendChild(nameSpan);
-    li.appendChild(chatBtn);
-    li.appendChild(callBtn);
-    const usersListEl = document.getElementById('users-list');
-    if (usersListEl) {
-        usersListEl.insertBefore(li, usersListEl.firstChild);
-        // highlight
-        li.classList.add('ai-highlight');
-        setTimeout(() => li.classList.remove('ai-highlight'), 2200);
-    }
-}
 
 function closeCallUI() {
     callModal.classList.add('hidden');
@@ -458,11 +357,6 @@ async function endCall() {
         console.error('endCall error', err);
     } finally {
         currentCall = null;
-        // restore UI
-        const aiArea = document.getElementById('ai-call-area');
-        if (aiArea) {
-            aiArea.classList.add('hidden');
-        }
         remoteVideo.style.display = '';
         localVideo.style.display = '';
         closeCallUI();
@@ -502,15 +396,6 @@ function sendMessage() {
     const text = messageInput.value.trim();
     
     if (!text) return;
-    // If user typed the command to call AI, open the AI call instead
-    if (text.toLowerCase() === '.callai') {
-        const aiUserObj = { id: 'ai', username: 'Oddych-AI', role: 'bot' };
-        messageInput.value = '';
-        // ensure AI entry visible then open AI call
-        ensureAIInUserList();
-        openAICall(aiUserObj);
-        return;
-    }
 
     socket.emit('send-message', { text });
     messageInput.value = '';
@@ -733,27 +618,6 @@ socket.on('webrtc-candidate', async (payload) => {
 
 socket.on('webrtc-end', (payload) => {
     endCall();
-});
-
-// AI call replies
-socket.on('ai-call-reply', (payload) => {
-    try {
-        const aiMessages = document.getElementById('ai-call-messages');
-        if (!aiMessages) return;
-        const d = document.createElement('div');
-        d.style.margin = '6px 0';
-        d.innerHTML = `<strong>${escapeHtml(payload.from)}:</strong> ${escapeHtml(payload.text)}`;
-        aiMessages.appendChild(d);
-        aiMessages.scrollTop = aiMessages.scrollHeight;
-        // speak using browser TTS
-        if ('speechSynthesis' in window) {
-            const u = new SpeechSynthesisUtterance(payload.text);
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(u);
-        }
-    } catch (err) {
-        console.error('ai-call-reply handler error', err);
-    }
 });
 
 socket.on('disconnect', () => {

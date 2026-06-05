@@ -244,50 +244,6 @@ body {
     cursor: not-allowed;
 }
 
-/* AI call icon styling */
-.call-icon {
-    width: 16px;
-    height: 16px;
-    vertical-align: middle;
-    fill: #ffffff;
-    cursor: pointer;
-}
-.call-ai-btn {
-    width: 42px;
-    min-width: 42px;
-    height: 42px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-}
-.retro-button.call-ai {
-    padding: 6px 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-/* Highlight animation for AI entry */
-.ai-highlight {
-    animation: ai-pulse 2s ease-in-out;
-    box-shadow: 0 6px 20px rgba(106,168,79,0.12);
-}
-
-@keyframes ai-pulse {
-    0% { transform: translateY(0); background: rgba(255,255,255,0); }
-    50% { transform: translateY(-4px); background: rgba(255,250,200,0.08); }
-    100% { transform: translateY(0); background: rgba(255,255,255,0); }
-}
-
-/* Call title icon */
-.call-head-icon {
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    margin-right: 8px;
-    fill: #6aa84f;
-}
 
 /* CHAT CONTAINER */
 .chat-container {

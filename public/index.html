@@ -26,9 +26,6 @@
                 <div class="user-info">
                     <span id="username-display" class="username-tag">CONNECTING...</span>
                     <span id="user-count" class="user-count">Users: 0</span>
-                    <button id="ai-call-btn" class="retro-button call-ai-btn" title="Zavolať Oddych-AI" style="margin-left:12px; justify-content:center;">
-                        <svg class="call-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg>
-                    </button>
                     <button id="open-odkazovac-btn" class="retro-button" style="margin-left:12px;position:relative;">ODKAZOVAČ <span id="odkazovac-dot" class="notification-dot hidden"></span></button>
                 </div>
             </header>
@@ -138,20 +135,6 @@
                 <video id="remoteVideo" autoplay playsinline style="width:60%;background:#000;border-radius:8px;"></video>
                 <video id="localVideo" autoplay muted playsinline style="width:35%;background:#000;border-radius:8px;object-fit:cover;"></video>
             </div>
-            <div id="ai-call-area" class="hidden" style="margin-top:12px;text-align:left;">
-                <div id="ai-call-messages" style="max-height:240px;overflow:auto;padding:10px;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,0.05);"></div>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                    <input id="ai-call-input" placeholder="Napíš alebo pusti hlas..." style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);">
-                    <button id="ai-call-send" class="retro-button">POSLAŤ</button>
-                </div>
-            </div>
-            <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
-                <button id="call-hangup" class="retro-button" style="background:#d9534f;">Zaviesť</button>
-                <button id="call-mute" class="retro-button" style="background:transparent;color:var(--primary-color);border:1px solid var(--border-color);">Mute</button>
-            </div>
-        </div>
-    </div>
 
-    <script src="client.js"></script>
 </body>
 </html>
