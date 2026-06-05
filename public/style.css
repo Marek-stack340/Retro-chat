@@ -250,6 +250,17 @@ body {
     height: 16px;
     vertical-align: middle;
     fill: #ffffff;
+    cursor: pointer;
+}
+.call-ai-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
 }
 .retro-button.call-ai {
     padding: 6px 8px;
@@ -257,7 +268,6 @@ body {
     align-items: center;
     justify-content: center;
 }
-
 /* Highlight animation for AI entry */
 .ai-highlight {
     animation: ai-pulse 2s ease-in-out;

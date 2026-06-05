@@ -26,6 +26,7 @@ const registerPassword = document.getElementById('register-password');
 const closeRegisterBtn = document.getElementById('close-register-btn');
 const registerStatus = document.getElementById('register-status');
 const openOdkazovacBtn = document.getElementById('open-odkazovac-btn');
+const aiCallBtn = document.getElementById('ai-call-btn');
 const odkazovacDot = document.getElementById('odkazovac-dot');
 
 let currentUsername = '';
@@ -258,6 +259,12 @@ function sendOdkazovacMessage() {
 openOdkazovacBtn.addEventListener('click', () => {
     openOdkazovac();
 });
+
+if (aiCallBtn) {
+    aiCallBtn.addEventListener('click', () => {
+        openAICall({ id: 'ai', username: 'Oddych-AI' });
+    });
+}
 
 odkazovacSend.addEventListener('click', sendOdkazovacMessage);
 odkazovacClose.addEventListener('click', closeOdkazovac);
