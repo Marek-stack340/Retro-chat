@@ -88,7 +88,7 @@ app.post(['/register', '/api/register'], async (req, res) => {
 });
 
 // Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Store users and messages
 const users = new Map();
