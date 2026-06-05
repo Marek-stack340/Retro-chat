@@ -270,6 +270,15 @@ body {
     100% { transform: translateY(0); background: rgba(255,255,255,0); }
 }
 
+/* Call title icon */
+.call-head-icon {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-right: 8px;
+    fill: #6aa84f;
+}
+
 /* CHAT CONTAINER */
 .chat-container {
     flex: 1;

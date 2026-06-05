@@ -301,7 +301,8 @@ async function openCall(user) {
 // ------ AI Call (simulated) ------
 function openAICall(user) {
     currentCall = { id: user.id, username: user.username };
-    callTitle.textContent = `Hovor s ${user.username}`;
+    // show phone icon in call title for AI
+    callTitle.innerHTML = `<svg class="call-head-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.95-.27c1.05.28 2.18.43 3.34.43a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.16.15 2.29.43 3.34a1 1 0 01-.27.95l-2.04 2.5z"/></svg> Hovor s ${escapeHtml(user.username)}`;
     callModal.classList.remove('hidden');
     // hide video elements (this is a simulated call)
     remoteVideo.style.display = 'none';
