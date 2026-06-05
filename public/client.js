@@ -37,6 +37,18 @@ let dmClose = document.getElementById('dm-close');
 let currentDM = null; // { id, username }
 const dmHistory = new Map();
 
+// Call (WebRTC) elements and state
+let callModal = document.getElementById('call-modal');
+let callTitle = document.getElementById('call-title');
+let remoteVideo = document.getElementById('remoteVideo');
+let localVideo = document.getElementById('localVideo');
+let callHangup = document.getElementById('call-hangup');
+let callMute = document.getElementById('call-mute');
+let pc = null;
+let localStream = null;
+let currentCall = null; // { id, username }
+const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
 // Auto-scroll messages to bottom
 function scrollToBottom() {
     const messagesWrapper = document.querySelector('.messages-wrapper');
@@ -108,8 +120,20 @@ function updateUsersList(users) {
             openDM(user);
         });
 
+        const callBtn = document.createElement('button');
+        callBtn.className = 'retro-button';
+        callBtn.style.padding = '6px 10px';
+        callBtn.style.fontSize = '11px';
+        callBtn.textContent = 'CALL';
+        callBtn.title = `Zavolať ${user.username}`;
+        callBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCall(user);
+        });
+
         li.appendChild(nameSpan);
         li.appendChild(dmBtn);
+        li.appendChild(callBtn);
         usersList.appendChild(li);
     });
     userCount.textContent = `Users: ${users.length}`;
@@ -161,6 +185,102 @@ function sendPrivateMessage() {
 dmSend.addEventListener('click', sendPrivateMessage);
 dmClose.addEventListener('click', closeDM);
 dmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendPrivateMessage(); });
+
+// Call controls
+callHangup.addEventListener('click', () => {
+    endCall();
+});
+callMute.addEventListener('click', () => {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+    audioTrack.enabled = !audioTrack.enabled;
+    callMute.textContent = audioTrack.enabled ? 'Mute' : 'Unmute';
+});
+
+async function openCall(user) {
+    if (!user || !user.id) return;
+    currentCall = { id: user.id, username: user.username };
+    callTitle.textContent = `Hovor s ${user.username}`;
+    callModal.classList.remove('hidden');
+    await startLocalStream();
+    createPeerConnection();
+    // create offer
+    try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('webrtc-offer', { to: user.id, sdp: offer });
+    } catch (err) {
+        console.error('Offer error', err);
+    }
+}
+
+function closeCallUI() {
+    callModal.classList.add('hidden');
+    remoteVideo.srcObject = null;
+    localVideo.srcObject = null;
+}
+
+async function startLocalStream() {
+    if (localStream) return localStream;
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        localVideo.srcObject = localStream;
+        return localStream;
+    } catch (err) {
+        console.error('getUserMedia error', err);
+        alert('Nie je možné získať prístup k mikrofónu/kamere');
+        throw err;
+    }
+}
+
+function createPeerConnection() {
+    if (pc) return pc;
+    pc = new RTCPeerConnection(pcConfig);
+
+    // add local tracks
+    if (localStream) {
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
+
+    pc.ontrack = (evt) => {
+        remoteVideo.srcObject = evt.streams[0];
+    };
+
+    pc.onicecandidate = (evt) => {
+        if (evt.candidate) {
+            socket.emit('webrtc-candidate', { to: currentCall ? currentCall.id : null, candidate: evt.candidate });
+        }
+    };
+
+    pc.onconnectionstatechange = () => {
+        if (!pc) return;
+        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+            endCall();
+        }
+    };
+
+    return pc;
+}
+
+async function endCall() {
+    try {
+        if (pc) {
+            try { pc.close(); } catch (e) {}
+            pc = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        socket.emit('webrtc-end', { to: currentCall ? currentCall.id : null });
+    } catch (err) {
+        console.error('endCall error', err);
+    } finally {
+        currentCall = null;
+        closeCallUI();
+    }
+}
 
 // Join chat
 function joinChat() {
@@ -371,6 +491,50 @@ socket.on('private-message', (payload) => {
     } else {
         addSystemMessage(`Súkromná správa od ${other}`);
     }
+});
+
+// WebRTC signaling handlers
+socket.on('webrtc-offer', async (payload) => {
+    // payload: { from, fromId, sdp }
+    try {
+        const fromId = payload.fromId;
+        const from = payload.from;
+        currentCall = { id: fromId, username: from };
+        callTitle.textContent = `Hovor od ${from}`;
+        callModal.classList.remove('hidden');
+        await startLocalStream();
+        createPeerConnection();
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('webrtc-answer', { to: fromId, sdp: answer });
+    } catch (err) {
+        console.error('webrtc-offer error', err);
+    }
+});
+
+socket.on('webrtc-answer', async (payload) => {
+    try {
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    } catch (err) {
+        console.error('webrtc-answer error', err);
+    }
+});
+
+socket.on('webrtc-candidate', async (payload) => {
+    try {
+        if (!pc) return;
+        if (payload && payload.candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        }
+    } catch (err) {
+        console.error('webrtc-candidate error', err);
+    }
+});
+
+socket.on('webrtc-end', (payload) => {
+    endCall();
 });
 
 socket.on('disconnect', () => {

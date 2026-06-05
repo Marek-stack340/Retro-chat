@@ -171,6 +171,58 @@ io.on('connection', (socket) => {
       console.error('Private message error', err);
     }
   });
+
+  // WebRTC signaling forwarding
+  socket.on('webrtc-offer', (data) => {
+    try {
+      const from = users.get(socket.id);
+      const toId = data && data.to;
+      const sdp = data && data.sdp;
+      const payload = { from: from ? from.username : 'unknown', fromId: socket.id, sdp };
+      if (toId && io.sockets.sockets.get(toId)) {
+        io.to(toId).emit('webrtc-offer', payload);
+      }
+    } catch (err) {
+      console.error('webrtc-offer forward error', err);
+    }
+  });
+
+  socket.on('webrtc-answer', (data) => {
+    try {
+      const toId = data && data.to;
+      const sdp = data && data.sdp;
+      const payload = { sdp };
+      if (toId && io.sockets.sockets.get(toId)) {
+        io.to(toId).emit('webrtc-answer', payload);
+      }
+    } catch (err) {
+      console.error('webrtc-answer forward error', err);
+    }
+  });
+
+  socket.on('webrtc-candidate', (data) => {
+    try {
+      const toId = data && data.to;
+      const candidate = data && data.candidate;
+      const payload = { candidate };
+      if (toId && io.sockets.sockets.get(toId)) {
+        io.to(toId).emit('webrtc-candidate', payload);
+      }
+    } catch (err) {
+      console.error('webrtc-candidate forward error', err);
+    }
+  });
+
+  socket.on('webrtc-end', (data) => {
+    try {
+      const toId = data && data.to;
+      if (toId && io.sockets.sockets.get(toId)) {
+        io.to(toId).emit('webrtc-end', { fromId: socket.id });
+      }
+    } catch (err) {
+      console.error('webrtc-end forward error', err);
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;

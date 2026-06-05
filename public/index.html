@@ -116,6 +116,21 @@
         </div>
     </div>
 
+    <!-- Call Modal -->
+    <div id="call-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:720px;">
+            <h2 id="call-title">Hovor</h2>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <video id="remoteVideo" autoplay playsinline style="width:60%;background:#000;border-radius:8px;"></video>
+                <video id="localVideo" autoplay muted playsinline style="width:35%;background:#000;border-radius:8px;object-fit:cover;"></video>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+                <button id="call-hangup" class="retro-button" style="background:#d9534f;">Zaviesť</button>
+                <button id="call-mute" class="retro-button" style="background:transparent;color:var(--primary-color);border:1px solid var(--border-color);">Mute</button>
+            </div>
+        </div>
+    </div>
+
     <script src="client.js"></script>
 </body>
 </html>
