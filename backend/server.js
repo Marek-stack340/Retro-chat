@@ -220,6 +220,61 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Admin: clear all messages
+  socket.on('clear-messages', () => {
+    try {
+      const user = users.get(socket.id);
+      if (!user || user.role !== 'admin') {
+        socket.emit('system-message', { text: 'Permission denied: admin only' });
+        return;
+      }
+      messages.length = 0;
+      io.emit('clear-messages');
+      io.emit('system-message', { text: `${user.username} vymazal(a) všetky správy.` });
+      console.log(`All messages cleared by ${user.username}`);
+    } catch (err) {
+      console.error('clear-messages error', err);
+    }
+  });
+
+  // Admin: kick a user by username
+  socket.on('kick-user', (data) => {
+    try {
+      const user = users.get(socket.id);
+      if (!user || user.role !== 'admin') {
+        socket.emit('system-message', { text: 'Permission denied: admin only' });
+        return;
+      }
+      const targetName = data && data.username;
+      if (!targetName) {
+        socket.emit('system-message', { text: 'Usage: .vyhod <username>' });
+        return;
+      }
+      const found = Array.from(users.entries()).find(([id, u]) => u.username === targetName);
+      if (!found) {
+        socket.emit('system-message', { text: `User not found: ${targetName}` });
+        return;
+      }
+      const [targetId, targetUser] = found;
+      // inform and disconnect
+      io.to(targetId).emit('kicked', { reason: `Vyhodený používateľom ${user.username}` });
+      try {
+        const sock = io.sockets.sockets.get(targetId);
+        if (sock && sock.disconnect) sock.disconnect(true);
+      } catch (e) { console.error('kick disconnect error', e); }
+      users.delete(targetId);
+      io.emit('user-left', {
+        username: targetUser.username,
+        userCount: users.size,
+        users: Array.from(users.values())
+      });
+      io.emit('system-message', { text: `${targetUser.username} bol vyhodený(á) by ${user.username}` });
+      console.log(`${targetUser.username} was kicked by ${user.username}`);
+    } catch (err) {
+      console.error('kick-user error', err);
+    }
+  });
+
   // WebRTC signaling forwarding
   socket.on('webrtc-offer', (data) => {
     try {

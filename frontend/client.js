@@ -396,10 +396,25 @@ function sendMessage() {
     const text = messageInput.value.trim();
     
     if (!text) return;
-
-    if (text.toLowerCase() === '.vymaz') {
-        messagesDiv.innerHTML = '';
-        addSystemMessage('Okno bolo vymazané.');
+    // Commands starting with a dot
+    if (text.startsWith('.')) {
+        const parts = text.split(' ');
+        const cmd = parts[0].toLowerCase();
+        const args = parts.slice(1);
+        if (cmd === '.vymaz') {
+            messagesDiv.innerHTML = '';
+            addSystemMessage('Okno bolo vymazané.');
+        } else if (cmd === '.vymazall') {
+            socket.emit('clear-messages');
+        } else if (cmd === '.vyhod') {
+            if (!args.length) {
+                addSystemMessage('Použitie: .vyhod <username>');
+            } else {
+                socket.emit('kick-user', { username: args.join(' ') });
+            }
+        } else {
+            addSystemMessage('Neznámy príkaz: ' + cmd);
+        }
         messageInput.value = '';
         messageInput.focus();
         socket.emit('user-stop-typing');
@@ -657,6 +672,25 @@ socket.on('webrtc-end', (payload) => {
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
+});
+
+// Server requested clear
+socket.on('clear-messages', () => {
+    messagesDiv.innerHTML = '';
+    addSystemMessage('Správy boli vymazané administrátorom.');
+});
+
+// Received kicked notification
+socket.on('kicked', (payload) => {
+    const reason = (payload && payload.reason) || 'Boli ste vyhodený(á).';
+    addSystemMessage(reason);
+    alert(reason);
+    // Reload to force rejoin
+    setTimeout(() => location.reload(), 500);
+});
+
+socket.on('system-message', (payload) => {
+    if (payload && payload.text) addSystemMessage(payload.text);
 });
 
 // Initial focus
