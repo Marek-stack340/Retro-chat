@@ -55,3 +55,13 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff4ec;margin:0}
 .msg{margin-bottom:10px}
 .private-msg{background:rgba(255,157,66,0.15);border:1px solid rgba(255,157,66,0.28);padding:12px;border-radius:12px}
 .private-msg strong{color:#c55c00}
+
+/* Contribute page donation section */
+.contribute-list{list-style:none;padding:0;margin:16px auto;max-width:600px;text-align:left;color:#4a2f1b}
+.contribute-list li{padding:8px 0;font-size:0.95rem;border-bottom:1px solid rgba(255,157,66,0.08)}
+.donate-section{padding:24px;border-radius:12px;background:rgba(255,157,66,0.08);border:1px solid rgba(255,157,66,0.18);margin:20px auto;max-width:600px}
+.donate-section h3{margin:0 0 8px 0;color:#4a2f1b;font-size:1.3rem}
+.donate-section p{color:#5c3b25;margin:0 0 14px 0;font-size:0.95rem}
+.donate-options{display:flex;flex-direction:column;align-items:center;gap:12px}
+.donate-note{font-size:0.85rem;color:#7f5a47;margin:0;font-style:italic}
+
