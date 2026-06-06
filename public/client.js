@@ -14,6 +14,9 @@ const usersList = document.getElementById('users-list');
 const usersSidebar = document.getElementById('users-sidebar');
 const toggleUsersBtn = document.getElementById('toggle-users-btn');
 const currentUsernameDisplay = document.getElementById('current-username-display');
+const homePanel = document.getElementById('home-panel');
+const homeJoinBtn = document.getElementById('home-join-btn');
+const homeRegisterLink = document.getElementById('home-register-link');
 
 const savedUsername = localStorage.getItem('chatUsername');
 if (savedUsername) {
@@ -112,6 +115,16 @@ sendBtn.addEventListener('click', () => {
   socket.emit('send-message', { username: currentUsername, text, timestamp: new Date().toISOString() });
   messageInput.value = '';
 });
+
+// Home panel join button: hides home and focuses composer
+homeJoinBtn.addEventListener('click', () => {
+  // ensure username is stored and joined
+  sendJoin();
+  if (homePanel) homePanel.classList.add('hidden');
+  messageInput.focus();
+});
+
+// If user navigates to register, keep home visible (link navigates away)
 
 // support Enter to send, Shift+Enter for newline
 messageInput.addEventListener('keydown', (e) => {
