@@ -7,14 +7,33 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div class="app">
-      <header><h1>Oddych Chat</h1></header>
+    <div class="app chat-app">
+      <header class="chat-header">
+        <h1>Oddych Chat</h1>
+        <button id="dm-btn" class="icon-btn" type="button" title="Súkromná správa">✉️</button>
+      </header>
       <main>
+        <div class="status-row">Aktívni používatelia: <span id="active-users-count">0</span></div>
         <div class="messages" id="messages"></div>
+        <div id="dm-panel" class="dm-panel hidden">
+          <div class="dm-panel-header">
+            <span>Súkromná správa</span>
+            <button id="dm-close" class="close-btn" type="button" aria-label="Zavrieť">×</button>
+          </div>
+          <div class="dm-panel-body">
+            <label for="dm-user-select">Komu</label>
+            <select id="dm-user-select">
+              <option value="">Vyber používateľa</option>
+            </select>
+            <label for="dm-message-input">Správa</label>
+            <textarea id="dm-message-input" rows="3" placeholder="Napíš súkromnú správu..."></textarea>
+            <button id="dm-send-btn" type="button">Odoslať súkromne</button>
+          </div>
+        </div>
         <div class="input-row">
           <input id="username-input" placeholder="Username" maxlength="20" />
           <input id="message-input" placeholder="Type a message..." />
-          <button id="send-btn">Send</button>
+          <button id="send-btn" type="button">Send</button>
         </div>
       </main>
     </div>
