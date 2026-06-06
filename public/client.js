@@ -14,9 +14,6 @@ const usersList = document.getElementById('users-list');
 const usersSidebar = document.getElementById('users-sidebar');
 const toggleUsersBtn = document.getElementById('toggle-users-btn');
 const currentUsernameDisplay = document.getElementById('current-username-display');
-const homePanel = document.getElementById('home-panel');
-const homeJoinBtn = document.getElementById('home-join-btn');
-const homeRegisterLink = document.getElementById('home-register-link');
 
 const savedUsername = localStorage.getItem('chatUsername');
 if (savedUsername) {
@@ -62,7 +59,6 @@ function updateUserList(users) {
     li.dataset.id = user.id;
     if (user.username === currentUsername) li.classList.add('me');
     li.addEventListener('click', () => {
-      // open DM panel and select user
       dmPanel.classList.remove('hidden');
       dmUserSelect.value = user.id;
       dmMessageInput.focus();
@@ -116,16 +112,6 @@ sendBtn.addEventListener('click', () => {
   messageInput.value = '';
 });
 
-// Home panel join button: hides home and focuses composer
-homeJoinBtn.addEventListener('click', () => {
-  // ensure username is stored and joined
-  sendJoin();
-  if (homePanel) homePanel.classList.add('hidden');
-  messageInput.focus();
-});
-
-// If user navigates to register, keep home visible (link navigates away)
-
 // support Enter to send, Shift+Enter for newline
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -157,7 +143,5 @@ dmSendBtn.addEventListener('click', () => {
 });
 
 usernameInput.addEventListener('change', sendJoin);
-
-messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
 
 dmMessageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); dmSendBtn.click(); } });
