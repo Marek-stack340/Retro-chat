@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Oddych Chat - New</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="app">
+      <header><h1>Oddych Chat (New)</h1></header>
+      <main>
+        <div class="messages" id="messages"></div>
+        <div class="input-row">
+          <input id="username-input" placeholder="Username" maxlength="20" />
+          <input id="message-input" placeholder="Type a message..." />
+          <button id="send-btn">Send</button>
+        </div>
+      </main>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+  </body>
+ </html>

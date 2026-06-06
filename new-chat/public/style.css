@@ -1,0 +1,7 @@
+body{font-family:Arial,Helvetica,sans-serif;background:#f6f8fa;margin:0}
+.app{max-width:900px;margin:24px auto;background:#fff;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.messages{height:400px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:6px;background:#fafafa}
+.input-row{display:flex;gap:8px;margin-top:12px}
+.input-row input{padding:8px;border:1px solid #ddd;border-radius:6px}
+.input-row button{padding:8px 12px;border-radius:6px;background:#4caf50;color:#fff;border:none}
+.msg{margin-bottom:8px}
