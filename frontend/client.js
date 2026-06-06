@@ -104,6 +104,17 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+// Render odkazovac users (safe stub used by updateUsersList)
+function renderOdkazovacUsers(users) {
+    try {
+        if (!users) return;
+        const count = Array.isArray(users) ? users.length : (users.size || 0);
+        if (userCount) userCount.textContent = `Users: ${count}`;
+    } catch (err) {
+        // noop
+    }
+}
+
 // Update users list
 function updateUsersList(users) {
     usersList.innerHTML = '';
