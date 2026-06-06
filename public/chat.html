@@ -9,32 +9,48 @@
   <body>
     <div class="app chat-app">
       <header class="chat-header">
-        <h1>Oddych Chat</h1>
-        <button id="dm-btn" class="icon-btn" type="button" title="Súkromná správa">✉️</button>
+        <div class="left">
+          <h1>Oddych Chat</h1>
+          <div class="user-display">Prihlásený: <strong id="current-username-display">Anon</strong></div>
+        </div>
+        <div class="right">
+          <button id="toggle-users-btn" class="icon-btn" type="button" title="Zobraziť používateľov">👥</button>
+          <button id="dm-btn" class="icon-btn" type="button" title="Súkromná správa">✉️</button>
+        </div>
       </header>
-      <main>
-        <div class="status-row">Aktívni používatelia: <span id="active-users-count">0</span></div>
-        <div class="messages" id="messages"></div>
-        <div id="dm-panel" class="dm-panel hidden">
-          <div class="dm-panel-header">
-            <span>Súkromná správa</span>
-            <button id="dm-close" class="close-btn" type="button" aria-label="Zavrieť">×</button>
+
+      <main class="chat-main">
+        <aside class="users-sidebar" id="users-sidebar">
+          <h2>Aktívni</h2>
+          <ul id="users-list"></ul>
+        </aside>
+
+        <section class="chat-area">
+          <div class="status-row">Aktívni používatelia: <span id="active-users-count">0</span></div>
+          <div class="messages" id="messages"></div>
+
+          <div id="dm-panel" class="dm-panel hidden">
+            <div class="dm-panel-header">
+              <span>Súkromná správa</span>
+              <button id="dm-close" class="close-btn" type="button" aria-label="Zavrieť">×</button>
+            </div>
+            <div class="dm-panel-body">
+              <label for="dm-user-select">Komu</label>
+              <select id="dm-user-select">
+                <option value="">Vyber používateľa</option>
+              </select>
+              <label for="dm-message-input">Správa</label>
+              <textarea id="dm-message-input" rows="3" placeholder="Napíš súkromnú správu..."></textarea>
+              <button id="dm-send-btn" type="button">Odoslať súkromne</button>
+            </div>
           </div>
-          <div class="dm-panel-body">
-            <label for="dm-user-select">Komu</label>
-            <select id="dm-user-select">
-              <option value="">Vyber používateľa</option>
-            </select>
-            <label for="dm-message-input">Správa</label>
-            <textarea id="dm-message-input" rows="3" placeholder="Napíš súkromnú správu..."></textarea>
-            <button id="dm-send-btn" type="button">Odoslať súkromne</button>
+
+          <div class="input-row">
+            <input id="username-input" placeholder="Meno" maxlength="20" />
+            <textarea id="message-input" placeholder="Napíš správu... (Enter = odoslať, Shift+Enter = nový riadok)" rows="2"></textarea>
+            <button id="send-btn" type="button">Odoslať</button>
           </div>
-        </div>
-        <div class="input-row">
-          <input id="username-input" placeholder="Username" maxlength="20" />
-          <input id="message-input" placeholder="Type a message..." />
-          <button id="send-btn" type="button">Send</button>
-        </div>
+        </section>
       </main>
     </div>
     <script src="/socket.io/socket.io.js"></script>
