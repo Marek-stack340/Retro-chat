@@ -1,141 +1,103 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ODDYCH CHAT</title>
-    <meta name="description" content="Oddych chat — jednoduchý retro chat pre oddych a rozhovory. Prihláste sa a komunikujte v reálnom čase.">
-    <meta name="robots" content="index,follow">
-    <meta name="google" content="notranslate">
-    <meta property="og:title" content="Oddych chat">
-    <meta property="og:description" content="Retro-stylový viac-užívateľský chat s registráciou a filtrovaním nevhodného obsahu.">
-    <meta property="og:type" content="website">
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23ff7a18"/><text x="50" y="60" font-size="40" text-anchor="middle" fill="white" font-family="Arial">O</text></svg>'>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ODDYCH CHAT</title>
+  <meta name="description" content="Oddych chat — jednoduchý retro chat." />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="chat-wrapper">
-            <!-- Header -->
-            <header class="header">
-                    <div class="header-title">
-                    <h1>ODDYCH CHAT</h1>
-                    <div class="status-light"></div>
-                </div>
-                <div class="user-info">
-                    <span id="username-display" class="username-tag">CONNECTING...</span>
-                    <span id="user-count" class="user-count">Users: 0</span>
-                    <button id="open-odkazovac-btn" class="retro-button" style="margin-left:12px;position:relative;">ODKAZOVAČ <span id="odkazovac-dot" class="notification-dot hidden"></span></button>
-                </div>
-            </header>
-
-            <!-- Join Modal -->
-            <div id="join-modal" class="modal active">
-                <div class="modal-content">
-                    <h2>>>> VITAJTE V ODDYCH CHATE <<<</h2>
-                    <p class="retro-text">ENTER YOUR USERNAME:</p>
-                    <input 
-                        type="text" 
-                        id="username-input" 
-                        placeholder="YOUR USERNAME"
-                        maxlength="20"
-                    >
-                    <button id="join-btn" class="retro-button">ENTER CHAT</button>
-                    <button id="open-register-btn" class="retro-button" style="margin-top:10px;background:transparent;color:var(--primary-color);border-color:var(--primary-color);">REGISTER</button>
-                    <p class="retro-text small">PRESS ENTER OR CLICK BUTTON</p>
-                </div>
-            </div>
-
-            <!-- Registration Modal -->
-            <div id="register-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h2>>> REGISTER <<<</h2>
-                    <p class="retro-text">CHOOSE A USERNAME:</p>
-                    <input type="text" id="register-username" placeholder="USERNAME" maxlength="20">
-                    <p class="retro-text">ENTER YOUR EMAIL:</p>
-                    <input type="email" id="register-email" placeholder="EMAIL" maxlength="50">
-                    <p class="retro-text">CHOOSE A PASSWORD:</p>
-                    <input type="password" id="register-password" placeholder="PASSWORD" maxlength="50">
-                    <div id="register-status" class="register-status"></div>
-                    <button id="register-btn" type="button" class="retro-button" style="margin-top:10px;">REGISTER</button>
-                    <p class="retro-text small">After registering, use the name to enter the chat.</p>
-                    <button id="close-register-btn" class="retro-button" style="margin-top:8px;background:transparent;color:var(--primary-color);border-color:var(--primary-color);">CLOSE</button>
-                </div>
-            </div>
-
-            <!-- Main Chat -->
-            <div id="chat-container" class="chat-container hidden">
-                <!-- Messages Display -->
-                <div class="messages-wrapper">
-                    <div id="messages" class="messages"></div>
-                </div>
-
-                <!-- Typing Indicator -->
-                <div id="typing-indicator" class="typing-indicator hidden">
-                    <span id="typing-user"></span> is typing...
-                </div>
-
-                <!-- Users List -->
-                <aside class="users-list-sidebar">
-                    <h3>CONNECTED USERS</h3>
-                    <ul id="users-list" class="users-list"></ul>
-                </aside>
-            </div>
-
-            <!-- Input Area -->
-            <div id="input-area" class="input-area hidden">
-                <div class="input-wrapper">
-                    <input 
-                        type="text" 
-                        id="message-input" 
-                        placeholder="TYPE YOUR MESSAGE..."
-                        disabled
-                    >
-                    <button id="send-btn" class="retro-button send-btn" disabled>SEND</button>
-                </div>
-                <div class="help-text">ESC TO QUIT | ENTER TO SEND | .vymaz TO CLEAR | .vymazall | .vyhod &lt;username&gt;</div>
-            </div>
-
-            <!-- Footer -->
-            <footer class="footer">
-                <p>:: ODDYCH CHAT v1.0 :: REAL-TIME COMMUNICATION :: 1984 VIBES ::</p>
-            </footer>
+  <div class="container">
+    <main class="chat-wrapper">
+      <header class="header">
+        <div class="header-title">
+          <h1>ODDYCH CHAT</h1>
+          <div class="status-light"></div>
         </div>
-    </div>
-
-    <!-- Odkazovač Modal -->
-    <div id="odkazovac-modal" class="modal hidden">
-        <div class="modal-content" style="max-width:560px;">
-            <h2 id="odkazovac-title">ODKAZOVAČ</h2>
-            <div id="odkazovac-warning" class="system-message hidden" style="margin-bottom:12px;">Nová správa v odkazovači!</div>
-            <p id="odkazovac-recipient" style="margin:0 0 12px 0;color:var(--text-color);font-weight:700;">Príjemca: (vyber používateľa)</p>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;">
-                <div style="flex:1 1 200px;min-width:200px;">
-                    <p style="font-weight:700;color:var(--primary-color);margin-bottom:8px;">Vyber meno:</p>
-                    <ul id="odkazovac-user-list" style="list-style:none;padding:0;margin:0;max-height:280px;overflow:auto;"></ul>
-                </div>
-                <div style="flex:2 1 300px;min-width:280px;display:flex;flex-direction:column;">
-                    <div id="odkazovac-messages" style="flex:1;min-height:220px;max-height:280px;overflow:auto;padding:10px;background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,0.05);"></div>
-                    <div style="display:flex;gap:8px;margin-top:10px;">
-                        <input id="odkazovac-input" type="text" placeholder="Napíš správu..." style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);">
-                        <button id="odkazovac-send" class="retro-button">POŠLIŤ</button>
-                    </div>
-                </div>
-            </div>
-            <button id="odkazovac-close" class="retro-button" style="margin-top:12px;background:transparent;color:var(--primary-color);border:1px solid var(--border-color);">ZAVRIEŤ</button>
+        <div class="user-actions">
+          <span id="username-display" class="username-tag">CONNECT</span>
+          <span id="user-count">Users: 0</span>
         </div>
+      </header>
+
+      <!-- Join modal -->
+      <div id="join-modal" class="modal active">
+        <div class="modal-content">
+          <h2>Vitaj v Oddych chate</h2>
+          <input id="username-input" type="text" placeholder="Zadaj meno" maxlength="20">
+          <div style="margin-top:12px;display:flex;gap:10px;">
+            <button id="join-btn" class="retro-button">ENTER CHAT</button>
+            <button id="open-register-btn" class="retro-button" style="background:transparent;color:var(--primary-color);border:1px solid var(--primary-color);">REGISTER</button>
+          </div>
+          <p class="help-text">ESC TO QUIT | ENTER TO SEND | .vymaz TO CLEAR</p>
+        </div>
+      </div>
+
+      <!-- Register modal -->
+      <div id="register-modal" class="modal hidden">
+        <div class="modal-content">
+          <h2>REGISTER</h2>
+          <input id="register-username" type="text" placeholder="USERNAME" maxlength="20">
+          <input id="register-email" type="email" placeholder="EMAIL">
+          <input id="register-password" type="password" placeholder="PASSWORD">
+          <div id="register-status" class="register-status"></div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button id="register-btn" class="retro-button">REGISTER</button>
+            <button id="close-register-btn" class="retro-button" style="background:transparent;color:var(--primary-color);border:1px solid var(--border-color);">CLOSE</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat area -->
+      <div id="chat-container" class="chat-container hidden">
+        <aside class="users-list-sidebar">
+          <h3>CONNECTED USERS</h3>
+          <ul id="users-list" class="users-list"></ul>
+        </aside>
+        <section class="messages-wrapper">
+          <div id="messages" class="messages"></div>
+          <div id="typing-indicator" class="typing-indicator hidden"><span id="typing-user"></span> is typing...</div>
+        </section>
+      </div>
+
+      <!-- Input area -->
+      <div id="input-area" class="input-area hidden">
+        <div class="input-wrapper">
+          <input id="message-input" type="text" placeholder="TYPE YOUR MESSAGE..." disabled>
+          <button id="send-btn" class="retro-button send-btn" disabled>SEND</button>
+        </div>
+      </div>
+
+      <footer class="footer">:: ODDYCH CHAT ::</footer>
+    </main>
+  </div>
+
+  <!-- Hidden odkazovac and call elements (kept for client.js) -->
+  <div id="odkazovac-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:560px;">
+      <h2 id="odkazovac-title">ODKAZOVAČ</h2>
+      <div id="odkazovac-warning" class="system-message hidden"></div>
+      <p id="odkazovac-recipient"></p>
+      <ul id="odkazovac-user-list"></ul>
+      <div id="odkazovac-messages"></div>
+      <input id="odkazovac-input" type="text">
+      <button id="odkazovac-send" class="retro-button">POŠLIŤ</button>
+      <button id="odkazovac-close" class="retro-button">ZAVRIEŤ</button>
     </div>
+  </div>
 
-    <!-- Call Modal -->
-    <div id="call-modal" class="modal hidden">
-        <div class="modal-content" style="max-width:720px;">
-            <h2 id="call-title">Hovor</h2>
-            <div style="display:flex;gap:12px;align-items:center;">
-                <video id="remoteVideo" autoplay playsinline style="width:60%;background:#000;border-radius:8px;"></video>
-                <video id="localVideo" autoplay muted playsinline style="width:35%;background:#000;border-radius:8px;object-fit:cover;"></video>
-            </div>
+  <div id="call-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="call-title">Hovor</h2>
+      <video id="remoteVideo" autoplay playsinline></video>
+      <video id="localVideo" autoplay muted playsinline></video>
+      <button id="call-hangup" class="retro-button">Hangup</button>
+      <button id="call-mute" class="retro-button">Mute</button>
+    </div>
+  </div>
 
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="client.js"></script>
 </body>
-    <script src="client.js"></script>
 </html>
