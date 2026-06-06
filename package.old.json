@@ -1,0 +1,27 @@
+{
+  "name": "oddych-chat",
+  "version": "1.0.0",
+  "description": "A retro-style chat application for multiple users",
+  "main": "server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "keywords": [
+    "chat",
+    "retro",
+    "websocket"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "express": "^4.18.2",
+    "nodemailer": "^8.0.10",
+    "socket.io": "^4.5.4",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
