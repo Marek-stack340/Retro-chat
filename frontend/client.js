@@ -523,6 +523,17 @@ if (registerBtn) {
     });
 }
 
+// Allow pressing Enter in any registration input to submit the registration
+if (registerUsername) {
+    registerUsername.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerBtn && registerBtn.click(); });
+}
+if (registerEmail) {
+    registerEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerBtn && registerBtn.click(); });
+}
+if (registerPassword) {
+    registerPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') registerBtn && registerBtn.click(); });
+}
+
 // Event Listeners - Chat Input
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keypress', (e) => {
