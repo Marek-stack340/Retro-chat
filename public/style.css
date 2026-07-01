@@ -7,14 +7,42 @@ body{font-family:Arial,Helvetica,sans-serif;background:#b1876e;margin:0;color:#3
 
 /* Landing page */
 .landing-shell{position:relative;overflow:visible;padding:32px 0 0}
-.landing-header{margin-bottom:24px}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:18px;border-bottom:1px solid rgba(0,0,0,0.12)}
-.brand-box{display:flex;align-items:center;gap:14px}
-.brand-icon{width:64px;height:64px;border-radius:18px;background:#fff2dd;display:flex;align-items:center;justify-content:center;font-size:28px;border:1px solid rgba(0,0,0,0.1)}
-.brand-copy{display:flex;flex-direction:column}
-.brand-title{font-size:2.8rem;font-weight:700;color:#5d3315;line-height:1}
-.brand-subtitle{font-size:0.95rem;color:#5d3c2d;margin-top:6px;letter-spacing:0.04em}
-.brand-description, .brand-detail, .info-detail, .info-meta, .chat-detail{font-size:0.93rem;color:#5b422f;margin-top:8px;line-height:1.6}
+.landing-shell{overflow:visible;padding-left:28px}
+.app.landing{position:relative;left:-28px;width:calc(100% + 28px);box-shadow:28px 24px 60px rgba(0,0,0,0.16);border-top-left-radius:0;border-bottom-left-radius:0}
+.page-wrap{max-width:1180px;margin:0 auto;background:#d5bd9c;border:1px solid #8f7452;box-shadow:0 16px 32px rgba(0,0,0,0.12);padding:16px}
+.landing-topbar{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#e6d2b6;border:1px solid #8f7452;color:#5a341f;font-weight:700;font-size:1rem}
+.brand-left{font-size:1.4rem}
+.brand-title{font-size:2.4rem;font-weight:700;color:#5b3312;text-transform:lowercase}
+.brand-right{font-size:1rem;color:#4a2f1e}
+.landing-grid{display:grid;grid-template-columns:240px minmax(520px,1fr) 240px;gap:18px;margin-top:16px}
+.panel{background:#f2e5d2;border:1px solid #8f7452;border-radius:12px;padding:18px}
+.panel-header{font-size:0.95rem;font-weight:700;margin-bottom:14px;color:#4c361f;border-bottom:1px solid rgba(0,0,0,0.12);padding-bottom:10px}
+.chat-list{list-style:none;padding:0;margin:0;color:#3f2a1c;line-height:1.8}
+.chat-list li{margin-bottom:8px}
+.chat-list li span{margin-right:8px;color:#855f38}
+.favorites li{font-weight:700}
+.main-panel{display:flex;flex-direction:column;gap:18px}
+.entry-section, .info-section, .media-card{background:#f5e4ce;border:1px solid #8f7452;border-radius:14px;padding:18px}
+.section-title{font-size:1.1rem;font-weight:700;color:#4a311e;margin-bottom:14px}
+.entry-form{display:grid;gap:14px}
+.form-row{display:grid;grid-template-columns:220px 1fr;align-items:center;gap:12px}
+.form-row label{color:#4b3524;font-weight:700}
+.form-row input, .form-row select{padding:10px 12px;border:1px solid #8f7452;border-radius:10px;background:#fffbe9;color:#4b3727}
+.form-actions{text-align:right}
+.button-enter{padding:10px 18px;border:none;border-radius:10px;background:#8f4f1d;color:#fff;font-weight:700;cursor:pointer}
+.entry-links{margin-top:12px;color:#7a4f44}
+.entry-links a{color:#8b4f1d;text-decoration:none}
+.times-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.time-entry{flex:1;padding:18px 0;background:#f9efe0;border:1px solid #b0926f;border-radius:10px;text-align:center;font-size:1.3rem;color:#4c341f}
+.time-entry.active{background:#e8d3bb;font-size:2rem;font-weight:700}
+.time-note{margin-bottom:14px;color:#5c3d2a;font-size:0.95rem}
+.intro-text p{margin:0 0 12px 0;color:#4d3b2c;line-height:1.75;font-size:0.95rem}
+.media-card{text-align:center}
+.keyboard-image{max-width:100%;border:1px solid #b39b7c;border-radius:10px}
+.media-caption{margin-top:12px;color:#5c3d2a;font-size:0.95rem}
+.panel-note{margin-top:14px;color:#5d4433;font-size:0.95rem;line-height:1.6}
+@media (max-width:1040px){.landing-grid{grid-template-columns:1fr}.main-panel{order:2}.panel-left,.panel-right{order:1}}
+@media (max-width:720px){.page-wrap{padding:12px}.form-row{grid-template-columns:1fr}.landing-topbar{flex-direction:column;align-items:flex-start;gap:8px}}.brand-description, .brand-detail, .info-detail, .info-meta, .chat-detail{font-size:0.93rem;color:#5b422f;margin-top:8px;line-height:1.6}
 .brand-detail{font-weight:700;margin-top:10px;color:#4c2f1d}
 .landing-nav{display:flex;flex-wrap:wrap;gap:10px}
 .landing-nav a{color:#4d3424;text-decoration:none;font-size:0.95rem;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.45);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15)}

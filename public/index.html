@@ -7,121 +7,93 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div class="landing-shell">
-      <div class="app landing">
-        <header class="landing-header">
-        <div class="topbar">
-          <div class="brand-box">
-            <div class="brand-icon">💬</div>
-            <div class="brand-copy">
-              <div class="brand-title">Oddych chat</div>
-              <div class="brand-subtitle">Slovenský chat od 1999</div>
-            </div>
-          </div>
-          <nav class="landing-nav">
-            <a href="#">Hlavná</a>
-            <a href="#">Miestnosti</a>
-            <a href="#">Priatelia</a>
-            <a href="#">Nápoveda</a>
-          </nav>
-        </div>
-
-        <div class="hero-copy">
-          <div class="hero-title">Vitaj v online chate, ktorý sa cíti ako doma.</div>
-          <div class="hero-text">Zabudni na moderné sociálne siete. Tu je všetko o okamžitom texte, aktívnych miestnostiach a slovenskom rozprávaní s výrazným retro dizajnom.</div>
-          <div class="hero-buttons">
-            <button id="hero-enter" class="button-large" type="button">Vstúpiť</button>
-            <a class="button-secondary" href="/register.html">Zaregistruj nick</a>
-          </div>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <span>1999</span>
-              <div>rok založenia</div>
-            </div>
-            <div class="hero-stat">
-              <span>10</span>
-              <div>aktívnych miestností</div>
-            </div>
-            <div class="hero-stat">
-              <span>7</span>
-              <div>max. užívateľov</div>
-            </div>
-          </div>
-        </div>
+    <div class="page-wrap">
+      <header class="landing-topbar">
+        <div class="brand-left">🙂</div>
+        <div class="brand-title">oddych chat</div>
+        <div class="brand-right">1999 — 2026</div>
       </header>
 
       <div class="landing-grid">
-        <aside class="landing-panel side-panel">
-          <h2>Najaktívnejší chateri</h2>
-          <ol>
-            <li>Marek (Administrátor)</li>
-            <li>Maxík</li>
-            <li>Viktor</li>
-            <li>MISSARAH</li>
-            <li>_DiEsEl_</li>
-            <li>jaciko</li>
-            <li>katka</li>
-            <li>docasny</li>
-            <li>tomo453</li>
+        <aside class="panel panel-left">
+          <div class="panel-header">Najaktívnejší chateri</div>
+          <ol class="chat-list">
+            <li><span>1.</span> ♂ Správca</li>
+            <li><span>2.</span> ♂ Maxík</li>
+            <li><span>3.</span> ♂ Viktor</li>
+            <li><span>4.</span> ♀ MISSARAH</li>
+            <li><span>5.</span> ♂ _DiEsEl_</li>
+            <li><span>6.</span> ♂ LoraN</li>
+            <li><span>7.</span> ♀ jaciko</li>
+            <li><span>8.</span> ♀ f44</li>
+            <li><span>9.</span> ♂ majo656841</li>
+            <li><span>10.</span> ♂ Marekc</li>
+            <li><span>11.</span> ♀ katka</li>
+            <li><span>12.</span> ♀ tomo453</li>
+            <li><span>13.</span> ♂ docasny</li>
           </ol>
         </aside>
 
-        <main class="landing-main">
-          <section class="main-card">
-            <div class="card-header">Vstup do chatu</div>
-            <form class="login-grid" id="login-form">
-              <label for="login-nick">Nick</label>
-              <input id="login-nick" type="text" placeholder="Napíš nick" />
-
-              <label for="login-pass">Heslo</label>
-              <input id="login-pass" type="password" placeholder="(voliteľné)" />
-
-              <label for="login-room">Miestnosť</label>
-              <select id="login-room">
-                <option>Spoločná (1)</option>
-              </select>
-
-              <div class="login-actions">
-                <button id="login-submit" type="submit" class="button-large">Vstúpiť</button>
+        <main class="main-panel">
+          <section class="entry-section">
+            <div class="section-title">Vstup</div>
+            <form id="login-form" class="entry-form">
+              <div class="form-row">
+                <label for="login-nick">Nick:</label>
+                <input id="login-nick" type="text" placeholder="Marekc" />
+              </div>
+              <div class="form-row">
+                <label for="login-pass">Heslo (iba registrovaní):</label>
+                <input id="login-pass" type="password" placeholder="●●●●●" />
+              </div>
+              <div class="form-row">
+                <label for="login-room">Miestnosť (ľudí):</label>
+                <select id="login-room">
+                  <option>Spoločná (1)</option>
+                  <option>Retro (0)</option>
+                  <option>Slovensko (0)</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button id="login-submit" type="submit" class="button-enter">Vstúpiť</button>
               </div>
             </form>
-            <div class="login-note">Registrácia nicku / Zabudol som heslo</div>
-          </section>
-
-          <section class="card info-card">
-            <div class="card-header">Kedy sem prísť?</div>
-            <div class="info-times">
-              <span>9:00</span>
-              <span>15:00</span>
-              <span class="highlight">19:00</span>
+            <div class="entry-links">
+              <a href="/register.html">Registrácia nicku</a> / <a href="#">Zabudol som heslo</a>
             </div>
-            <p>Slovenský online chat funguje od roku 1999. Jednoduchý, zadarmo a stále žije. Stačí nick, miestnosť a rozhovor.</p>
-            <p>Pridaj sa do miestnosti s priateľmi, adresuj správu, pošli šepot alebo len sleduj, čo sa píše v spoločne chate.</p>
-            <p>Preskúmaj miestnosti, pozri si aktívnych chaterov a zapoj sa do konverzácie bez zbytočného registrácie.</p>
           </section>
 
-          <section class="card chart-card">
-            <div class="card-header">Denná návštevnosť</div>
-            <div class="chart-placeholder">[graf]</div>
-            <div class="chart-note">posledných 30 dní · max: 7</div>
+          <section class="info-section">
+            <div class="section-title">Kedy sem prísť?</div>
+            <div class="times-row">
+              <div class="time-entry active">9:00</div>
+              <div class="time-entry">15:00</div>
+              <div class="time-entry">19:00</div>
+            </div>
+            <div class="time-note">Najbližší</div>
+            <div class="intro-text">
+              <p>Slovenský online chat od roku 1999</p>
+              <p>Chat na oddych.sk je jeden z najstarších slovenských chatov — funguje od 13. decembra 1999. Žiadne algoritmy, žiadne odporúčané príspevky. Len miestnosti, nicky a rozhovor v reálnom čase.</p>
+              <p>Chatovanie je zadarmo a bez registrácie. Ak chceš svoj nick rezervovať, registrácia trvá minútu. Mobilná verzia funguje rovnako dobre ako na počítači.</p>
+            </div>
           </section>
 
-          <section class="card footer-card">
-            <div class="card-header">Zanechaj odkaz</div>
-            <div class="guestbook">RETRO KNIHA NÁVŠTEV</div>
+          <section class="media-card">
+            <img src="https://i.imgur.com/2r8wG3C.png" alt="retro klávesnica" class="keyboard-image" />
+            <div class="media-caption">Tento chat vznikol, keď sa ešte používali tieto klávesnice:</div>
           </section>
         </main>
 
-        <aside class="landing-panel side-panel">
-          <h2>Najobľúbenejší chateri</h2>
-          <ol>
-            <li>jaciko</li>
-            <li>Marek</li>
-            <li>katka</li>
-            <li>Viktor</li>
-            <li>Maxík</li>
+        <aside class="panel panel-right">
+          <div class="panel-header">Najobľúbenejší chateri</div>
+          <ol class="chat-list favorites">
+            <li><span>1.</span> ♀ jaciko</li>
+            <li><span>2.</span> ♂ Marekc</li>
+            <li><span>3.</span> ♀ katka</li>
+            <li><span>4.</span> ♂ Viktor</li>
+            <li><span>5.</span> ♂ Maxík</li>
           </ol>
-          <p class="panel-footnote">Najobľúbenejších chaterov označili ostatní priatelia.</p>
+          <div class="panel-note">Najobľúbenejších označilo najviac ľudí za priateľov.</div>
         </aside>
       </div>
     </div>
@@ -129,7 +101,6 @@
     <script>
       const nickInput = document.getElementById('login-nick');
       const loginForm = document.getElementById('login-form');
-      const heroEnter = document.getElementById('hero-enter');
       const savedNick = localStorage.getItem('chatUsername');
       if (savedNick) nickInput.value = savedNick;
 
@@ -141,14 +112,6 @@
 
       loginForm.addEventListener('submit', (event) => {
         event.preventDefault();
-        submitLogin();
-      });
-
-      heroEnter.addEventListener('click', () => {
-        if (!nickInput.value.trim()) {
-          nickInput.focus();
-          return;
-        }
         submitLogin();
       });
     </script>
