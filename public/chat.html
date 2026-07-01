@@ -9,48 +9,61 @@
   <body>
     <div class="app chat-app">
       <header class="chat-header">
-        <div class="left">
-          <h1>Oddych Chat</h1>
-          <div class="user-display">Prihlásený: <strong id="current-username-display">Anon</strong></div>
+        <div class="topbar-left">
+          <span class="logo-icon">💬</span>
+          <span class="logo-text">Oddych chat</span>
         </div>
-        <div class="right">
-          <button id="toggle-users-btn" class="icon-btn" type="button" title="Zobraziť používateľov">👥</button>
-          <button id="dm-btn" class="icon-btn" type="button" title="Súkromná správa">✉️</button>
-        </div>
+        <nav class="top-menu">
+          <a href="#" id="nav-quicklink">Odkazovač</a>
+          <a href="#" id="nav-friends">Priatelia</a>
+          <a href="#" id="nav-profile">Môj profil</a>
+          <a href="#" id="nav-ignore">Ignorovaní</a>
+          <a href="#" id="nav-settings">Nastavenia</a>
+          <a href="#" id="nav-help">Návod</a>
+          <a href="#" id="nav-messenger">Messenger</a>
+          <a href="#" id="nav-logout">Odhlásiť</a>
+        </nav>
       </header>
 
-      <main class="chat-main">
-        <aside class="users-sidebar" id="users-sidebar">
-          <h2>Aktívni</h2>
-          <ul id="users-list"></ul>
-        </aside>
+      <div class="chat-title">Spoločná</div>
+      <div class="chat-subtitle">Retro miestnosť pre reálne rozhovory, adresovanie a súkromné šepkanie.</div>
+      <div class="chat-detail">V chate vidíš aktuálnych ľudí, môžeš ich osloviť menom alebo poslať súkromnú správu.</div>
+      <div class="status-row">Prihlásený: <strong id="current-username-display">Anon</strong> · Aktívni: <strong id="active-users-count">0</strong></div>
 
+      <main class="chat-main-layout">
         <section class="chat-area">
-          <div class="status-row">Aktívni používatelia: <span id="active-users-count">0</span></div>
           <div class="messages" id="messages"></div>
 
-          <div id="dm-panel" class="dm-panel hidden">
-            <div class="dm-panel-header">
-              <span>Súkromná správa</span>
-              <button id="dm-close" class="close-btn" type="button" aria-label="Zavrieť">×</button>
+          <div class="chat-bottom-row">
+            <div class="emoji-line">🙂 😃 😍 😎 😏 😡 😂 🙃 😮</div>
+            <div class="message-input-row">
+              <label for="message-input">Povedz:</label>
+              <textarea id="message-input" placeholder="Napíš správu..." rows="2"></textarea>
+              <button id="send-btn" type="button">Enter</button>
             </div>
-            <div class="dm-panel-body">
-              <label for="dm-user-select">Komu</label>
-              <select id="dm-user-select">
-                <option value="">Vyber používateľa</option>
-              </select>
-              <label for="dm-message-input">Správa</label>
-              <textarea id="dm-message-input" rows="3" placeholder="Napíš súkromnú správu..."></textarea>
-              <button id="dm-send-btn" type="button">Odoslať súkromne</button>
-            </div>
-          </div>
-
-          <div class="input-row">
-            <input id="username-input" placeholder="Meno" maxlength="20" />
-            <textarea id="message-input" placeholder="Napíš správu... (Enter = odoslať, Shift+Enter = nový riadok)" rows="2"></textarea>
-            <button id="send-btn" type="button">Odoslať</button>
           </div>
         </section>
+
+        <aside class="sidebar-right">
+          <div class="sidebar-block">
+            <h2>V miestnosti:</h2>
+            <ul id="users-list"></ul>
+            <div class="sidebar-note">1x klik: adresovanie<br>2x klik: šepkanie</div>
+          </div>
+          <div class="sidebar-block">
+            <h2>Miestnosti:</h2>
+            <div class="room-item active">Spoločná (1)</div>
+            <p class="room-text">Ukáž myšou na miestnosť a uvidíš aktívnych chaterov.</p>
+            <a href="#" class="small-link">Vytvoriť miestnosť</a>
+          </div>
+          <div class="sidebar-block">
+            <h2>Novinky z 14.06.2026</h2>
+            <ul class="news-list">
+              <li>Zabudnuté heslo si teraz vieš obnoviť cez nick aj e-mail.</li>
+            </ul>
+            <a href="#" class="small-link">História noviniek</a>
+          </div>
+        </aside>
       </main>
     </div>
     <script src="/socket.io/socket.io.js"></script>
