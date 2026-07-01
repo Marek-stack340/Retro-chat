@@ -3,3 +3,4 @@ steps:
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/retro-chat:$SHORT_SHA', '.']
 images:
   - 'gcr.io/$PROJECT_ID/oddych-chat:$SHORT_SHA'
+
