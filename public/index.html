@@ -17,21 +17,7 @@
       <div class="landing-grid">
         <aside class="panel panel-left">
           <div class="panel-header">Najaktívnejší chateri</div>
-          <ol class="chat-list">
-            <li><span>1.</span> ♂ Správca</li>
-            <li><span>2.</span> ♂ Maxík</li>
-            <li><span>3.</span> ♂ Viktor</li>
-            <li><span>4.</span> ♀ MISSARAH</li>
-            <li><span>5.</span> ♂ _DiEsEl_</li>
-            <li><span>6.</span> ♂ LoraN</li>
-            <li><span>7.</span> ♀ jaciko</li>
-            <li><span>8.</span> ♀ f44</li>
-            <li><span>9.</span> ♂ majo656841</li>
-            <li><span>10.</span> ♂ Marekc</li>
-            <li><span>11.</span> ♀ katka</li>
-            <li><span>12.</span> ♀ tomo453</li>
-            <li><span>13.</span> ♂ docasny</li>
-          </ol>
+          <ol class="chat-list"></ol>
         </aside>
 
         <main class="main-panel">
@@ -66,16 +52,11 @@
           <section class="info-section">
             <div class="section-title">Kedy sem prísť?</div>
             <div class="times-row">
-              <div class="time-entry active">9:00</div>
-              <div class="time-entry">15:00</div>
-              <div class="time-entry">19:00</div>
+              <div class="time-entry active" data-hour="9">9:00</div>
+              <div class="time-entry" data-hour="15">15:00</div>
+              <div class="time-entry" data-hour="19">19:00</div>
             </div>
-            <div class="time-note">Najbližší</div>
-            <div class="intro-text">
-              <p>Slovenský online chat od roku 1999</p>
-              <p>Chat na oddych.sk je jeden z najstarších slovenských chatov — funguje od 13. decembra 1999. Žiadne algoritmy, žiadne odporúčané príspevky. Len miestnosti, nicky a rozhovor v reálnom čase.</p>
-              <p>Chatovanie je zadarmo a bez registrácie. Ak chceš svoj nick rezervovať, registrácia trvá minútu. Mobilná verzia funguje rovnako dobre ako na počítači.</p>
-            </div>
+            <div class="time-note">Najbližší: <span id="next-time-label">9:00</span></div>
           </section>
 
           <section class="media-card">
@@ -86,13 +67,7 @@
 
         <aside class="panel panel-right">
           <div class="panel-header">Najobľúbenejší chateri</div>
-          <ol class="chat-list favorites">
-            <li><span>1.</span> ♀ jaciko</li>
-            <li><span>2.</span> ♂ Marekc</li>
-            <li><span>3.</span> ♀ katka</li>
-            <li><span>4.</span> ♂ Viktor</li>
-            <li><span>5.</span> ♂ Maxík</li>
-          </ol>
+          <ol class="chat-list favorites"></ol>
           <div class="panel-note">Najobľúbenejších označilo najviac ľudí za priateľov.</div>
         </aside>
       </div>
@@ -101,8 +76,40 @@
     <script>
       const nickInput = document.getElementById('login-nick');
       const loginForm = document.getElementById('login-form');
+      const nextTimeLabel = document.getElementById('next-time-label');
+      const timeEntries = Array.from(document.querySelectorAll('.time-entry'));
       const savedNick = localStorage.getItem('chatUsername');
       if (savedNick) nickInput.value = savedNick;
+
+      function getNextTime() {
+        const now = new Date();
+        const schedule = [9, 15, 19];
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTotal = currentHour * 60 + currentMinute;
+        const times = schedule.map((hour) => hour * 60);
+
+        if (currentTotal < times[0]) {
+          return schedule[0];
+        }
+        if (currentTotal < times[1] || currentTotal === times[0]) {
+          return schedule[1];
+        }
+        if (currentTotal < times[2] || currentTotal === times[1]) {
+          return schedule[2];
+        }
+        return schedule[0];
+      }
+
+      function updateScheduleHighlight() {
+        const nextHour = getNextTime();
+        const nextValue = `${String(nextHour).padStart(2, '0')}:00`;
+        nextTimeLabel.textContent = nextValue;
+        timeEntries.forEach((entry) => {
+          const hour = Number(entry.dataset.hour);
+          entry.classList.toggle('active', hour === nextHour);
+        });
+      }
 
       function submitLogin() {
         const nick = nickInput.value.trim() || 'Anon';
@@ -114,6 +121,9 @@
         event.preventDefault();
         submitLogin();
       });
+
+      updateScheduleHighlight();
+      setInterval(updateScheduleHighlight, 60 * 1000);
     </script>
   </body>
 </html>

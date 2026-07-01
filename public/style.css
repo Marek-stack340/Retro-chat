@@ -36,7 +36,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#b1876e;margin:0;color:#3
 .time-entry{flex:1;padding:18px 0;background:#f9efe0;border:1px solid #b0926f;border-radius:10px;text-align:center;font-size:1.3rem;color:#4c341f}
 .time-entry.active{background:#e8d3bb;font-size:2rem;font-weight:700}
 .time-note{margin-bottom:14px;color:#5c3d2a;font-size:0.95rem}
-.intro-text p{margin:0 0 12px 0;color:#4d3b2c;line-height:1.75;font-size:0.95rem}
+.time-note span{font-weight:700;color:#3f2a1c}
 .media-card{text-align:center}
 .keyboard-image{max-width:100%;border:1px solid #b39b7c;border-radius:10px}
 .media-caption{margin-top:12px;color:#5c3d2a;font-size:0.95rem}
