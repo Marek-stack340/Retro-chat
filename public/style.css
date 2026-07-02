@@ -88,8 +88,9 @@ body{font-family:Arial,Helvetica,sans-serif;background:#ffffff;margin:0;color:#3
 .chat-app{width:100%;max-width:none;margin:0 auto;min-height:100vh;background:#ffffff;border-radius:0;padding:22px;box-shadow:none}
 .chat-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;background:#cda77d;border:1px solid rgba(0,0,0,0.12);border-radius:20px;margin-bottom:18px}
 .topbar-left{display:flex;align-items:center;gap:12px}
-.logo-icon{font-size:1.5rem}
-.logo-text{font-size:1.4rem;font-weight:700;color:#3e2513}
+.logo-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;font-size:1.4rem;font-weight:700;color:#3e2513;background:#ffffff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;position:relative}
+.logo-icon::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:28px;height:6px;background:#c92a2a;border-radius:4px}
+.logo-text{font-size:1.4rem;font-weight:700;color:#3e2513;}
 .top-menu{display:flex;flex-wrap:wrap;gap:10px}
 .top-menu a{color:#ffffff;background:#3a7f2a;padding:8px 12px;border-radius:12px;text-decoration:none;font-size:0.95rem;opacity:0.95;box-shadow:0 6px 12px rgba(54,123,45,0.18)}
 .top-menu a:hover{opacity:1;background:#2f6a24}
