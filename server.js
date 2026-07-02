@@ -14,6 +14,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 const messages = [];
 const users = new Map();
 
+const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost'];
+
+function hashtagCurseWords(text) {
+  if (!text) return text;
+  return text.replace(/\b([a-zA-ZáäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ]+)\b/g, (match) => {
+    const lower = match.toLowerCase();
+    if (curseWords.includes(lower)) {
+      return `#${lower}`;
+    }
+    return match;
+  });
+}
+
 function broadcastUserList() {
   io.emit('user-list', Array.from(users.values()));
 }
@@ -34,7 +47,7 @@ io.on('connection', (socket) => {
     const msg = {
       id: Date.now(),
       username: data.username || 'Anon',
-      text: data.text || '',
+      text: hashtagCurseWords(data.text || ''),
       timestamp: new Date().toISOString()
     };
     messages.push(msg);
