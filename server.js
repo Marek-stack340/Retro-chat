@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const messages = [];
 const users = new Map();
 
-const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost'];
+const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka'];
 
 function hashtagCurseWords(text) {
   if (!text) return text;
@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
 
   socket.on('send-private-message', (data) => {
     const user = users.get(socket.id);
-    const text = data && data.text ? data.text.toString().trim() : '';
+    const text = data && data.text ? hashtagCurseWords(data.text.toString().trim()) : '';
     const toId = data && data.to;
     if (!user || !toId || !text) return;
 
