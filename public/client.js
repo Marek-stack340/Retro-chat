@@ -20,6 +20,18 @@ let currentUsername = savedUsername ? savedUsername.trim() : 'Anon';
 let privateTargetId = null;
 let privateTargetName = null;
 let activeUsers = [];
+const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
+
+function hashtagCurseWords(text) {
+  if (!text) return text;
+  return text.replace(/\b([a-zA-ZáäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ]+)\b/g, (match) => {
+    const lower = match.toLowerCase();
+    if (curseWords.includes(lower)) {
+      return `#${lower}`;
+    }
+    return match;
+  });
+}
 
 function escapeHtml(s) {
   return (s || '').toString().replace(/[&<>\"]/g, (c) => ({
@@ -126,8 +138,9 @@ socket.on('user-list', (users) => {
 });
 
 function sendMessage() {
-  const text = messageInput.value.trim();
+  let text = messageInput.value.trim();
   if (!text) return;
+  text = hashtagCurseWords(text);
   if (privateTargetId) {
     socket.emit('send-private-message', {
       to: privateTargetId,
