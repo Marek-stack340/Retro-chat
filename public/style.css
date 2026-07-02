@@ -85,7 +85,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#b1876e;margin:0;color:#3
 .panel-footnote{margin-top:14px;color:#6a4f3b;font-size:0.93rem;line-height:1.6}
 
 /* Chat page */
-.chat-app{background:#e7d2b9;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,0.16)}
+.chat-app{background:#ffffff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,0.16)}
 .chat-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;background:#cda77d;border:1px solid rgba(0,0,0,0.12);border-radius:20px;margin-bottom:18px}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .logo-icon{font-size:1.5rem}
@@ -96,7 +96,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#b1876e;margin:0;color:#3
 .chat-title{font-size:1.6rem;font-weight:700;text-align:center;color:#3e2513;margin-bottom:18px}
 .chat-main-layout{display:grid;grid-template-columns:1.8fr 0.9fr;gap:18px}
 .chat-area{display:flex;flex-direction:column;gap:16px}
-.messages{min-height:460px;padding:20px;border-radius:20px;background:#f6e7d7;border:1px solid rgba(0,0,0,0.11);overflow:auto}
+.messages{min-height:460px;padding:20px;border-radius:20px;background:#ffffff;border:1px solid rgba(0,0,0,0.11);overflow:auto}
 .msg{margin-bottom:14px;display:flex}
 .msg.me{justify-content:flex-end}
 .bubble{max-width:100%;background:#fff6e0;border:1px solid rgba(148,94,43,0.18);border-radius:20px;padding:16px;box-shadow:0 10px 20px rgba(0,0,0,0.05);position:relative}
