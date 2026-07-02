@@ -21,7 +21,7 @@ function hashtagCurseWords(text) {
   return text.replace(/\b([a-zA-ZáäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ]+)\b/g, (match) => {
     const lower = match.toLowerCase();
     if (curseWords.includes(lower)) {
-      return `#${lower}`;
+      return `#${match}`;
     }
     return match;
   });
