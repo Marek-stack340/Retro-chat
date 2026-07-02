@@ -97,6 +97,14 @@ body{font-family:Arial,Helvetica,sans-serif;background:#b1876e;margin:0;color:#3
 .chat-main-layout{display:grid;grid-template-columns:1.8fr 0.9fr;gap:18px}
 .chat-area{display:flex;flex-direction:column;gap:16px}
 .messages{min-height:460px;padding:20px;border-radius:20px;background:#f6e7d7;border:1px solid rgba(0,0,0,0.11);overflow:auto}
+.msg{margin-bottom:14px;display:flex}
+.msg.me{justify-content:flex-end}
+.bubble{max-width:100%;background:#fff6e0;border:1px solid rgba(148,94,43,0.18);border-radius:20px;padding:16px;box-shadow:0 10px 20px rgba(0,0,0,0.05);position:relative}
+.bubble.private{background:#f9e3d0;border-color:#d18f4f}
+.msg.me .bubble{background:#ffe8c4;border-color:#d09c5d}
+.from{font-size:0.9rem;color:#6f4f2f;margin-bottom:8px}
+.private-label{font-size:0.8rem;font-weight:700;color:#8b4f1e;margin-bottom:8px}
+.meta{margin-top:10px;font-size:0.78rem;color:#6e4f35;text-align:right}
 .system-msg{padding:14px 18px;margin-bottom:14px;border-radius:16px;background:#fff4d1;border:1px solid rgba(155,107,46,0.18);color:#5f3f24;font-weight:700}
 .chat-bottom-row{display:flex;flex-direction:column;gap:14px}
 .emoji-line{padding:12px 16px;border-radius:16px;background:#f3dfc6;border:1px solid rgba(0,0,0,0.08);color:#6c4429}

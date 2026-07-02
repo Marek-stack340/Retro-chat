@@ -13,8 +13,13 @@ const navIgnore = document.getElementById('nav-ignore');
 const navQuicklink = document.getElementById('nav-quicklink');
 const navMessenger = document.getElementById('nav-messenger');
 
+const privateStatus = document.getElementById('private-status');
+const privateTargetNameDisplay = document.getElementById('private-target-name');
 const savedUsername = localStorage.getItem('chatUsername');
 let currentUsername = savedUsername ? savedUsername.trim() : 'Anon';
+let privateTargetId = null;
+let privateTargetName = null;
+let activeUsers = [];
 
 function escapeHtml(s) {
   return (s || '').toString().replace(/[&<>\"]/g, (c) => ({
@@ -27,11 +32,15 @@ function escapeHtml(s) {
 
 function addMessage(m) {
   const d = document.createElement('div');
-  d.className = 'msg' + (m.username === currentUsername ? ' me' : '');
+  d.className = 'msg' + (m.username === currentUsername ? ' me' : '') + (m.private ? ' private' : '');
   const bubble = document.createElement('div');
-  bubble.className = 'bubble';
+  bubble.className = 'bubble' + (m.private ? ' private' : '');
+  const privateLabel = m.private
+    ? `<div class="private-label">${m.self ? `Súkromné → ${escapeHtml(m.toUsername || '')}` : 'Súkromné'}</div>`
+    : '';
   bubble.innerHTML = `
     <div class="from"><strong>${escapeHtml(m.username)}</strong></div>
+    ${privateLabel}
     <div class="text">${escapeHtml(m.text)}</div>
     <div class="meta">${new Date(m.timestamp || Date.now()).toLocaleString()}</div>
   `;
@@ -54,9 +63,41 @@ function updateUserList(users) {
     li.textContent = user.username;
     if (user.username === currentUsername) {
       li.style.fontWeight = '700';
+      li.style.opacity = '0.7';
+      li.style.cursor = 'default';
+    } else {
+      li.dataset.id = user.id;
+      li.dataset.name = user.username;
+      li.addEventListener('click', () => {
+        messageInput.value = `@${user.username} `;
+        messageInput.focus();
+        showToast(`Adresuješ: ${user.username}`);
+      });
+      li.addEventListener('dblclick', () => {
+        setPrivateTarget(user.id, user.username);
+      });
     }
     usersList.appendChild(li);
   });
+}
+
+function setPrivateTarget(id, username) {
+  privateTargetId = id;
+  privateTargetName = username;
+  if (privateStatus && privateTargetNameDisplay) {
+    privateTargetNameDisplay.textContent = privateTargetName;
+    privateStatus.style.display = 'block';
+  }
+  showToast(`Odkazovač aktivovaný: súkromná správa pre ${privateTargetName}`);
+  messageInput.focus();
+}
+
+function clearPrivateTarget() {
+  privateTargetId = null;
+  privateTargetName = null;
+  if (privateStatus) {
+    privateStatus.style.display = 'none';
+  }
 }
 
 function sendJoin() {
@@ -79,11 +120,24 @@ socket.on('load-messages', (msgs) => {
 
 socket.on('receive-message', addMessage);
 
-socket.on('user-list', updateUserList);
+socket.on('user-list', (users) => {
+  activeUsers = users;
+  updateUserList(users);
+});
 
 function sendMessage() {
   const text = messageInput.value.trim();
   if (!text) return;
+  if (privateTargetId) {
+    socket.emit('send-private-message', {
+      to: privateTargetId,
+      text
+    });
+    messageInput.value = '';
+    clearPrivateTarget();
+    return;
+  }
+
   socket.emit('send-message', {
     username: currentUsername,
     text,
@@ -91,6 +145,17 @@ function sendMessage() {
   });
   messageInput.value = '';
 }
+
+socket.on('receive-private-message', (m) => {
+  addMessage({
+    username: m.self ? currentUsername : m.from,
+    text: m.text,
+    timestamp: m.timestamp,
+    private: true,
+    self: m.self,
+    toUsername: m.toUsername
+  });
+});
 
 function showToast(message) {
   alert(message);
@@ -119,7 +184,12 @@ navIgnore?.addEventListener('click', (event) => {
 });
 navQuicklink?.addEventListener('click', (event) => {
   event.preventDefault();
-  messageInput?.focus();
+  const otherUser = activeUsers.find((user) => user.username !== currentUsername);
+  if (otherUser) {
+    setPrivateTarget(otherUser.id, otherUser.username);
+    return;
+  }
+  showToast('Zatiaľ žiadny iný chater pre odkazovač.');
 });
 navMessenger?.addEventListener('click', (event) => {
   event.preventDefault();
