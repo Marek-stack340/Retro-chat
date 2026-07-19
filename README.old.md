@@ -16,9 +16,23 @@ This repository includes a `Dockerfile` and `cloudbuild.yaml` to deploy the app 
    - `gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/oddych-chat`
 
 3. Deploy to Cloud Run:
-   - `gcloud run deploy oddych-chat --image gcr.io/YOUR_PROJECT_ID/oddych-chat --platform managed --region YOUR_REGION --allow-unauthenticated`
+   - `gcloud run deploy oddych-chat --image gcr.io/YOUR_PROJECT_ID/oddych-chat --platform managed --region YOUR_REGION --allow-unauthenticated
+   fetch(window.location.href)
+  .then(response => {
+    console.log('Response status:', response.status);
+    if (!response.ok) {
+      return response.text().then(text => {
+        console.log('Response body:', text);
+      });
+    } else {
+      console.log('Page loaded successfully');
+    }
+  })
+  .catch(error => {
+    console.error('Fetch error:', error);
+  });
 
-### Local Docker run
+### Local Docerr run
 
 To test locally with Docker:
 

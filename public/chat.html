@@ -16,7 +16,7 @@
       <header class="chat-header">
         <div class="topbar-left">
           <span class="logo-icon">OC</span>
-          <span class="logo-text">Oddych chat</span>
+          <span class="logo-text">Oddych Chat</span>
         </div>
         <nav class="top-menu">
           <a href="#" id="nav-quicklink">Odkazovač</a>
@@ -26,6 +26,8 @@
           <a href="#" id="nav-settings">Nastavenia</a>
           <a href="#" id="nav-help">Návod</a>
           <a href="#" id="nav-messenger">Messenger</a>
+          <a href="/meet.html" id="nav-meet" style="background:#16a34a !important;">📹 Meet</a>
+          <a href="#" id="nav-call-open" class="nav-call-btn">📞 Volať</a>
           <a href="#" id="nav-logout">Odhlásiť</a>
         </nav>
       </header>
@@ -36,15 +38,67 @@
       <div class="status-row">Prihlásený: <strong id="current-username-display">Anon</strong> · Aktívni: <strong id="active-users-count">0</strong></div>
       <div class="status-row private-status" id="private-status" style="display:none;">Súkromná správa pre <strong id="private-target-name"></strong></div>
 
+      <!-- MODAL: Vyber komu zavolat -->
+      <div id="call-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:none;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:20px;padding:28px 24px;min-width:280px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <h2 style="margin:0 0 18px;font-size:1.1rem;color:#3e2513;">📞 Komu chceš zavolať?</h2>
+          <ul id="call-modal-list" style="list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:10px;"></ul>
+          <button id="call-modal-close" style="width:100%;padding:12px;border:none;border-radius:12px;background:#c0392b;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;">Zavrieť</button>
+        </div>
+      </div>
+
+      <!-- MODAL: Nastavenia odosielania -->
+      <div id="send-settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:520;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:20px;padding:24px;min-width:280px;max-width:380px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <h2 style="margin:0 0 14px;font-size:1.05rem;color:#3e2513;">⚙ Nastavenia odosielania</h2>
+          <p style="margin:0 0 12px;color:#555;font-size:0.9rem;line-height:1.5;">Zapni súkromné odosielanie, aby každá správa išla konkrétnemu používateľovi.</p>
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#333;font-weight:700;">
+            <input id="send-settings-private-toggle" type="checkbox">
+            Posielať súkromne vybranému používateľovi
+          </label>
+          <label for="send-settings-target" style="display:block;margin-bottom:6px;color:#666;font-size:0.85rem;font-weight:700;">Vybraný používateľ</label>
+          <select id="send-settings-target" style="width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:10px;margin-bottom:14px;"></select>
+          <hr style="border:none;border-top:1px solid #eee;margin:4px 0 12px;">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#333;font-weight:700;">
+            <input id="send-settings-voice-enabled" type="checkbox">
+            Povoliť hlasovky
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;color:#333;font-weight:700;">
+            <input id="send-settings-voice-autoplay" type="checkbox">
+            Auto-prehrávanie hlasoviek
+          </label>
+          <div style="display:flex;gap:10px;">
+            <button id="send-settings-save" style="flex:1;padding:12px;border:none;border-radius:10px;background:#3a7f2a;color:#fff;font-weight:700;cursor:pointer;">Uložiť</button>
+            <button id="send-settings-cancel" style="flex:1;padding:12px;border:none;border-radius:10px;background:#c0392b;color:#fff;font-weight:700;cursor:pointer;">Zavrieť</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- AKTÍVNY HOVOR -->
+      <div id="call-active-bar" class="call-active-bar" style="display:none;">
+        📞 Na hovore s <strong id="call-peer-name"></strong>
+        <span id="call-timer" class="call-timer">0:00</span>
+        <button id="call-hangup-btn" class="call-hangup-btn">Zavesiť ✕</button>
+        <audio id="remote-audio" autoplay playsinline></audio>
+      </div>
+
+      <!-- PRICHÁDZAJÚCI HOVOR -->
+      <div id="call-incoming-bar" class="call-incoming-bar" style="display:none;">
+        📲 Volá <strong id="call-caller-name"></strong>
+        <button id="call-accept-btn" class="call-accept-btn">Prijať ✓</button>
+        <button id="call-reject-btn" class="call-reject-btn">Odmietnuť ✕</button>
+      </div>
+
       <main class="chat-main-layout">
         <section class="chat-area">
           <div class="messages" id="messages"></div>
 
           <div class="chat-bottom-row">
-            <div class="emoji-line">🙂 😃 😍 😎 😏 😡 😂 🙃 😮</div>
+            <div class="emoji-line" id="emoji-line" aria-label="Emotikony"></div>
             <div class="message-input-row">
               <label for="message-input">Povedz:</label>
               <textarea id="message-input" placeholder="Napíš správu..." rows="2"></textarea>
+              <button id="voice-record-btn" type="button" class="voice-btn">🎙 Hlasovka</button>
               <button id="send-btn" type="button">Enter</button>
             </div>
           </div>
@@ -52,26 +106,56 @@
 
         <aside class="sidebar-right">
           <div class="sidebar-block">
+            <h2>📞 Volanie</h2>
+            <ul id="call-users-list" class="call-users-list"></ul>
+            <div class="sidebar-note" id="call-hint">Vyber používateľa a klikni na 📞 pre zavolanie.</div>
+          </div>
+          <div class="sidebar-block">
             <h2>V miestnosti:</h2>
             <ul id="users-list"></ul>
             <div class="sidebar-note">1x klik: adresovanie<br>2x klik: šepkanie</div>
           </div>
           <div class="sidebar-block">
             <h2>Miestnosti:</h2>
-            <div class="room-item active">Spoločná (1)</div>
+            <div class="rooms-list">
+              <div class="room-item active" data-permanent="true">Spoločná (1)
+                <button class="room-delete" title="Zmazať miestnosť" aria-label="Zmazať">✕</button>
+              </div>
+            </div>
             <p class="room-text">Ukáž myšou na miestnosť a uvidíš aktívnych chaterov.</p>
-            <a href="#" class="small-link">Vytvoriť miestnosť</a>
+            <div class="room-create">
+              <label for="create-room">Vytvoriť miestnosť:</label>
+              <input id="create-room" type="text" placeholder="Iba registrovaný a admin môže vytvoriť" disabled />
+              <button id="create-room-btn" type="button" class="small-link">Vytvoriť miestnosť</button>
+              <p class="room-note">Stála miestnosť sa nedá zmazať.</p>
+            </div>
+          </div>
+          <div class="sidebar-block">
+            <h2>Príkazy</h2>
+            <ul class="commands-list">
+              <li><strong>.zmaz</strong> – vymaže chatové okno</li>
+              <li><strong>.ignoruj meno</strong> – ignoruje používateľa</li>
+              <li><strong>.vyhodip meno</strong> – vyhodí používateľa na 24 hodín</li>
+            </ul>
+            <p class="room-text">Napíš príkaz priamo do políčka na chat.</p>
           </div>
           <div class="sidebar-block">
             <h2>Novinky</h2>
             <ul class="news-list">
-              <li>Zabudnuté heslo si teraz vieš obnoviť cez nick aj e-mail.</li>
+              <li>19.07.2026: Filter nadávok bol upravený. Namiesto dvojitých hashtagov sa nadávky maskujú na znaky #.</li>
             </ul>
+            <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
             <a href="#" class="small-link">História noviniek</a>
           </div>
         </aside>
       </main>
     </div>
+    <script>
+      const hasUsername = !!localStorage.getItem('chatUsername');
+      if (!hasUsername) {
+        window.location.replace('/');
+      }
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
   </body>

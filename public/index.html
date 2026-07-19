@@ -15,7 +15,7 @@
     <div class="page-wrap">
       <header class="landing-topbar">
         <div class="brand-left">🙂</div>
-        <div class="brand-title">Oddych chat</div>
+        <div class="brand-title">Oddych Chat</div>
       </header>
 
       <div class="landing-grid">
@@ -50,8 +50,14 @@
             </form>
             <div class="entry-links">
               <a href="/register.html">Registrácia nicku</a> / <a href="#">Zabudol som heslo</a>
+              <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
+              <div class="guestbook-link"><a href="/guestbook.html">Oddych kniha návštev</a></div>
+            </div>
+            <div class="test-note">
+              Vyplň nick a klikni na Vstúpiť. Po registrácii sa meno uloží aj pre ďalšie prihlásenie.
             </div>
           </section>
+
 
           <section class="info-section">
             <div class="section-title">Kedy sem prísť?</div>
@@ -111,9 +117,21 @@
         });
       }
 
+      async function copyChatLink() {
+        const chatUrl = `${window.location.origin}/chat.html`;
+        try {
+          await navigator.clipboard.writeText(chatUrl);
+          alert('Odkaz na chat bol skopírovaný.');
+        } catch (error) {
+          prompt('Skopíruj tento odkaz na chat:', chatUrl);
+        }
+      }
+
       function submitLogin() {
         const nick = nickInput.value.trim() || 'Anon';
+        const password = document.getElementById('login-pass').value.trim();
         localStorage.setItem('chatUsername', nick);
+        localStorage.setItem('chatRegistered', password ? 'true' : 'false');
         window.location.href = '/chat.html';
       }
 

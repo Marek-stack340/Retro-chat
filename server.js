@@ -1,9 +1,27 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
+
+app.disable('x-powered-by');
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', apiLimiter);
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -13,15 +31,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const messages = [];
 const users = new Map();
+const banList = new Map();
+const adminUsernames = new Set(['admin', 'administrator']);
+const reservedUsernames = new Set(['kika_c13']);
+const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/;
 
 const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
+const curseWordsSet = new Set(curseWords);
 
-function hashtagCurseWords(text) {
+function sanitizeProfanity(text) {
   if (!text) return text;
   return text.replace(/\b([a-zA-ZáäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ]+)\b/g, (match) => {
     const lower = match.toLowerCase();
-    if (curseWords.includes(lower)) {
-      return `#${match}`;
+    if (curseWordsSet.has(lower)) {
+      return '#'.repeat(match.length);
     }
     return match;
   });
@@ -31,32 +54,203 @@ function broadcastUserList() {
   io.emit('user-list', Array.from(users.values()));
 }
 
+function cleanBans() {
+  const now = Date.now();
+  for (const [username, expires] of banList.entries()) {
+    if (expires <= now) {
+      banList.delete(username);
+    }
+  }
+}
+
+function isBanned(username) {
+  cleanBans();
+  return banList.has(username.toLowerCase());
+}
+
+function normalizeUsername(value) {
+  return (value || '').toString().trim();
+}
+
+function isValidUsername(username) {
+  return usernamePattern.test(username);
+}
+
+function createSocketThrottle(limit, windowMs) {
+  const timestamps = [];
+  return () => {
+    const now = Date.now();
+    while (timestamps.length && timestamps[0] <= now - windowMs) {
+      timestamps.shift();
+    }
+    if (timestamps.length >= limit) {
+      return false;
+    }
+    timestamps.push(now);
+    return true;
+  };
+}
+
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
   socket.emit('user-list', Array.from(users.values()));
 
+  const allowJoin = createSocketThrottle(4, 60 * 1000);
+  const allowMessage = createSocketThrottle(20, 10 * 1000);
+  const allowPrivateMessage = createSocketThrottle(10, 10 * 1000);
+
   socket.on('join', (data) => {
-    const username = data && data.username ? data.username.toString().trim() : 'Anon';
+    if (!allowJoin()) {
+      socket.emit('join-denied', 'Príliš veľa pokusov o vstup. Počkaj chvíľu.');
+      return;
+    }
+
+    const username = normalizeUsername(data && data.username ? data.username : 'Anon');
     const safeUsername = username || 'Anon';
+    const normalizedUsername = safeUsername.toLowerCase();
+    if (!isValidUsername(safeUsername)) {
+      socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
+      return;
+    }
+    if (isBanned(safeUsername)) {
+      socket.emit('system-message', 'Si zabanovaný na 24 hodín.');
+      socket.disconnect(true);
+      return;
+    }
+
+    if (reservedUsernames.has(normalizedUsername)) {
+      socket.emit('join-denied', `Meno ${safeUsername} je obsadené. Zvoľ si iné meno.`);
+      return;
+    }
+
+    const duplicateUser = Array.from(users.values()).find(
+      (user) => user.username.toLowerCase() === normalizedUsername && user.id !== socket.id
+    );
+    if (duplicateUser) {
+      socket.emit('join-denied', `Meno ${safeUsername} je už obsadené. Zvoľ si iné meno.`);
+      return;
+    }
+
     users.set(socket.id, { id: socket.id, username: safeUsername });
     broadcastUserList();
   });
 
+  socket.on('command', (data) => {
+    if (!data || data.type !== 'kick' || !data.target) return;
+    const fromUser = users.get(socket.id);
+    if (!fromUser) return;
+
+    const targetName = data.target.trim();
+    if (!targetName) return;
+    if (adminUsernames.has(targetName.toLowerCase())) {
+      socket.emit('system-message', 'Administrátora nevyhodíš.');
+      return;
+    }
+
+    const targetEntry = Array.from(users.values()).find((user) => user.username.toLowerCase() === targetName.toLowerCase());
+    if (!targetEntry) {
+      socket.emit('system-message', `Užívateľ ${targetName} nie je pripojený.`);
+      return;
+    }
+
+    const targetSocket = io.sockets.sockets.get(targetEntry.id);
+    if (!targetSocket) {
+      socket.emit('system-message', `Užívateľ ${targetName} sa nenašiel.`);
+      return;
+    }
+
+    const expires = Date.now() + 24 * 60 * 60 * 1000;
+    banList.set(targetName.toLowerCase(), expires);
+    if (targetSocket) {
+      targetSocket.emit('system-message', 'Bol si vyhodený na 24 hodín.');
+      targetSocket.disconnect(true);
+    }
+    users.delete(targetEntry.id);
+    broadcastUserList();
+    io.emit('system-message', `${fromUser.username} vyhodil ${targetName} na 24 hodín.`);
+  });
+
   socket.on('send-message', (data) => {
+    if (!allowMessage()) {
+      socket.emit('system-message', 'Spomaľ trochu, posielaš správy príliš rýchlo.');
+      return;
+    }
+
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('system-message', 'Najprv sa prihlás do chatu.');
+      return;
+    }
+
     const msg = {
       id: Date.now(),
-      username: data.username || 'Anon',
-      text: hashtagCurseWords(data.text || ''),
-      timestamp: new Date().toISOString()
+      username: user.username || 'Anon',
+      text: sanitizeProfanity(data.text || ''),
+      timestamp: new Date().toISOString(),
+      reactions: {}
     };
     messages.push(msg);
     io.emit('receive-message', msg);
   });
 
-  socket.on('send-private-message', (data) => {
+  socket.on('notify-ignored', (data) => {
+    if (!data || !data.targetName || !data.byName) return;
+    const targetEntry = Array.from(users.values()).find(
+      (u) => u.username.toLowerCase() === data.targetName.toString().toLowerCase()
+    );
+    if (!targetEntry) return;
+    const targetSocket = io.sockets.sockets.get(targetEntry.id);
+    if (targetSocket) {
+      targetSocket.emit('system-message',
+        `Správal/a si sa tak, že ti ${data.byName} udelil/a ignoráciu.`
+      );
+    }
+  });
+
+  socket.on('toggle-reaction', (data) => {
     const user = users.get(socket.id);
-    const text = data && data.text ? hashtagCurseWords(data.text.toString().trim()) : '';
+    if (!user || !data || !data.messageId || !data.emoji) return;
+
+    const messageId = Number(data.messageId);
+    const emoji = data.emoji.toString();
+    const message = messages.find((m) => Number(m.id) === messageId);
+    if (!message) return;
+
+    if (!message.reactions || typeof message.reactions !== 'object') {
+      message.reactions = {};
+    }
+
+    const reactedUsers = Array.isArray(message.reactions[emoji])
+      ? message.reactions[emoji]
+      : [];
+    const existingIndex = reactedUsers.indexOf(user.username);
+
+    if (existingIndex >= 0) {
+      reactedUsers.splice(existingIndex, 1);
+    } else {
+      reactedUsers.push(user.username);
+    }
+
+    if (reactedUsers.length > 0) {
+      message.reactions[emoji] = reactedUsers;
+    } else {
+      delete message.reactions[emoji];
+    }
+
+    io.emit('message-reaction-updated', {
+      messageId: message.id,
+      reactions: message.reactions
+    });
+  });
+
+  socket.on('send-private-message', (data) => {
+    if (!allowPrivateMessage()) {
+      socket.emit('system-message', 'Súkromné správy posielaš príliš rýchlo.');
+      return;
+    }
+    const user = users.get(socket.id);
+    const text = data && data.text ? sanitizeProfanity(data.text.toString().trim()) : '';
     const toId = data && data.to;
     if (!user || !toId || !text) return;
 
@@ -80,6 +274,126 @@ io.on('connection', (socket) => {
       toUsername: users.get(toId) ? users.get(toId).username : 'niekto'
     });
   });
+
+  socket.on('send-voice-message', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !data || !data.audioData) return;
+
+    const payload = {
+      id: Date.now(),
+      username: user.username,
+      audioData: data.audioData,
+      durationSec: Number(data.durationSec || 0),
+      timestamp: new Date().toISOString(),
+      private: false,
+      self: false
+    };
+
+    const toId = data.to;
+    if (toId) {
+      payload.private = true;
+      payload.to = toId;
+      const targetSocket = io.sockets.sockets.get(toId);
+      if (targetSocket) {
+        targetSocket.emit('receive-voice-message', payload);
+      }
+      socket.emit('receive-voice-message', {
+        ...payload,
+        self: true,
+        toUsername: users.get(toId) ? users.get(toId).username : 'niekto'
+      });
+      return;
+    }
+
+    io.emit('receive-voice-message', payload);
+  });
+
+  // ── MEET ─────────────────────────────────────────────────────────────────
+  socket.on('meet:join', ({ roomId, displayName }) => {
+    if (!roomId || !displayName) return;
+    socket.join(`meet:${roomId}`);
+    if (!socket._meetRooms) socket._meetRooms = new Set();
+    socket._meetRooms.add(roomId);
+    const existing = [];
+    const room = io.sockets.adapter.rooms.get(`meet:${roomId}`);
+    if (room) {
+      room.forEach(sid => {
+        if (sid !== socket.id) existing.push({ id: sid, name: io.sockets.sockets.get(sid)?._meetName || sid });
+      });
+    }
+    socket._meetName = displayName;
+    socket.emit('meet:existing', existing);
+    socket.to(`meet:${roomId}`).emit('meet:participant-joined', { id: socket.id, name: displayName });
+  });
+
+  socket.on('meet:leave', ({ roomId }) => {
+    socket.leave(`meet:${roomId}`);
+    socket.to(`meet:${roomId}`).emit('meet:participant-left', { id: socket.id });
+  });
+
+  socket.on('meet:offer', ({ to, sdp, roomId }) => {
+    io.to(to).emit('meet:offer', { from: socket.id, fromName: socket._meetName || socket.id, sdp, roomId });
+  });
+
+  socket.on('meet:answer', ({ to, sdp }) => {
+    io.to(to).emit('meet:answer', { from: socket.id, sdp });
+  });
+
+  socket.on('meet:ice', ({ to, candidate }) => {
+    io.to(to).emit('meet:ice', { from: socket.id, candidate });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── VOLANIE ──────────────────────────────────────────────────────────────
+  socket.on('call:invite', (targetId) => {
+    const caller = users.get(socket.id);
+    const target = users.get(targetId);
+    if (!caller || !target) return socket.emit('call:error', 'Používateľ nie je dostupný.');
+    const callerInCall = [...users.values()].some(u => u.inCall === socket.id || socket.id === u.inCall);
+    const targetInCall = [...users.values()].some(u => u.inCall === targetId || targetId === u.inCall);
+    if (callerInCall || targetInCall) return socket.emit('call:error', 'Jeden z vás je už na hovore.');
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) {
+      targetSocket.emit('call:incoming', { callerId: socket.id, callerName: caller.username });
+    }
+    socket.emit('call:ringing', { targetId, targetName: target.username });
+  });
+
+  socket.on('call:accept', ({ callerId }) => {
+    const callee = users.get(socket.id);
+    const callerSocket = io.sockets.sockets.get(callerId);
+    if (!callee || !callerSocket) return;
+    callerSocket.emit('call:accepted', { calleeId: socket.id, calleeName: callee.username });
+    socket.emit('call:accepted', { calleeId: callerId, calleeName: users.get(callerId)?.username || '' });
+  });
+
+  socket.on('call:reject', ({ callerId }) => {
+    const callee = users.get(socket.id);
+    const callerSocket = io.sockets.sockets.get(callerId);
+    if (callerSocket) callerSocket.emit('call:rejected', { calleeName: callee?.username || 'Neznámy' });
+  });
+
+  socket.on('call:hangup', ({ peerId }) => {
+    const peerSocket = io.sockets.sockets.get(peerId);
+    const user = users.get(socket.id);
+    if (peerSocket) peerSocket.emit('call:ended', { byName: user?.username || 'Neznámy' });
+  });
+
+  socket.on('call:offer', ({ peerId, sdp }) => {
+    const peerSocket = io.sockets.sockets.get(peerId);
+    if (peerSocket) peerSocket.emit('call:offer', { fromId: socket.id, sdp });
+  });
+
+  socket.on('call:answer-sdp', ({ peerId, sdp }) => {
+    const peerSocket = io.sockets.sockets.get(peerId);
+    if (peerSocket) peerSocket.emit('call:answer-sdp', { fromId: socket.id, sdp });
+  });
+
+  socket.on('call:ice', ({ peerId, candidate }) => {
+    const peerSocket = io.sockets.sockets.get(peerId);
+    if (peerSocket) peerSocket.emit('call:ice', { fromId: socket.id, candidate });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
 
   socket.on('disconnect', () => {
     console.log('disconnected', socket.id);

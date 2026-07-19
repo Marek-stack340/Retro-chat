@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Oddych kniha návštev</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="page-wrap">
+      <header class="landing-topbar">
+        <div class="brand-left">📘</div>
+        <div class="brand-title">Oddych kniha návštev</div>
+      </header>
+
+      <main class="main-panel">
+        <section class="entry-section">
+          <div class="section-title">Vitaj v knihe návštev</div>
+          <p class="hero-text">Kliknutím na odkaz na úvodnej stránke ťa automaticky zapíšeme do knihy. Môžeš doplniť vlastný odkaz.</p>
+          <div id="entries"></div>
+          <form id="guest-form" class="entry-form">
+            <div class="form-row">
+              <label for="guest-name">Meno:</label>
+              <input id="guest-name" type="text" placeholder="Tvoje meno" />
+            </div>
+            <div class="form-row">
+              <label for="guest-msg">Odkaz:</label>
+              <input id="guest-msg" type="text" placeholder="Zanechaj odkaz..." />
+            </div>
+            <div class="form-actions">
+              <button id="guest-save" class="button-enter" type="submit">Zapísať sa</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const entriesDiv = document.getElementById('entries');
+      const nameField = document.getElementById('guest-name');
+      const msgField = document.getElementById('guest-msg');
+      const form = document.getElementById('guest-form');
+
+      function loadEntries() {
+        const raw = localStorage.getItem('guestbookEntries') || '[]';
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function saveEntries(list) {
+        localStorage.setItem('guestbookEntries', JSON.stringify(list));
+      }
+
+      function render() {
+        const list = loadEntries();
+        entriesDiv.innerHTML = '';
+        if (!list.length) {
+          entriesDiv.innerHTML = '<p class="panel-note">Zatiaľ žiadne zápisy.</p>';
+          return;
+        }
+        list.slice().reverse().forEach((it) => {
+          const d = document.createElement('div');
+          d.className = 'panel';
+          d.style.marginBottom = '12px';
+          d.innerHTML = `<div><strong>${escapeHtml(it.name)}</strong> · <span style="font-size:0.9rem;color:#6a4c2f">${new Date(it.ts).toLocaleString()}</span></div><div style="margin-top:6px">${escapeHtml(it.msg)}</div>`;
+          entriesDiv.appendChild(d);
+        });
+      }
+
+      function escapeHtml(s) {
+        return (s||'').toString().replace(/[&<>\"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      }
+
+      // Auto-add visitor when arriving from index (only once per session)
+      (function autoAdd() {
+        try {
+          const did = sessionStorage.getItem('guestbookAutoAdded');
+          if (did) return;
+          const name = localStorage.getItem('chatUsername') || 'Anon';
+          const msg = 'Prišiel som cez úvodnú stránku.';
+          const list = loadEntries();
+          list.push({ name, msg, ts: Date.now() });
+          saveEntries(list);
+          sessionStorage.setItem('guestbookAutoAdded', '1');
+        } catch (e) {
+          console.error(e);
+        }
+      })();
+
+      form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const name = nameField.value.trim() || localStorage.getItem('chatUsername') || 'Anon';
+        const msg = msgField.value.trim() || 'Zanechal odkaz.';
+        const list = loadEntries();
+        list.push({ name, msg, ts: Date.now() });
+        saveEntries(list);
+        nameField.value = '';
+        msgField.value = '';
+        render();
+        alert('Ďakujem, si v knihe návštev.');
+      });
+
+      render();
+    </script>
+  </body>
+</html>
