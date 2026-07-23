@@ -33,7 +33,7 @@
                 <input id="login-nick" type="text" placeholder="Marekc" />
               </div>
               <div class="form-row">
-                <label for="login-pass">Heslo (iba registrovaní):</label>
+                <label for="login-pass">Heslo:</label>
                 <input id="login-pass" type="password" placeholder="●●●●●" />
               </div>
               <div class="form-row">
@@ -54,7 +54,7 @@
               <div class="guestbook-link"><a href="/guestbook.html">Oddych kniha návštev</a></div>
             </div>
             <div class="test-note">
-              Vyplň nick a klikni na Vstúpiť. Po registrácii sa meno uloží aj pre ďalšie prihlásenie.
+              Vyplň nick a heslo. Bez prihlásenia sa do chatu nedostaneš.
             </div>
           </section>
 
@@ -84,8 +84,75 @@
       const loginForm = document.getElementById('login-form');
       const nextTimeLabel = document.getElementById('next-time-label');
       const timeEntries = Array.from(document.querySelectorAll('.time-entry'));
+      const activeList = document.querySelector('.panel-left .chat-list');
+      const favoriteList = document.querySelector('.panel-right .chat-list.favorites');
+      const hiddenActiveUsers = new Set(['kika_c123']);
       const savedNick = localStorage.getItem('chatUsername');
       if (savedNick) nickInput.value = savedNick;
+
+      function loadChatStats() {
+        try {
+          const raw = localStorage.getItem('chatStatsV1');
+          if (!raw) return { users: {}, popularity: {} };
+          const parsed = JSON.parse(raw);
+          return { users: parsed.users || {}, popularity: parsed.popularity || {} };
+        } catch (e) {
+          return { users: {}, popularity: {} };
+        }
+      }
+
+      function renderLeaderboards() {
+        if (!activeList || !favoriteList) return;
+        const stats = loadChatStats();
+        const users = Object.entries(stats.users || {});
+
+        const mostActive = users
+          .map(([key, user]) => ({
+            key,
+            name: user.displayName || key,
+            score: Number(user.messages || 0) + Number(user.voiceNotes || 0) * 2,
+            lastActive: Number(user.lastActive || 0)
+          }))
+          .filter((item) => !hiddenActiveUsers.has(String(item.key || '').toLowerCase()))
+          .sort((a, b) => b.score - a.score || b.lastActive - a.lastActive)
+          .slice(0, 5);
+
+        const mostPopular = users
+          .map(([key, user]) => ({
+            key,
+            name: user.displayName || key,
+            score: Number((stats.popularity || {})[key] || 0)
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
+
+        activeList.innerHTML = '';
+        favoriteList.innerHTML = '';
+
+        if (!mostActive.length) {
+          const li = document.createElement('li');
+          li.textContent = 'Zatiaľ bez dát';
+          activeList.appendChild(li);
+        } else {
+          mostActive.forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = `${item.name} (${item.score})`;
+            activeList.appendChild(li);
+          });
+        }
+
+        if (!mostPopular.length) {
+          const li = document.createElement('li');
+          li.textContent = 'Zatiaľ bez dát';
+          favoriteList.appendChild(li);
+        } else {
+          mostPopular.forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = `${item.name} (${item.score})`;
+            favoriteList.appendChild(li);
+          });
+        }
+      }
 
       function getNextTime() {
         const now = new Date();
@@ -128,7 +195,7 @@
       }
 
       function submitLogin() {
-        const nick = nickInput.value.trim() || 'Anon';
+        const nick = nickInput.value.trim() || 'Správca';
         const password = document.getElementById('login-pass').value.trim();
         localStorage.setItem('chatUsername', nick);
         localStorage.setItem('chatRegistered', password ? 'true' : 'false');
@@ -141,7 +208,9 @@
       });
 
       updateScheduleHighlight();
+      renderLeaderboards();
       setInterval(updateScheduleHighlight, 60 * 1000);
+      setInterval(renderLeaderboards, 10 * 1000);
     </script>
   </body>
 </html>

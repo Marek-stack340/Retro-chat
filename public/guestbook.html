@@ -16,7 +16,7 @@
       <main class="main-panel">
         <section class="entry-section">
           <div class="section-title">Vitaj v knihe návštev</div>
-          <p class="hero-text">Kliknutím na odkaz na úvodnej stránke ťa automaticky zapíšeme do knihy. Môžeš doplniť vlastný odkaz.</p>
+          <p class="hero-text">Do knihy návštev sa zapíše len to, čo sem napíšeš ty.</p>
           <div id="entries"></div>
           <form id="guest-form" class="entry-form">
             <div class="form-row">
@@ -74,26 +74,15 @@
         return (s||'').toString().replace(/[&<>\"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
       }
 
-      // Auto-add visitor when arriving from index (only once per session)
-      (function autoAdd() {
-        try {
-          const did = sessionStorage.getItem('guestbookAutoAdded');
-          if (did) return;
-          const name = localStorage.getItem('chatUsername') || 'Anon';
-          const msg = 'Prišiel som cez úvodnú stránku.';
-          const list = loadEntries();
-          list.push({ name, msg, ts: Date.now() });
-          saveEntries(list);
-          sessionStorage.setItem('guestbookAutoAdded', '1');
-        } catch (e) {
-          console.error(e);
-        }
-      })();
-
       form.addEventListener('submit', (ev) => {
         ev.preventDefault();
         const name = nameField.value.trim() || localStorage.getItem('chatUsername') || 'Anon';
-        const msg = msgField.value.trim() || 'Zanechal odkaz.';
+        const msg = msgField.value.trim();
+        if (!msg) {
+          alert('Napíš vlastný odkaz.');
+          msgField.focus();
+          return;
+        }
         const list = loadEntries();
         list.push({ name, msg, ts: Date.now() });
         saveEntries(list);

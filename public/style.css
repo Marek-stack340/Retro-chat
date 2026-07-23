@@ -167,5 +167,16 @@ body{font-family:Arial,Helvetica,sans-serif;background:#ffffff;margin:0;color:#3
 .news-list{padding-left:18px;margin:0;color:#4d3725;line-height:1.7}
 .news-list li{margin-bottom:8px}
 
+.chat-app.messenger-mode .chat-subtitle,
+.chat-app.messenger-mode .chat-detail,
+.chat-app.messenger-mode .sidebar-right,
+.chat-app.messenger-mode .emoji-line{display:none}
+.chat-app.messenger-mode .chat-main-layout{grid-template-columns:1fr;max-width:860px;margin:0 auto}
+.chat-app.messenger-mode .messages{min-height:62vh;border-radius:16px;background:#eef4ff;border-color:#bfd6ff}
+.chat-app.messenger-mode .bubble{max-width:78%;border-radius:18px}
+.chat-app.messenger-mode .msg.me .bubble{background:#dbeafe;border-color:#93c5fd}
+.chat-app.messenger-mode .message-input-row{grid-template-columns:1fr 132px 132px}
+.chat-app.messenger-mode .message-input-row label{display:none}
+
 @media (max-width:1040px){.landing-grid,.chat-main-layout{grid-template-columns:1fr}}
 @media (max-width:720px){.app{padding:16px}.top-menu{justify-content:center}.message-input-row{grid-template-columns:1fr}.brand-title{font-size:2.4rem}}

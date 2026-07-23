@@ -25,9 +25,8 @@
           <a href="#" id="nav-ignore">Ignorovaní</a>
           <a href="#" id="nav-settings">Nastavenia</a>
           <a href="#" id="nav-help">Návod</a>
-          <a href="#" id="nav-messenger">Messenger</a>
+          <a href="/messenger.html" id="nav-messenger">Messenger</a>
           <a href="/meet.html" id="nav-meet" style="background:#16a34a !important;">📹 Meet</a>
-          <a href="#" id="nav-call-open" class="nav-call-btn">📞 Volať</a>
           <a href="#" id="nav-logout">Odhlásiť</a>
         </nav>
       </header>
@@ -98,18 +97,12 @@
             <div class="message-input-row">
               <label for="message-input">Povedz:</label>
               <textarea id="message-input" placeholder="Napíš správu..." rows="2"></textarea>
-              <button id="voice-record-btn" type="button" class="voice-btn">🎙 Hlasovka</button>
               <button id="send-btn" type="button">Enter</button>
             </div>
           </div>
         </section>
 
         <aside class="sidebar-right">
-          <div class="sidebar-block">
-            <h2>📞 Volanie</h2>
-            <ul id="call-users-list" class="call-users-list"></ul>
-            <div class="sidebar-note" id="call-hint">Vyber používateľa a klikni na 📞 pre zavolanie.</div>
-          </div>
           <div class="sidebar-block">
             <h2>V miestnosti:</h2>
             <ul id="users-list"></ul>
@@ -153,6 +146,7 @@
     <script>
       const hasUsername = !!localStorage.getItem('chatUsername');
       if (!hasUsername) {
+        alert('Najprv sa prihlás do chatu. Musíš sa prihlásiť do chatu.');
         window.location.replace('/');
       }
     </script>

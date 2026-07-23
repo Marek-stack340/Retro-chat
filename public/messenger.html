@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Oddych Messenger</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+    <style>
+      .messenger-shell{max-width:980px;margin:0 auto;padding:16px}
+      .messenger-head{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f3dfc6;border:1px solid rgba(0,0,0,.1);border-radius:16px;padding:12px 14px}
+      .messenger-nav{display:flex;gap:8px;flex-wrap:wrap}
+      .messenger-nav a{background:#3a7f2a;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;font-weight:700}
+      .messenger-layout{display:grid;grid-template-columns:1fr 260px;gap:12px;margin-top:12px}
+      .messenger-box{background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:14px;padding:12px}
+      .messenger-messages{min-height:52vh;max-height:64vh;overflow:auto}
+      .messenger-input{display:grid;grid-template-columns:1fr 120px;gap:10px;margin-top:10px}
+      .messenger-input textarea{width:100%;border:1px solid rgba(0,0,0,.14);border-radius:12px;padding:10px;min-height:76px;resize:vertical}
+      .messenger-input button{border:none;border-radius:12px;background:#3a7f2a;color:#fff;font-weight:700;cursor:pointer}
+      .messenger-users{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+      .messenger-users li{background:#fff5e8;border:1px solid rgba(148,94,43,.2);border-radius:10px;padding:8px;cursor:pointer}
+      .messenger-users li.me{opacity:.7;cursor:default}
+      .messenger-private{font-size:.92rem;color:#6a4c2f;margin-top:8px}
+      @media (max-width:800px){.messenger-layout{grid-template-columns:1fr}}
+    </style>
+  </head>
+  <body>
+    <div class="messenger-shell">
+      <div class="messenger-head">
+        <strong>Oddych Messenger</strong>
+        <div class="messenger-nav">
+          <a href="/chat.html">Späť do chatu</a>
+          <a href="#" id="msgr-logout">Odhlásiť</a>
+        </div>
+      </div>
+
+      <div class="messenger-layout">
+        <div class="messenger-box">
+          <div>Prihlásený: <strong id="msgr-current-user">-</strong></div>
+          <div class="messenger-private" id="msgr-private-status" style="display:none;">Súkromná správa pre <strong id="msgr-private-name"></strong></div>
+          <div class="messages messenger-messages" id="msgr-messages"></div>
+          <div class="messenger-input">
+            <textarea id="msgr-input" placeholder="Napíš správu..."></textarea>
+            <button id="msgr-send" type="button">Odoslať</button>
+          </div>
+        </div>
+
+        <div class="messenger-box">
+          <h3 style="margin:0 0 10px;">Používatelia</h3>
+          <ul id="msgr-users" class="messenger-users"></ul>
+          <p style="color:#6a4c2f;font-size:.9rem;margin-top:8px;">Klikni na meno pre súkromnú správu.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const hasUsername = !!localStorage.getItem('chatUsername');
+      if (!hasUsername) {
+        alert('Najprv sa prihlás do chatu. Musíš sa prihlásiť do chatu.');
+        window.location.replace('/');
+      }
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="messenger-client.js"></script>
+  </body>
+</html>

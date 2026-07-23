@@ -13,6 +13,7 @@ const navIgnore = document.getElementById('nav-ignore');
 const navSettings = document.getElementById('nav-settings');
 const navQuicklink = document.getElementById('nav-quicklink');
 const navMessenger = document.getElementById('nav-messenger');
+const chatApp = document.querySelector('.chat-app');
 
 const privateStatus = document.getElementById('private-status');
 const privateTargetNameDisplay = document.getElementById('private-target-name');
@@ -25,7 +26,6 @@ const sendSettingsVoiceEnabled = document.getElementById('send-settings-voice-en
 const sendSettingsVoiceAutoplay = document.getElementById('send-settings-voice-autoplay');
 const sendSettingsSave = document.getElementById('send-settings-save');
 const sendSettingsCancel = document.getElementById('send-settings-cancel');
-const voiceRecordBtn = document.getElementById('voice-record-btn');
 
 // VOLANIE
 const callActiveBar = document.getElementById('call-active-bar');
@@ -220,11 +220,9 @@ const emojiLine = document.getElementById('emoji-line');
 const emojiSet = ['🙂', '😃', '😍', '😎', '😏', '😡', '😂', '🙃', '😮'];
 const reactionSet = ['👍', '❤️', '😂', '😮', '😡'];
 const savedUsername = localStorage.getItem('chatUsername');
-let currentUsername = savedUsername ? savedUsername.trim() : 'Anon';
+let currentUsername = savedUsername ? savedUsername.trim() : 'Správca';
 let autoPrivateEnabled = localStorage.getItem('autoPrivateEnabled') === 'true';
 let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
-let voiceEnabled = localStorage.getItem('voiceEnabled') !== 'false';
-let voiceAutoplay = localStorage.getItem('voiceAutoplay') === 'true';
 let privateTargetId = null;
 let privateTargetName = null;
 let activeUsers = [];
@@ -232,10 +230,104 @@ let lastClearTime = 0;
 const ignoreList = new Set(JSON.parse(localStorage.getItem('chatIgnoreList') || '[]'));
 const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || '[]'));
 const onlineFriends = new Set();
-let voiceRecorder = null;
-let voiceChunks = [];
-let voiceStartTime = 0;
 let audioCtx = null;
+let messengerMode = localStorage.getItem('chatMessengerMode') === 'true';
+let lastSpokenAt = Date.now();
+
+const CHAT_INACTIVITY_MS = 60 * 60 * 1000;
+const MESSENGER_INACTIVITY_MS = 60 * 60 * 1000;
+
+function loadChatStats() {
+  try {
+    const raw = localStorage.getItem('chatStatsV1');
+    if (!raw) return { users: {}, popularity: {}, edges: {} };
+    const parsed = JSON.parse(raw);
+    return {
+      users: parsed.users || {},
+      popularity: parsed.popularity || {},
+      edges: parsed.edges || {}
+    };
+  } catch (_) {
+    return { users: {}, popularity: {}, edges: {} };
+  }
+}
+
+function saveChatStats(stats) {
+  localStorage.setItem('chatStatsV1', JSON.stringify(stats));
+}
+
+function updateActivityStats(username, delta) {
+  const key = normalizeName(username);
+  if (!key) return;
+  const stats = loadChatStats();
+  if (!stats.users[key]) {
+    stats.users[key] = { displayName: username, messages: 0, voiceNotes: 0, lastActive: 0 };
+  }
+  const user = stats.users[key];
+  user.displayName = username;
+  user.messages += Number(delta.messages || 0);
+  user.voiceNotes += Number(delta.voiceNotes || 0);
+  user.lastActive = Date.now();
+  saveChatStats(stats);
+}
+
+function updatePopularity(targetUsername, isAdded) {
+  const actor = normalizeName(currentUsername);
+  const target = normalizeName(targetUsername);
+  if (!actor || !target || actor === target) return;
+
+  const stats = loadChatStats();
+  const edgeKey = `${actor}->${target}`;
+  const edgeExists = !!stats.edges[edgeKey];
+
+  if (isAdded && !edgeExists) {
+    stats.edges[edgeKey] = 1;
+    stats.popularity[target] = Number(stats.popularity[target] || 0) + 1;
+  }
+
+  if (!isAdded && edgeExists) {
+    delete stats.edges[edgeKey];
+    stats.popularity[target] = Math.max(0, Number(stats.popularity[target] || 0) - 1);
+  }
+
+  if (!stats.users[target]) {
+    stats.users[target] = { displayName: targetUsername, messages: 0, voiceNotes: 0, lastActive: 0 };
+  }
+  stats.users[target].displayName = targetUsername;
+  saveChatStats(stats);
+}
+
+function markSpokenActivity() {
+  lastSpokenAt = Date.now();
+}
+
+function currentInactivityLimit() {
+  return messengerMode ? MESSENGER_INACTIVITY_MS : CHAT_INACTIVITY_MS;
+}
+
+function performAutoLogout(reason) {
+  alert(reason);
+  localStorage.removeItem('chatUsername');
+  localStorage.removeItem('chatRegistered');
+  window.location.href = '/';
+}
+
+function checkInactivityLogout() {
+  if (!localStorage.getItem('chatUsername')) return;
+  const inactiveMs = Date.now() - lastSpokenAt;
+  if (inactiveMs >= currentInactivityLimit()) {
+    performAutoLogout(messengerMode
+      ? 'Bol si 60 min neaktívny v Messengeri. Bol si automaticky odhlásený.'
+      : 'Bol si 60 min neaktívny v chate. Bol si automaticky odhlásený.');
+  }
+}
+
+function applyMessengerMode() {
+  if (!chatApp || !navMessenger) return;
+  chatApp.classList.toggle('messenger-mode', messengerMode);
+  navMessenger.textContent = messengerMode ? 'Messenger ON' : 'Messenger';
+  navMessenger.style.background = messengerMode ? '#2563eb' : '';
+}
 
 function playNotificationTone() {
   try {
@@ -296,66 +388,6 @@ function notifyIncomingMessage(fromName, previewText) {
   }
 }
 
-function refreshVoiceButton() {
-  if (!voiceRecordBtn) return;
-  voiceRecordBtn.style.display = voiceEnabled ? '' : 'none';
-}
-
-function blobToDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function sendVoiceMessage(audioData, durationSec) {
-  let to = null;
-  if (privateTargetId) {
-    to = privateTargetId;
-    clearPrivateTarget();
-  } else if (autoPrivateEnabled && autoPrivateTargetName) {
-    const targetUser = activeUsers.find((u) => u.username.toLowerCase() === autoPrivateTargetName.toLowerCase());
-    if (!targetUser) {
-      showToast(`Používateľ ${autoPrivateTargetName} nie je online. Hlasovka nebola odoslaná.`);
-      return;
-    }
-    to = targetUser.id;
-  }
-
-  socket.emit('send-voice-message', {
-    audioData,
-    durationSec,
-    to
-  });
-}
-
-function addVoiceMessage(m) {
-  const d = document.createElement('div');
-  d.className = 'msg' + (m.username === currentUsername ? ' me' : '') + (m.private ? ' private' : '');
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble' + (m.private ? ' private' : '');
-  const privateLabel = m.private
-    ? `<div class="private-label">${m.self ? `Hlasovka → ${escapeHtml(m.toUsername || '')}` : 'Súkromná hlasovka'}</div>`
-    : '';
-  bubble.innerHTML = `
-    <div class="from"><strong>${escapeHtml(m.username)}</strong></div>
-    ${privateLabel}
-    <div class="text">🎙 Hlasovka (${Math.max(1, Math.round(m.durationSec || 0))}s)</div>
-    <audio controls preload="metadata" style="width:100%;margin-top:8px;"></audio>
-    <div class="meta">${new Date(m.timestamp || Date.now()).toLocaleString()}</div>
-  `;
-  const audio = bubble.querySelector('audio');
-  audio.src = m.audioData;
-  if (voiceAutoplay && !m.self) {
-    audio.play().catch(() => {});
-  }
-  d.appendChild(bubble);
-  messagesDiv.appendChild(d);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
 // Global error handlers to surface runtime errors (helps debug why buttons stop working)
 window.addEventListener('error', (e) => {
   try {
@@ -393,10 +425,12 @@ function toggleFriend(username) {
   if (!key) return false;
   if (friendList.has(key)) {
     friendList.delete(key);
+    updatePopularity(username, false);
     saveFriendList();
     return false;
   }
   friendList.add(key);
+  updatePopularity(username, true);
   saveFriendList();
   return true;
 }
@@ -532,7 +566,9 @@ function updateUserList(users) {
     const li = document.createElement('li');
     const name = user.username;
     const nameSpan = document.createElement('span');
-    nameSpan.textContent = name;
+    nameSpan.textContent = user.role === 'admin'
+      ? `${name} [admin]`
+      : (user.role === 'tester' ? `${name} [tester]` : name);
     li.appendChild(nameSpan);
 
     if (user.username === currentUsername) {
@@ -690,8 +726,6 @@ function openSendSettings() {
     sendSettingsTarget.value = exists ? autoPrivateTargetName : others[0].username;
   }
   sendSettingsPrivateToggle.checked = autoPrivateEnabled;
-  if (sendSettingsVoiceEnabled) sendSettingsVoiceEnabled.checked = voiceEnabled;
-  if (sendSettingsVoiceAutoplay) sendSettingsVoiceAutoplay.checked = voiceAutoplay;
   sendSettingsModal.style.display = 'flex';
 }
 
@@ -699,14 +733,9 @@ function saveSendSettings() {
   if (!sendSettingsPrivateToggle || !sendSettingsTarget) return;
   autoPrivateEnabled = !!sendSettingsPrivateToggle.checked;
   autoPrivateTargetName = sendSettingsTarget.value || '';
-  voiceEnabled = !!sendSettingsVoiceEnabled?.checked;
-  voiceAutoplay = !!sendSettingsVoiceAutoplay?.checked;
   localStorage.setItem('autoPrivateEnabled', autoPrivateEnabled ? 'true' : 'false');
   localStorage.setItem('autoPrivateTargetName', autoPrivateTargetName);
-  localStorage.setItem('voiceEnabled', voiceEnabled ? 'true' : 'false');
-  localStorage.setItem('voiceAutoplay', voiceAutoplay ? 'true' : 'false');
   refreshPrivateStatus();
-  refreshVoiceButton();
   showToast(autoPrivateEnabled && autoPrivateTargetName
     ? `Súkromné odosielanie je zapnuté pre ${autoPrivateTargetName}.`
     : 'Súkromné odosielanie je vypnuté.');
@@ -716,7 +745,7 @@ function saveSendSettings() {
 function canCreateRoom() {
   const storedUser = localStorage.getItem('chatUsername')?.trim();
   const registered = localStorage.getItem('chatRegistered') === 'true';
-  const isAdmin = ['admin', 'administrator'].includes((storedUser || '').toLowerCase());
+  const isAdmin = ['admin', 'administrator', 'spravca', 'správca'].includes((storedUser || '').toLowerCase());
   return registered || isAdmin;
 }
 
@@ -793,8 +822,8 @@ function initEmojiLine() {
 }
 
 function sendJoin() {
-  currentUsername = localStorage.getItem('chatUsername')?.trim() || 'Anon';
-  if (!currentUsername) currentUsername = 'Anon';
+  currentUsername = localStorage.getItem('chatUsername')?.trim() || 'Správca';
+  if (!currentUsername) currentUsername = 'Správca';
   if (currentUsernameDisplay) {
     currentUsernameDisplay.textContent = currentUsername;
   }
@@ -805,8 +834,11 @@ function sendJoin() {
 socket.on('connect', () => {
   initEmojiLine();
   sendJoin();
-  refreshVoiceButton();
+  applyMessengerMode();
+  lastSpokenAt = Date.now();
 });
+
+setInterval(checkInactivityLogout, 60 * 1000);
 
 socket.on('load-messages', (msgs) => {
   messagesDiv.innerHTML = '';
@@ -921,6 +953,8 @@ function sendMessage() {
   }
 
   if (privateTargetId) {
+    markSpokenActivity();
+    updateActivityStats(currentUsername, { messages: 1 });
     socket.emit('send-private-message', {
       to: privateTargetId,
       text
@@ -936,6 +970,8 @@ function sendMessage() {
       showToast(`Používateľ ${autoPrivateTargetName} nie je online. Správa nebola odoslaná.`);
       return;
     }
+    markSpokenActivity();
+    updateActivityStats(currentUsername, { messages: 1 });
     socket.emit('send-private-message', {
       to: targetUser.id,
       text
@@ -944,6 +980,8 @@ function sendMessage() {
     return;
   }
 
+  markSpokenActivity();
+  updateActivityStats(currentUsername, { messages: 1 });
   socket.emit('send-message', {
     username: currentUsername,
     text,
@@ -963,21 +1001,6 @@ socket.on('receive-private-message', (m) => {
   });
   if (!m.self) {
     notifyIncomingMessage(m.from, m.text || 'Sukromna sprava');
-  }
-});
-
-socket.on('receive-voice-message', (m) => {
-  addVoiceMessage({
-    username: m.self ? currentUsername : m.username,
-    audioData: m.audioData,
-    durationSec: m.durationSec,
-    timestamp: m.timestamp,
-    private: !!m.private,
-    self: !!m.self,
-    toUsername: m.toUsername
-  });
-  if (!m.self) {
-    notifyIncomingMessage(m.username, 'Hlasovka');
   }
 });
 
@@ -1025,7 +1048,7 @@ navQuicklink?.addEventListener('click', (event) => {
 });
 navMessenger?.addEventListener('click', (event) => {
   event.preventDefault();
-  messageInput?.focus();
+  window.location.href = '/messenger.html';
 });
 
 document.getElementById('nav-call-open')?.addEventListener('click', (event) => {
@@ -1067,48 +1090,6 @@ document.getElementById('call-modal-close')?.addEventListener('click', () => {
 sendSettingsSave?.addEventListener('click', saveSendSettings);
 sendSettingsCancel?.addEventListener('click', () => {
   if (sendSettingsModal) sendSettingsModal.style.display = 'none';
-});
-voiceRecordBtn?.addEventListener('click', async () => {
-  if (!voiceEnabled) {
-    showToast('Hlasovky sú vypnuté v nastaveniach.');
-    return;
-  }
-
-  if (voiceRecorder && voiceRecorder.state === 'recording') {
-    voiceRecorder.stop();
-    return;
-  }
-
-  if (!navigator.mediaDevices || !window.MediaRecorder) {
-    showToast('Tento prehliadač nepodporuje hlasovky.');
-    return;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    voiceChunks = [];
-    voiceStartTime = Date.now();
-    voiceRecorder = new MediaRecorder(stream);
-    voiceRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) voiceChunks.push(event.data);
-    };
-    voiceRecorder.onstop = async () => {
-      const durationSec = (Date.now() - voiceStartTime) / 1000;
-      const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || 'audio/webm' });
-      const audioData = await blobToDataURL(blob);
-      await sendVoiceMessage(audioData, durationSec);
-      stream.getTracks().forEach((t) => t.stop());
-      voiceRecordBtn.classList.remove('recording');
-      voiceRecordBtn.textContent = '🎙 Hlasovka';
-      showToast('Hlasovka odoslaná.');
-    };
-    voiceRecorder.start();
-    voiceRecordBtn.classList.add('recording');
-    voiceRecordBtn.textContent = '⏹ Stop';
-    showToast('Nahrávanie hlasovky...');
-  } catch (err) {
-    showToast('Mikrofón nie je dostupný pre hlasovku.');
-  }
 });
 createRoomBtn?.addEventListener('click', () => {
   if (!canCreateRoom()) {

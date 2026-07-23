@@ -3,12 +3,15 @@ const http = require('http');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcrypt');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
 
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json());
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
@@ -32,9 +35,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 const messages = [];
 const users = new Map();
 const banList = new Map();
-const adminUsernames = new Set(['admin', 'administrator']);
-const reservedUsernames = new Set(['kika_c13']);
-const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/;
+const accounts = new Map();
+const authTokens = new Map();
+const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
+const testerUsernames = new Set(['kika_c123']);
+const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
 
 const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
 const curseWordsSet = new Set(curseWords);
@@ -91,6 +96,109 @@ function createSocketThrottle(limit, windowMs) {
   };
 }
 
+function normalizePassword(value) {
+  return (value || '').toString().trim();
+}
+
+function createAuthToken(username) {
+  return `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}.${username.toLowerCase()}`;
+}
+
+function cleanupAuthTokens() {
+  const now = Date.now();
+  for (const [token, record] of authTokens.entries()) {
+    if (!record || record.expiresAt <= now) {
+      authTokens.delete(token);
+    }
+  }
+}
+
+function requireAuthToken(req, res, next) {
+  cleanupAuthTokens();
+  const token = normalizePassword(req.headers['x-auth-token']);
+  if (!token || !authTokens.has(token)) {
+    res.status(401).json({ ok: false, message: 'Neplatné prihlásenie.' });
+    return;
+  }
+  req.authToken = token;
+  req.authRecord = authTokens.get(token);
+  next();
+}
+
+app.post('/api/register', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
+    const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
+    const email = normalizePassword(req.body && req.body.email ? req.body.email : '');
+
+    if (!isValidUsername(username)) {
+      res.status(400).json({ ok: false, message: 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.' });
+      return;
+    }
+    if (password.length < 4) {
+      res.status(400).json({ ok: false, message: 'Heslo musí mať aspoň 4 znaky.' });
+      return;
+    }
+    if (!email) {
+      res.status(400).json({ ok: false, message: 'Zadaj e-mail.' });
+      return;
+    }
+
+    const normalizedUsername = username.toLowerCase();
+    const hashedPassword = await bcrypt.hash(password, 10);
+    accounts.set(normalizedUsername, {
+      username,
+      email,
+      passwordHash: hashedPassword,
+      role: adminUsernames.has(normalizedUsername)
+        ? 'admin'
+        : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
+    });
+    res.json({ ok: true, message: 'Registrácia uložená.' });
+  } catch (error) {
+    res.status(500).json({ ok: false, message: 'Registrácia zlyhala.' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
+    const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
+
+    if (!isValidUsername(username)) {
+      res.status(400).json({ ok: false, message: 'Neplatné meno.' });
+      return;
+    }
+    if (!password) {
+      res.status(400).json({ ok: false, message: 'Zadaj heslo.' });
+      return;
+    }
+
+    const account = accounts.get(username.toLowerCase());
+    if (!account) {
+      res.status(401).json({ ok: false, message: 'Účet neexistuje. Najprv sa zaregistruj.' });
+      return;
+    }
+
+    const ok = await bcrypt.compare(password, account.passwordHash);
+    if (!ok) {
+      res.status(401).json({ ok: false, message: 'Nesprávne heslo.' });
+      return;
+    }
+
+    const token = createAuthToken(account.username);
+    authTokens.set(token, {
+      username: account.username,
+      role: account.role || null,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000
+    });
+
+    res.json({ ok: true, token, username: account.username, role: account.role || null });
+  } catch (error) {
+    res.status(500).json({ ok: false, message: 'Prihlásenie zlyhalo.' });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
@@ -106,8 +214,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const username = normalizeUsername(data && data.username ? data.username : 'Anon');
-    const safeUsername = username || 'Anon';
+    const username = normalizeUsername(data && data.username ? data.username : 'Správca');
+    const safeUsername = username || 'Správca';
     const normalizedUsername = safeUsername.toLowerCase();
     if (!isValidUsername(safeUsername)) {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
@@ -119,11 +227,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (reservedUsernames.has(normalizedUsername)) {
-      socket.emit('join-denied', `Meno ${safeUsername} je obsadené. Zvoľ si iné meno.`);
-      return;
-    }
-
     const duplicateUser = Array.from(users.values()).find(
       (user) => user.username.toLowerCase() === normalizedUsername && user.id !== socket.id
     );
@@ -132,7 +235,13 @@ io.on('connection', (socket) => {
       return;
     }
 
-    users.set(socket.id, { id: socket.id, username: safeUsername });
+    users.set(socket.id, {
+      id: socket.id,
+      username: safeUsername,
+      role: adminUsernames.has(normalizedUsername)
+        ? 'admin'
+        : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
+    });
     broadcastUserList();
   });
 
@@ -185,7 +294,7 @@ io.on('connection', (socket) => {
 
     const msg = {
       id: Date.now(),
-      username: user.username || 'Anon',
+      username: user.username || 'Správca',
       text: sanitizeProfanity(data.text || ''),
       timestamp: new Date().toISOString(),
       reactions: {}
@@ -273,39 +382,6 @@ io.on('connection', (socket) => {
       self: true,
       toUsername: users.get(toId) ? users.get(toId).username : 'niekto'
     });
-  });
-
-  socket.on('send-voice-message', (data) => {
-    const user = users.get(socket.id);
-    if (!user || !data || !data.audioData) return;
-
-    const payload = {
-      id: Date.now(),
-      username: user.username,
-      audioData: data.audioData,
-      durationSec: Number(data.durationSec || 0),
-      timestamp: new Date().toISOString(),
-      private: false,
-      self: false
-    };
-
-    const toId = data.to;
-    if (toId) {
-      payload.private = true;
-      payload.to = toId;
-      const targetSocket = io.sockets.sockets.get(toId);
-      if (targetSocket) {
-        targetSocket.emit('receive-voice-message', payload);
-      }
-      socket.emit('receive-voice-message', {
-        ...payload,
-        self: true,
-        toUsername: users.get(toId) ? users.get(toId).username : 'niekto'
-      });
-      return;
-    }
-
-    io.emit('receive-voice-message', payload);
   });
 
   // ── MEET ─────────────────────────────────────────────────────────────────
