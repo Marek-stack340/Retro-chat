@@ -77,6 +77,10 @@ function normalizeUsername(value) {
   return (value || '').toString().trim();
 }
 
+function normalizeRoomName(value) {
+  return (value || '').toString().trim().replace(/\s+/g, ' ').slice(0, 40) || 'Spoločná';
+}
+
 function isValidUsername(username) {
   return usernamePattern.test(username);
 }
@@ -216,6 +220,7 @@ io.on('connection', (socket) => {
 
     const username = normalizeUsername(data && data.username ? data.username : 'Správca');
     const safeUsername = username || 'Správca';
+    socket.data.room = normalizeRoomName(data && data.room ? data.room : 'Spoločná');
     const normalizedUsername = safeUsername.toLowerCase();
     if (!isValidUsername(safeUsername)) {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
@@ -297,6 +302,7 @@ io.on('connection', (socket) => {
       username: user.username || 'Správca',
       text: sanitizeProfanity(data.text || ''),
       timestamp: new Date().toISOString(),
+      room: normalizeRoomName(data && data.room ? data.room : socket.data.room || 'Spoločná'),
       reactions: {}
     };
     messages.push(msg);

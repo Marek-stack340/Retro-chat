@@ -22,8 +22,6 @@ const privateTargetNameDisplay = document.getElementById('private-target-name');
 const sendSettingsModal = document.getElementById('send-settings-modal');
 const sendSettingsPrivateToggle = document.getElementById('send-settings-private-toggle');
 const sendSettingsTarget = document.getElementById('send-settings-target');
-const sendSettingsVoiceEnabled = document.getElementById('send-settings-voice-enabled');
-const sendSettingsVoiceAutoplay = document.getElementById('send-settings-voice-autoplay');
 const sendSettingsSave = document.getElementById('send-settings-save');
 const sendSettingsCancel = document.getElementById('send-settings-cancel');
 
@@ -41,6 +39,9 @@ const remoteAudio = document.getElementById('remote-audio');
 let callState = null;
 let pendingCall = null;
 let pendingIceCandidates = [];
+let publicMessageHistory = [];
+let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
+let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
@@ -226,7 +227,6 @@ let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
 let privateTargetId = null;
 let privateTargetName = null;
 let activeUsers = [];
-let lastClearTime = 0;
 const ignoreList = new Set(JSON.parse(localStorage.getItem('chatIgnoreList') || '[]'));
 const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || '[]'));
 const onlineFriends = new Set();
@@ -473,6 +473,60 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function normalizeRoomName(value) {
+  return (value || '').toString().trim().replace(/\s+/g, ' ').slice(0, 40) || 'Spoločná';
+}
+
+function saveRoomList() {
+  if (!roomsList) return;
+  const roomNames = Array.from(roomsList.querySelectorAll('.room-item'))
+    .map((roomEl) => normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', '')))
+    .filter((name) => name && name !== 'Spoločná');
+  localStorage.setItem('chatRoomNamesV1', JSON.stringify(Array.from(new Set(roomNames))));
+}
+
+function updateRoomHighlight() {
+  if (!roomsList) return;
+  roomsList.querySelectorAll('.room-item').forEach((roomEl) => {
+    const roomName = normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', ''));
+    roomEl.classList.toggle('active', roomName === currentRoom);
+  });
+}
+
+function renderVisibleMessages() {
+  messagesDiv.innerHTML = '';
+  publicMessageHistory.forEach((message) => {
+    addMessage(message);
+  });
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function storePublicMessage(message) {
+  if (!message || message.system || message.private) return;
+  const incomingId = message.id != null ? String(message.id) : null;
+  if (!incomingId) {
+    publicMessageHistory.push(message);
+    return;
+  }
+  const existingIndex = publicMessageHistory.findIndex((item) => String(item.id) === incomingId);
+  if (existingIndex >= 0) {
+    publicMessageHistory[existingIndex] = message;
+    return;
+  }
+  publicMessageHistory.push(message);
+}
+
+function setActiveRoom(roomName, options = {}) {
+  const nextRoom = normalizeRoomName(roomName);
+  currentRoom = nextRoom;
+  localStorage.setItem('chatCurrentRoom', currentRoom);
+  updateRoomHighlight();
+  renderVisibleMessages();
+  if (!options.silent) {
+    showToast(`Vstúpil si do miestnosti ${currentRoom}.`);
+  }
+}
+
 function addMessage(m) {
   if (!m.system) {
     try {
@@ -495,6 +549,13 @@ function addMessage(m) {
 
   if (m.username && isIgnored(m.username) && !m.private) {
     return;
+  }
+
+  if (!m.private) {
+    const messageRoom = normalizeRoomName(m.room || 'Spoločná');
+    if (messageRoom !== currentRoom) {
+      return;
+    }
   }
 
   const d = document.createElement('div');
@@ -764,37 +825,66 @@ function updateCreateRoomControl() {
       : 'Iba registrovaný a admin môže vytvoriť';
   }
   if (createRoomBtn) {
-    createRoomBtn.disabled = false;
+    createRoomBtn.disabled = !allowed;
   }
 }
 
-function addRoomToList(name) {
+function addRoomToList(name, options = {}) {
   if (!roomsList || !name) return;
+  const roomName = normalizeRoomName(name);
+  const existing = Array.from(roomsList.querySelectorAll('.room-item')).find(
+    (roomEl) => normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', '')) === roomName
+  );
+  if (existing) {
+    existing.dataset.roomName = roomName;
+    return existing;
+  }
   const roomItem = document.createElement('div');
   roomItem.className = 'room-item';
-  roomItem.textContent = `${name} (0)`;
+  roomItem.dataset.roomName = roomName;
+  roomItem.textContent = `${roomName} (0)`;
   const del = document.createElement('button');
   del.className = 'room-delete';
   del.setAttribute('title', 'Zmazať miestnosť');
   del.textContent = '✕';
   roomItem.appendChild(del);
   roomsList.appendChild(roomItem);
+  if (options.activate) {
+    setActiveRoom(roomName, { silent: true });
+  } else {
+    updateRoomHighlight();
+  }
+  if (options.persist !== false) {
+    saveRoomList();
+  }
+  return roomItem;
 }
 
 // Handle delete clicks (delegation)
 roomsList?.addEventListener('click', (e) => {
   const btn = e.target.closest('.room-delete');
-  if (!btn) return;
-  const roomEl = btn.closest('.room-item');
+  const roomEl = e.target.closest('.room-item');
   if (!roomEl) return;
-  const isPermanent = roomEl.getAttribute('data-permanent') === 'true';
-  if (isPermanent) {
-    showToast('Neblbni, stálu miestnosť nie je možné zrušiť');
+  if (btn) {
+    const isPermanent = roomEl.getAttribute('data-permanent') === 'true';
+    if (isPermanent) {
+      showToast('Neblbni, stálu miestnosť nie je možné zrušiť');
+      return;
+    }
+    const removedRoom = normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', ''));
+    roomEl.remove();
+    saveRoomList();
+    if (removedRoom === currentRoom) {
+      setActiveRoom('Spoločná', { silent: true });
+    }
+    showToast('Miestnosť zmazaná.');
     return;
   }
-  // remove non-permanent room
-  roomEl.remove();
-  showToast('Miestnosť zmazaná.');
+
+  const selectedRoom = normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', ''));
+  if (selectedRoom) {
+    setActiveRoom(selectedRoom);
+  }
 });
 
 function insertEmoji(emoji) {
@@ -828,11 +918,17 @@ function sendJoin() {
     currentUsernameDisplay.textContent = currentUsername;
   }
   updateCreateRoomControl();
-  socket.emit('join', { username: currentUsername });
+  socket.emit('join', { username: currentUsername, room: currentRoom });
 }
 
 socket.on('connect', () => {
   initEmojiLine();
+  const savedRooms = JSON.parse(localStorage.getItem('chatRoomNamesV1') || '[]');
+  savedRooms.forEach((roomName) => addRoomToList(roomName, { persist: false }));
+  if (currentRoom !== 'Spoločná' && !Array.from(roomsList?.querySelectorAll('.room-item') || []).some((roomEl) => normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', '')) === currentRoom)) {
+    addRoomToList(currentRoom, { persist: false });
+  }
+  updateRoomHighlight();
   sendJoin();
   applyMessengerMode();
   lastSpokenAt = Date.now();
@@ -841,13 +937,18 @@ socket.on('connect', () => {
 setInterval(checkInactivityLogout, 60 * 1000);
 
 socket.on('load-messages', (msgs) => {
-  messagesDiv.innerHTML = '';
-  msgs.forEach(addMessage);
+  publicMessageHistory = Array.isArray(msgs) ? msgs.filter((msg) => !msg.private && !msg.system) : [];
+  renderVisibleMessages();
 });
 
 socket.on('receive-message', (m) => {
-  addMessage(m);
-  if (m && m.username && m.username !== currentUsername) {
+  storePublicMessage(m);
+  const visibleRoom = normalizeRoomName(m && m.room ? m.room : 'Spoločná');
+  const isVisible = !m || m.private || m.system || visibleRoom === currentRoom;
+  if (isVisible) {
+    addMessage(m);
+  }
+  if (isVisible && m && m.username && m.username !== currentUsername) {
     notifyIncomingMessage(m.username, m.text);
   }
 });
@@ -877,7 +978,8 @@ function sendMessage() {
 
   if (text.startsWith('.zmaz')) {
     lastClearTime = Date.now();
-    messagesDiv.innerHTML = '';
+    localStorage.setItem('chatClearAt', String(lastClearTime));
+    renderVisibleMessages();
     showToast('Okno vymazané.');
     messageInput.value = '';
     return;
@@ -985,7 +1087,8 @@ function sendMessage() {
   socket.emit('send-message', {
     username: currentUsername,
     text,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    room: currentRoom
   });
   messageInput.value = '';
 }
@@ -1019,7 +1122,7 @@ navLogout?.addEventListener('click', (event) => {
 });
 navHelp?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast('Návod: Enter odosiela správu, Shift+Enter nový riadok. Klik na meno v zozname pre adresovanie.');
+  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, klik na meno adresuje a dvojklik pošle šepkanie, klik na miestnosť ju otvorí.');
 });
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();
@@ -1101,11 +1204,14 @@ createRoomBtn?.addEventListener('click', () => {
     showToast('Zadaj názov miestnosti.');
     return;
   }
-  addRoomToList(roomName);
+  const roomItem = addRoomToList(roomName, { activate: true });
+  if (roomItem) {
+    setActiveRoom(roomName, { silent: true });
+  }
   if (createRoomInput) {
     createRoomInput.value = '';
   }
-  showToast('Miestnosť vytvorená.');
+  showToast('Miestnosť vytvorená a otvorená.');
 });
 
 sendBtn?.addEventListener('click', sendMessage);

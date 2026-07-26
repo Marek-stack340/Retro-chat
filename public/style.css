@@ -159,7 +159,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#f
 .room-create label{font-size:0.9rem;color:#4b3824;font-weight:700}
 .room-create input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(209,139,43,0.18);background:#fff7e9;color:#7a5d49;cursor:not-allowed}
 .room-note{font-size:0.86rem;color:#6a4c2f;font-style:italic}
-.room-item{padding:12px 14px;border-radius:12px;background:#fff7e8;border:1px solid rgba(209,139,43,0.18);font-weight:700;color:#4c3524}
+.room-item{padding:12px 14px;border-radius:12px;background:#fff7e8;border:1px solid rgba(209,139,43,0.18);font-weight:700;color:#4c3524;cursor:pointer}
 .room-item.active{background:#ffe094}
 .room-item{position:relative;padding-right:44px}
 .room-delete{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:#b46914;font-weight:700;cursor:pointer;padding:6px 8px;border-radius:8px}

@@ -57,15 +57,6 @@
           </label>
           <label for="send-settings-target" style="display:block;margin-bottom:6px;color:#666;font-size:0.85rem;font-weight:700;">Vybraný používateľ</label>
           <select id="send-settings-target" style="width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:10px;margin-bottom:14px;"></select>
-          <hr style="border:none;border-top:1px solid #eee;margin:4px 0 12px;">
-          <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#333;font-weight:700;">
-            <input id="send-settings-voice-enabled" type="checkbox">
-            Povoliť hlasovky
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;color:#333;font-weight:700;">
-            <input id="send-settings-voice-autoplay" type="checkbox">
-            Auto-prehrávanie hlasoviek
-          </label>
           <div style="display:flex;gap:10px;">
             <button id="send-settings-save" style="flex:1;padding:12px;border:none;border-radius:10px;background:#3a7f2a;color:#fff;font-weight:700;cursor:pointer;">Uložiť</button>
             <button id="send-settings-cancel" style="flex:1;padding:12px;border:none;border-radius:10px;background:#c0392b;color:#fff;font-weight:700;cursor:pointer;">Zavrieť</button>
@@ -111,11 +102,11 @@
           <div class="sidebar-block">
             <h2>Miestnosti:</h2>
             <div class="rooms-list">
-              <div class="room-item active" data-permanent="true">Spoločná (1)
+              <div class="room-item active" data-permanent="true" data-room-name="Spoločná">Spoločná (1)
                 <button class="room-delete" title="Zmazať miestnosť" aria-label="Zmazať">✕</button>
               </div>
             </div>
-            <p class="room-text">Ukáž myšou na miestnosť a uvidíš aktívnych chaterov.</p>
+            <p class="room-text">Klikni na miestnosť a prepneš sa do nej.</p>
             <div class="room-create">
               <label for="create-room">Vytvoriť miestnosť:</label>
               <input id="create-room" type="text" placeholder="Iba registrovaný a admin môže vytvoriť" disabled />
@@ -126,9 +117,12 @@
           <div class="sidebar-block">
             <h2>Príkazy</h2>
             <ul class="commands-list">
-              <li><strong>.zmaz</strong> – vymaže chatové okno</li>
+              <li><strong>.zmaz</strong> – vymaže chatové okno len u teba</li>
               <li><strong>.ignoruj meno</strong> – ignoruje používateľa</li>
+              <li><strong>.neignoruj meno</strong> – zruší ignoráciu používateľa</li>
               <li><strong>.vyhodip meno</strong> – vyhodí používateľa na 24 hodín</li>
+              <li><strong>Klik na miestnosť</strong> – otvorí ju a prepne ťa do nej</li>
+              <li><strong>1x klik na meno</strong> – adresovanie, <strong>2x klik</strong> – šepkanie</li>
             </ul>
             <p class="room-text">Napíš príkaz priamo do políčka na chat.</p>
           </div>
