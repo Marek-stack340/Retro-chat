@@ -50,9 +50,6 @@ let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 let countdownState = null;
-const LAST_SEEN_AT_KEY = 'chatLastSeenAt';
-const lastSeenBeforeJoin = Number(localStorage.getItem(LAST_SEEN_AT_KEY) || 0) || 0;
-let offlineReminderChecked = false;
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
@@ -396,35 +393,10 @@ function speakOfflineReminderLine() {
   }
 }
 
-function markChatSeenNow() {
-  localStorage.setItem(LAST_SEEN_AT_KEY, String(Date.now()));
-}
-
-function maybeNotifyOfflineMessages(msgs) {
-  if (offlineReminderChecked) return;
-  offlineReminderChecked = true;
-  const list = Array.isArray(msgs) ? msgs : [];
-  if (!list.length || !lastSeenBeforeJoin) {
-    markChatSeenNow();
-    return;
-  }
-
-  const unseenFromOthers = list.some((msg) => {
-    if (!msg || msg.system || msg.private) return false;
-    if ((msg.username || '').toLowerCase() === (currentUsername || '').toLowerCase()) return false;
-    const ts = new Date(msg.timestamp || 0).getTime();
-    return Number.isFinite(ts) && ts > lastSeenBeforeJoin;
-  });
-
-  if (unseenFromOthers) {
-    addMessage({
-      system: true,
-      text: 'Počas neprítomnosti ti prišli nové správy.',
-      timestamp: new Date().toISOString()
-    });
-    speakOfflineReminderLine();
-  }
-  markChatSeenNow();
+function isAwayFromChat() {
+  const hidden = document.visibilityState !== 'visible';
+  const notFocused = typeof document.hasFocus === 'function' ? !document.hasFocus() : false;
+  return hidden || notFocused;
 }
 
 function speakCountdownValue(value) {
@@ -1131,7 +1103,6 @@ setInterval(checkInactivityLogout, 60 * 1000);
 socket.on('load-messages', (msgs) => {
   publicMessageHistory = Array.isArray(msgs) ? msgs.filter((msg) => !msg.private && !msg.system) : [];
   renderVisibleMessages();
-  maybeNotifyOfflineMessages(publicMessageHistory);
 });
 
 socket.on('receive-message', (m) => {
@@ -1142,9 +1113,12 @@ socket.on('receive-message', (m) => {
     addMessage(m);
   }
   if (isVisible && m && m.username && m.username !== currentUsername) {
-    notifyIncomingMessage(m.username, m.text);
+    if (isAwayFromChat()) {
+      speakOfflineReminderLine();
+    } else {
+      notifyIncomingMessage(m.username, m.text);
+    }
   }
-  markChatSeenNow();
 });
 
 socket.on('system-message', (msg) => {
@@ -1322,9 +1296,12 @@ socket.on('receive-private-message', (m) => {
     toUsername: m.toUsername
   });
   if (!m.self) {
-    notifyIncomingMessage(m.from, m.text || 'Sukromna sprava');
+    if (isAwayFromChat()) {
+      speakOfflineReminderLine();
+    } else {
+      notifyIncomingMessage(m.from, m.text || 'Sukromna sprava');
+    }
   }
-  markChatSeenNow();
 });
 
 function showToast(message) {
@@ -1467,14 +1444,3 @@ messagesDiv?.addEventListener('click', (event) => {
 
   socket.emit('toggle-reaction', { messageId, emoji });
 });
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    markChatSeenNow();
-  }
-});
-
-window.addEventListener('beforeunload', () => {
-  markChatSeenNow();
-});
-      
