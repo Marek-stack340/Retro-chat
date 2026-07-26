@@ -5,6 +5,7 @@ const messageInput = document.getElementById('message-input');
 const activeUsersCount = document.getElementById('active-users-count');
 const usersList = document.getElementById('users-list');
 const currentUsernameDisplay = document.getElementById('current-username-display');
+const myPointsDisplay = document.getElementById('my-points-display');
 const navLogout = document.getElementById('nav-logout');
 const navHelp = document.getElementById('nav-help');
 const navProfile = document.getElementById('nav-profile');
@@ -235,6 +236,7 @@ let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
 let privateTargetId = null;
 let privateTargetName = null;
 let activeUsers = [];
+let oddychPoints = {};
 const ignoreList = new Set(JSON.parse(localStorage.getItem('chatIgnoreList') || '[]'));
 const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || '[]'));
 const onlineFriends = new Set();
@@ -580,6 +582,16 @@ function normalizeName(value) {
   return (value || '').toString().trim().toLowerCase();
 }
 
+function getOddychPoints(username) {
+  const key = normalizeName(username);
+  return Number(oddychPoints[key] || 0);
+}
+
+function refreshMyPoints() {
+  if (!myPointsDisplay) return;
+  myPointsDisplay.textContent = String(getOddychPoints(currentUsername));
+}
+
 function isFriend(username) {
   return friendList.has(normalizeName(username));
 }
@@ -785,15 +797,17 @@ function updateUserList(users) {
   if (currentUsernameDisplay) {
     currentUsernameDisplay.textContent = currentUsername;
   }
+  refreshMyPoints();
   if (!usersList) return;
   usersList.innerHTML = '';
   users.forEach((user) => {
     const li = document.createElement('li');
     const name = user.username;
+    const points = getOddychPoints(name);
     const nameSpan = document.createElement('span');
     nameSpan.textContent = user.role === 'admin'
-      ? `${name} [admin]`
-      : (user.role === 'tester' ? `${name} [tester]` : name);
+      ? `${name} [admin] · ${points} OB`
+      : (user.role === 'tester' ? `${name} [tester] · ${points} OB` : `${name} · ${points} OB`);
     li.appendChild(nameSpan);
 
     if (user.username === currentUsername) {
@@ -1130,6 +1144,14 @@ socket.on('user-list', (users) => {
   updateUserList(users);
   notifyFriendOnlineStatus(users);
   refreshPrivateStatus();
+});
+
+socket.on('user-points', (pointsSnapshot) => {
+  oddychPoints = pointsSnapshot && typeof pointsSnapshot === 'object' ? pointsSnapshot : {};
+  refreshMyPoints();
+  if (Array.isArray(activeUsers) && activeUsers.length) {
+    updateUserList(activeUsers);
+  }
 });
 
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {

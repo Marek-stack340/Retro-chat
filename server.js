@@ -39,6 +39,7 @@ const accounts = new Map();
 const authTokens = new Map();
 const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
 const testerUsernames = new Set(['kika_c123']);
+const oddychPoints = new Map();
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
 
 const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
@@ -79,6 +80,38 @@ function normalizeUsername(value) {
 
 function normalizeRoomName(value) {
   return (value || '').toString().trim().replace(/\s+/g, ' ').slice(0, 40) || 'Spoločná';
+}
+
+function normalizePointsKey(username) {
+  return normalizeUsername(username).toLowerCase();
+}
+
+function ensureOddychPoints(username) {
+  const key = normalizePointsKey(username);
+  if (!key) return;
+  if (!oddychPoints.has(key)) {
+    oddychPoints.set(key, 0);
+  }
+}
+
+function getOddychPointsSnapshot() {
+  const snapshot = {};
+  for (const [key, value] of oddychPoints.entries()) {
+    snapshot[key] = Number(value || 0);
+  }
+  return snapshot;
+}
+
+function broadcastOddychPoints() {
+  io.emit('user-points', getOddychPointsSnapshot());
+}
+
+function addOddychPoints(username, delta) {
+  const key = normalizePointsKey(username);
+  if (!key) return;
+  ensureOddychPoints(username);
+  oddychPoints.set(key, Number(oddychPoints.get(key) || 0) + Number(delta || 0));
+  broadcastOddychPoints();
 }
 
 function isValidUsername(username) {
@@ -207,6 +240,7 @@ io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
   socket.emit('user-list', Array.from(users.values()));
+  socket.emit('user-points', getOddychPointsSnapshot());
 
   const allowJoin = createSocketThrottle(4, 60 * 1000);
   const allowMessage = createSocketThrottle(20, 10 * 1000);
@@ -247,7 +281,9 @@ io.on('connection', (socket) => {
         ? 'admin'
         : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
     });
+    ensureOddychPoints(safeUsername);
     broadcastUserList();
+    broadcastOddychPoints();
   });
 
   socket.on('command', (data) => {
@@ -326,6 +362,7 @@ io.on('connection', (socket) => {
       reactions: {}
     };
     messages.push(msg);
+    addOddychPoints(user.username, 2);
     io.emit('receive-message', msg);
   });
 
@@ -365,6 +402,7 @@ io.on('connection', (socket) => {
       reactedUsers.splice(existingIndex, 1);
     } else {
       reactedUsers.push(user.username);
+      addOddychPoints(user.username, 1);
     }
 
     if (reactedUsers.length > 0) {
@@ -397,6 +435,8 @@ io.on('connection', (socket) => {
       timestamp: new Date().toISOString(),
       self: false
     };
+
+    addOddychPoints(user.username, 1);
 
     const targetSocket = io.sockets.sockets.get(toId);
     if (targetSocket) {
