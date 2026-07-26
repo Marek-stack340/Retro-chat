@@ -1113,11 +1113,7 @@ socket.on('receive-message', (m) => {
     addMessage(m);
   }
   if (isVisible && m && m.username && m.username !== currentUsername) {
-    if (isAwayFromChat()) {
-      speakOfflineReminderLine();
-    } else {
-      notifyIncomingMessage(m.username, m.text);
-    }
+    speakOfflineReminderLine();
   }
 });
 
@@ -1296,11 +1292,7 @@ socket.on('receive-private-message', (m) => {
     toUsername: m.toUsername
   });
   if (!m.self) {
-    if (isAwayFromChat()) {
-      speakOfflineReminderLine();
-    } else {
-      notifyIncomingMessage(m.from, m.text || 'Sukromna sprava');
-    }
+    speakOfflineReminderLine();
   }
 });
 
