@@ -114,6 +114,24 @@ function addOddychPoints(username, delta) {
   broadcastOddychPoints();
 }
 
+function redeemAllOddychPoints(username) {
+  const key = normalizePointsKey(username);
+  if (!key) {
+    return { ok: false, redeemed: 0, balance: 0 };
+  }
+
+  ensureOddychPoints(username);
+  const current = Number(oddychPoints.get(key) || 0);
+  if (current <= 0) {
+    return { ok: false, redeemed: 0, balance: current };
+  }
+
+  const nextValue = 0;
+  oddychPoints.set(key, nextValue);
+  broadcastOddychPoints();
+  return { ok: true, redeemed: current, balance: nextValue };
+}
+
 function isValidUsername(username) {
   return usernamePattern.test(username);
 }
@@ -245,6 +263,7 @@ io.on('connection', (socket) => {
   const allowJoin = createSocketThrottle(4, 60 * 1000);
   const allowMessage = createSocketThrottle(20, 10 * 1000);
   const allowPrivateMessage = createSocketThrottle(10, 10 * 1000);
+  const allowRedeem = createSocketThrottle(3, 5 * 60 * 1000);
 
   socket.on('join', (data) => {
     if (!allowJoin()) {
@@ -338,6 +357,42 @@ io.on('connection', (socket) => {
     io.emit('countdown:start', {
       value,
       byUsername: user.username || 'Správca'
+    });
+  });
+
+  socket.on('redeem-points', () => {
+    if (!allowRedeem()) {
+      socket.emit('redeem-result', {
+        ok: false,
+        message: 'Počkaj chvíľu, žiadosť o výmenu môžeš poslať neskôr.'
+      });
+      return;
+    }
+
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('redeem-result', { ok: false, message: 'Najprv sa prihlás do chatu.' });
+      return;
+    }
+
+    if (user.role !== 'admin') {
+      socket.emit('redeem-result', { ok: false, message: 'Výmenu bodov môže spustiť iba Správca/admin.' });
+      return;
+    }
+
+    const result = redeemAllOddychPoints(user.username);
+    if (!result.ok) {
+      socket.emit('redeem-result', {
+        ok: false,
+        message: 'Nemáš žiadne Oddych body na výmenu.'
+      });
+      return;
+    }
+
+    io.emit('system-message', `💸 ${user.username} si vymenil ${result.redeemed} OB za žiadosť o reálne vyplatenie.`);
+    socket.emit('redeem-result', {
+      ok: true,
+      message: `Žiadosť o výmenu bola odoslaná. Vymenené body: ${result.redeemed} OB.`
     });
   });
 
