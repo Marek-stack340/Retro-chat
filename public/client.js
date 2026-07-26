@@ -14,6 +14,10 @@ const navSettings = document.getElementById('nav-settings');
 const navQuicklink = document.getElementById('nav-quicklink');
 const navMessenger = document.getElementById('nav-messenger');
 const chatApp = document.querySelector('.chat-app');
+const newsHistoryToggle = document.getElementById('news-history-toggle');
+const newsHistoryPanel = document.getElementById('news-history-panel');
+const newsHistoryClose = document.getElementById('news-history-close');
+const newsHistoryBackdrop = document.getElementById('news-history-backdrop');
 
 const privateStatus = document.getElementById('private-status');
 const privateTargetNameDisplay = document.getElementById('private-target-name');
@@ -46,6 +50,9 @@ let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 let countdownState = null;
+const LAST_SEEN_AT_KEY = 'chatLastSeenAt';
+const lastSeenBeforeJoin = Number(localStorage.getItem(LAST_SEEN_AT_KEY) || 0) || 0;
+let offlineReminderChecked = false;
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
@@ -371,6 +378,55 @@ function speakNotificationLine() {
   }
 }
 
+function speakOfflineReminderLine() {
+  try {
+    playNotificationTone();
+    setTimeout(() => {
+      if (!('speechSynthesis' in window)) return;
+      const utterance = new SpeechSynthesisUtterance('Pod si pozriet spravu, ty parena babka!');
+      utterance.lang = 'sk-SK';
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }, 260);
+  } catch (_) {
+    // Ignore offline reminder speech errors silently.
+  }
+}
+
+function markChatSeenNow() {
+  localStorage.setItem(LAST_SEEN_AT_KEY, String(Date.now()));
+}
+
+function maybeNotifyOfflineMessages(msgs) {
+  if (offlineReminderChecked) return;
+  offlineReminderChecked = true;
+  const list = Array.isArray(msgs) ? msgs : [];
+  if (!list.length || !lastSeenBeforeJoin) {
+    markChatSeenNow();
+    return;
+  }
+
+  const unseenFromOthers = list.some((msg) => {
+    if (!msg || msg.system || msg.private) return false;
+    if ((msg.username || '').toLowerCase() === (currentUsername || '').toLowerCase()) return false;
+    const ts = new Date(msg.timestamp || 0).getTime();
+    return Number.isFinite(ts) && ts > lastSeenBeforeJoin;
+  });
+
+  if (unseenFromOthers) {
+    addMessage({
+      system: true,
+      text: 'Počas neprítomnosti ti prišli nové správy.',
+      timestamp: new Date().toISOString()
+    });
+    speakOfflineReminderLine();
+  }
+  markChatSeenNow();
+}
+
 function speakCountdownValue(value) {
   try {
     if (!('speechSynthesis' in window)) return;
@@ -384,6 +440,22 @@ function speakCountdownValue(value) {
   } catch (_) {
     // Ignore countdown speech errors silently.
   }
+}
+
+function openNewsHistory() {
+  if (!newsHistoryPanel || !newsHistoryBackdrop) return;
+  newsHistoryPanel.classList.add('open');
+  newsHistoryBackdrop.classList.add('open');
+  newsHistoryPanel.setAttribute('aria-hidden', 'false');
+  newsHistoryBackdrop.setAttribute('aria-hidden', 'false');
+}
+
+function closeNewsHistory() {
+  if (!newsHistoryPanel || !newsHistoryBackdrop) return;
+  newsHistoryPanel.classList.remove('open');
+  newsHistoryBackdrop.classList.remove('open');
+  newsHistoryPanel.setAttribute('aria-hidden', 'true');
+  newsHistoryBackdrop.setAttribute('aria-hidden', 'true');
 }
 
 async function enterCountdownFullscreen() {
@@ -406,10 +478,10 @@ async function exitCountdownFullscreen() {
   }
 }
 
-function renderCountdownOverlay(value, total) {
+function renderCountdownOverlay(value, total, headlineText) {
   if (!countdownOverlay || !countdownValueEl || !countdownLabelEl) return;
   countdownValueEl.textContent = String(value);
-  countdownLabelEl.textContent = total ? `Odpočítavam od ${total}` : 'Odpočítavanie';
+  countdownLabelEl.textContent = headlineText || (total ? `Odpočítavam od ${total}` : 'Odpočítavanie');
   countdownOverlay.classList.add('visible');
   document.body.classList.add('countdown-active');
 }
@@ -440,7 +512,7 @@ function stopCountdown() {
   exitCountdownFullscreen();
 }
 
-function startCountdown(rawValue) {
+function startCountdown(rawValue, options = {}) {
   const total = Math.floor(Number(rawValue));
   if (!Number.isFinite(total) || total < 1) {
     showToast('Použi .countdown číslo väčšie ako 0, napríklad .countdown 10');
@@ -456,10 +528,11 @@ function startCountdown(rawValue) {
     total,
     current: total,
     timer: null,
-    finishTimeout: null
+    finishTimeout: null,
+    headline: options.headline || `Odpočítavam od ${total}`
   };
 
-  renderCountdownOverlay(total, total);
+  renderCountdownOverlay(total, total, countdownState.headline);
   speakCountdownValue(total);
   enterCountdownFullscreen();
 
@@ -473,7 +546,7 @@ function startCountdown(rawValue) {
         countdownState.timer = null;
       }
       if (countdownValueEl) countdownValueEl.textContent = 'Štart!';
-      if (countdownLabelEl) countdownLabelEl.textContent = 'Odpočítavanie skončilo';
+      if (countdownLabelEl) countdownLabelEl.textContent = countdownState.headline;
       speakCountdownValue('Štart');
       countdownState.finishTimeout = setTimeout(() => {
         stopCountdown();
@@ -481,7 +554,7 @@ function startCountdown(rawValue) {
       return;
     }
 
-    renderCountdownOverlay(countdownState.current, countdownState.total);
+    renderCountdownOverlay(countdownState.current, countdownState.total, countdownState.headline);
     speakCountdownValue(countdownState.current);
   }, 1000);
 }
@@ -1058,6 +1131,7 @@ setInterval(checkInactivityLogout, 60 * 1000);
 socket.on('load-messages', (msgs) => {
   publicMessageHistory = Array.isArray(msgs) ? msgs.filter((msg) => !msg.private && !msg.system) : [];
   renderVisibleMessages();
+  maybeNotifyOfflineMessages(publicMessageHistory);
 });
 
 socket.on('receive-message', (m) => {
@@ -1070,6 +1144,7 @@ socket.on('receive-message', (m) => {
   if (isVisible && m && m.username && m.username !== currentUsername) {
     notifyIncomingMessage(m.username, m.text);
   }
+  markChatSeenNow();
 });
 
 socket.on('system-message', (msg) => {
@@ -1089,6 +1164,13 @@ socket.on('user-list', (users) => {
 
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
+});
+
+socket.on('countdown:start', ({ value, byUsername }) => {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 1) return;
+  const who = (byUsername || 'Správca').toString();
+  startCountdown(n, { headline: `${who} dal príkaz .countdown ${n}` });
 });
 
 function sendMessage() {
@@ -1112,7 +1194,12 @@ function sendMessage() {
       messageInput.value = '';
       return;
     }
-    startCountdown(valueText);
+    if (!canManageRooms()) {
+      showToast('Príkaz .countdown môže spustiť iba Správca/admin.');
+      messageInput.value = '';
+      return;
+    }
+    socket.emit('countdown:start', { value: valueText });
     messageInput.value = '';
     return;
   }
@@ -1237,6 +1324,7 @@ socket.on('receive-private-message', (m) => {
   if (!m.self) {
     notifyIncomingMessage(m.from, m.text || 'Sukromna sprava');
   }
+  markChatSeenNow();
 });
 
 function showToast(message) {
@@ -1280,6 +1368,21 @@ navQuicklink?.addEventListener('click', (event) => {
     return;
   }
   showToast('Zatiaľ žiadny iný chater pre odkazovač.');
+});
+newsHistoryToggle?.addEventListener('click', (event) => {
+  event.preventDefault();
+  openNewsHistory();
+});
+newsHistoryClose?.addEventListener('click', () => {
+  closeNewsHistory();
+});
+newsHistoryBackdrop?.addEventListener('click', () => {
+  closeNewsHistory();
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeNewsHistory();
+  }
 });
 navMessenger?.addEventListener('click', (event) => {
   event.preventDefault();
@@ -1363,5 +1466,15 @@ messagesDiv?.addEventListener('click', (event) => {
   if (!messageId || !emoji) return;
 
   socket.emit('toggle-reaction', { messageId, emoji });
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    markChatSeenNow();
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  markChatSeenNow();
 });
       

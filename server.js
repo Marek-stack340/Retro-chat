@@ -285,6 +285,26 @@ io.on('connection', (socket) => {
     io.emit('system-message', `${fromUser.username} vyhodil ${targetName} na 24 hodín.`);
   });
 
+  socket.on('countdown:start', (data) => {
+    const user = users.get(socket.id);
+    if (!user) return;
+    if (user.role !== 'admin') {
+      socket.emit('system-message', 'Príkaz .countdown môže použiť iba Správca/admin.');
+      return;
+    }
+
+    const value = Math.floor(Number(data && data.value));
+    if (!Number.isFinite(value) || value < 1 || value > 9999) {
+      socket.emit('system-message', 'Použi .countdown s číslom od 1 do 9999.');
+      return;
+    }
+
+    io.emit('countdown:start', {
+      value,
+      byUsername: user.username || 'Správca'
+    });
+  });
+
   socket.on('send-message', (data) => {
     if (!allowMessage()) {
       socket.emit('system-message', 'Spomaľ trochu, posielaš správy príliš rýchlo.');
