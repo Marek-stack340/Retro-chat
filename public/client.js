@@ -504,7 +504,8 @@ function startCountdown(rawValue, options = {}) {
     current: total,
     timer: null,
     finishTimeout: null,
-    headline: options.headline || `Odpočítavam od ${total}`
+    headline: options.headline || `Odpočítavam od ${total}`,
+    finishText: options.finishText || 'Štart!'
   };
 
   renderCountdownOverlay(total, total, countdownState.headline);
@@ -520,9 +521,9 @@ function startCountdown(rawValue, options = {}) {
         clearInterval(countdownState.timer);
         countdownState.timer = null;
       }
-      if (countdownValueEl) countdownValueEl.textContent = 'Štart!';
+      if (countdownValueEl) countdownValueEl.textContent = countdownState.finishText;
       if (countdownLabelEl) countdownLabelEl.textContent = countdownState.headline;
-      speakCountdownValue('Štart');
+      speakCountdownValue(countdownState.finishText);
       countdownState.finishTimeout = setTimeout(() => {
         stopCountdown();
       }, 1000);
@@ -1184,11 +1185,15 @@ socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
 });
 
-socket.on('countdown:start', ({ value, byUsername }) => {
+socket.on('countdown:start', ({ value, byUsername, rewardText }) => {
   const n = Math.floor(Number(value));
   if (!Number.isFinite(n) || n < 1) return;
   const who = (byUsername || 'Správca').toString();
-  startCountdown(n, { headline: `${who} dal príkaz .countdown ${n}` });
+  const bonusText = rewardText || `Dostávaš ${n} bodov!`;
+  startCountdown(n, {
+    headline: `${who} spustil odpočítanie`,
+    finishText: bonusText
+  });
 });
 
 function sendMessage() {

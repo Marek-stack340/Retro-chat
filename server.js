@@ -114,6 +114,26 @@ function addOddychPoints(username, delta) {
   broadcastOddychPoints();
 }
 
+function addOddychPointsToAllActiveUsers(delta) {
+  const amount = Math.floor(Number(delta));
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+
+  let updatedCount = 0;
+  for (const user of users.values()) {
+    const key = normalizePointsKey(user.username);
+    if (!key) continue;
+    ensureOddychPoints(user.username);
+    oddychPoints.set(key, Number(oddychPoints.get(key) || 0) + amount);
+    updatedCount += 1;
+  }
+
+  if (updatedCount > 0) {
+    broadcastOddychPoints();
+  }
+
+  return updatedCount;
+}
+
 function redeemAllOddychPoints(username) {
   const key = normalizePointsKey(username);
   if (!key) {
@@ -354,9 +374,15 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const rewardedUsers = addOddychPointsToAllActiveUsers(value);
+    io.emit('system-message', `${user.username} spustil odpočet. Každý v chate dostáva ${value} bodov.`);
+
     io.emit('countdown:start', {
       value,
-      byUsername: user.username || 'Správca'
+      byUsername: user.username || 'Správca',
+      rewardPoints: value,
+      rewardText: `Dostávaš ${value} bodov!`,
+      rewardedUsers
     });
   });
 
