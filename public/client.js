@@ -50,6 +50,7 @@ let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 let countdownState = null;
+let kozaModeEnabled = false;
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
@@ -641,6 +642,10 @@ function normalizeRoomName(value) {
   return (value || '').toString().trim().replace(/\s+/g, ' ').slice(0, 40) || 'Spoločná';
 }
 
+function displayChatName(name) {
+  return kozaModeEnabled ? 'kozla' : name;
+}
+
 function saveRoomList() {
   if (!roomsList) return;
   const roomNames = Array.from(roomsList.querySelectorAll('.room-item'))
@@ -730,7 +735,7 @@ function addMessage(m) {
     ? `<div class="private-label">${m.self ? `Súkromné → ${escapeHtml(m.toUsername || '')}` : 'Súkromné'}</div>`
     : '';
   bubble.innerHTML = `
-    <div class="from"><strong>${escapeHtml(m.username)}</strong></div>
+    <div class="from"><strong>${escapeHtml(displayChatName(m.username))}</strong></div>
     ${privateLabel}
     <div class="text">${escapeHtml(m.text)}</div>
     <div class="meta">${new Date(m.timestamp || Date.now()).toLocaleString()}</div>
@@ -783,17 +788,18 @@ function updateUserList(users) {
     activeUsersCount.textContent = users.length;
   }
   if (currentUsernameDisplay) {
-    currentUsernameDisplay.textContent = currentUsername;
+    currentUsernameDisplay.textContent = displayChatName(currentUsername);
   }
   if (!usersList) return;
   usersList.innerHTML = '';
   users.forEach((user) => {
     const li = document.createElement('li');
     const name = user.username;
+    const shownName = displayChatName(name);
     const nameSpan = document.createElement('span');
     nameSpan.textContent = user.role === 'admin'
-      ? `${name} [admin]`
-      : (user.role === 'tester' ? `${name} [tester]` : name);
+      ? `${shownName} [admin]`
+      : (user.role === 'tester' ? `${shownName} [tester]` : shownName);
     li.appendChild(nameSpan);
 
     if (user.username === currentUsername) {
@@ -1079,7 +1085,7 @@ function sendJoin() {
   currentUsername = localStorage.getItem('chatUsername')?.trim() || 'Správca';
   if (!currentUsername) currentUsername = 'Správca';
   if (currentUsernameDisplay) {
-    currentUsernameDisplay.textContent = currentUsername;
+    currentUsernameDisplay.textContent = displayChatName(currentUsername);
   }
   updateCreateRoomControl();
   socket.emit('join', { username: currentUsername, room: currentRoom });
@@ -1136,6 +1142,19 @@ socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
 });
 
+socket.on('koza:mode', ({ enabled, byUsername }) => {
+  kozaModeEnabled = !!enabled;
+  renderVisibleMessages();
+  updateUserList(activeUsers);
+  if (enabled && byUsername) {
+    addMessage({
+      system: true,
+      text: `${byUsername} spustil/a príkaz .koza. Všetci ste teraz kozla.`,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 socket.on('countdown:start', ({ value, byUsername }) => {
   const n = Math.floor(Number(value));
   if (!Number.isFinite(n) || n < 1) return;
@@ -1152,6 +1171,12 @@ function sendMessage() {
     localStorage.setItem('chatClearAt', String(lastClearTime));
     renderVisibleMessages();
     showToast('Okno vymazané.');
+    messageInput.value = '';
+    return;
+  }
+
+  if (text.toLowerCase() === '.koza') {
+    socket.emit('koza:enable');
     messageInput.value = '';
     return;
   }
@@ -1311,7 +1336,7 @@ navLogout?.addEventListener('click', (event) => {
 });
 navHelp?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, .countdown 10 spustí hlasný odpočet, klik na meno adresuje, dvojklik pošle šepkanie a klik na miestnosť ju otvorí.');
+  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, .countdown 10 spustí hlasný odpočet, .koza premenuje mená všetkých na kozla, klik na meno adresuje, dvojklik pošle šepkanie a klik na miestnosť ju otvorí.');
 });
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();

@@ -39,6 +39,7 @@ const accounts = new Map();
 const authTokens = new Map();
 const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
 const testerUsernames = new Set(['kika_c123']);
+let kozaModeEnabled = false;
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
 
 const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
@@ -207,6 +208,7 @@ io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
   socket.emit('user-list', Array.from(users.values()));
+  socket.emit('koza:mode', { enabled: kozaModeEnabled });
 
   const allowJoin = createSocketThrottle(4, 60 * 1000);
   const allowMessage = createSocketThrottle(20, 10 * 1000);
@@ -301,6 +303,16 @@ io.on('connection', (socket) => {
 
     io.emit('countdown:start', {
       value,
+      byUsername: user.username || 'Správca'
+    });
+  });
+
+  socket.on('koza:enable', () => {
+    const user = users.get(socket.id);
+    if (!user) return;
+    kozaModeEnabled = true;
+    io.emit('koza:mode', {
+      enabled: true,
       byUsername: user.username || 'Správca'
     });
   });
