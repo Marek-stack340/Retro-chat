@@ -35,6 +35,9 @@ const callCallerName = document.getElementById('call-caller-name');
 const callAcceptBtn = document.getElementById('call-accept-btn');
 const callRejectBtn = document.getElementById('call-reject-btn');
 const remoteAudio = document.getElementById('remote-audio');
+const countdownOverlay = document.getElementById('countdown-overlay');
+const countdownValueEl = document.getElementById('countdown-value');
+const countdownLabelEl = document.getElementById('countdown-label');
 
 let callState = null;
 let pendingCall = null;
@@ -42,6 +45,7 @@ let pendingIceCandidates = [];
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
+let countdownState = null;
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
@@ -365,6 +369,121 @@ function speakNotificationLine() {
   } catch (_) {
     // Ignore speech errors silently.
   }
+}
+
+function speakCountdownValue(value) {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(String(value));
+    utterance.lang = 'sk-SK';
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  } catch (_) {
+    // Ignore countdown speech errors silently.
+  }
+}
+
+async function enterCountdownFullscreen() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (_) {
+    // Fullscreen can fail in some browsers; keep the overlay visible anyway.
+  }
+}
+
+async function exitCountdownFullscreen() {
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch (_) {
+    // Ignore fullscreen exit errors.
+  }
+}
+
+function renderCountdownOverlay(value, total) {
+  if (!countdownOverlay || !countdownValueEl || !countdownLabelEl) return;
+  countdownValueEl.textContent = String(value);
+  countdownLabelEl.textContent = total ? `Odpočítavam od ${total}` : 'Odpočítavanie';
+  countdownOverlay.classList.add('visible');
+  document.body.classList.add('countdown-active');
+}
+
+function hideCountdownOverlay() {
+  if (countdownOverlay) {
+    countdownOverlay.classList.remove('visible');
+  }
+  document.body.classList.remove('countdown-active');
+}
+
+function stopCountdown() {
+  if (!countdownState) {
+    hideCountdownOverlay();
+    return;
+  }
+  if (countdownState.timer) {
+    clearInterval(countdownState.timer);
+  }
+  if (countdownState.finishTimeout) {
+    clearTimeout(countdownState.finishTimeout);
+  }
+  countdownState = null;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  hideCountdownOverlay();
+  exitCountdownFullscreen();
+}
+
+function startCountdown(rawValue) {
+  const total = Math.floor(Number(rawValue));
+  if (!Number.isFinite(total) || total < 1) {
+    showToast('Použi .countdown číslo väčšie ako 0, napríklad .countdown 10');
+    return;
+  }
+  if (total > 9999) {
+    showToast('Skús číslo od 1 do 9999.');
+    return;
+  }
+
+  stopCountdown();
+  countdownState = {
+    total,
+    current: total,
+    timer: null,
+    finishTimeout: null
+  };
+
+  renderCountdownOverlay(total, total);
+  speakCountdownValue(total);
+  enterCountdownFullscreen();
+
+  countdownState.timer = setInterval(() => {
+    if (!countdownState) return;
+    countdownState.current -= 1;
+
+    if (countdownState.current <= 0) {
+      if (countdownState.timer) {
+        clearInterval(countdownState.timer);
+        countdownState.timer = null;
+      }
+      if (countdownValueEl) countdownValueEl.textContent = 'Štart!';
+      if (countdownLabelEl) countdownLabelEl.textContent = 'Odpočítavanie skončilo';
+      speakCountdownValue('Štart');
+      countdownState.finishTimeout = setTimeout(() => {
+        stopCountdown();
+      }, 1000);
+      return;
+    }
+
+    renderCountdownOverlay(countdownState.current, countdownState.total);
+    speakCountdownValue(countdownState.current);
+  }, 1000);
 }
 
 function notifyIncomingMessage(fromName, previewText) {
@@ -985,6 +1104,19 @@ function sendMessage() {
     return;
   }
 
+  const countdownMatch = text.match(/^\.countdown(?:\s+(.+))?$/i);
+  if (countdownMatch) {
+    const valueText = (countdownMatch[1] || '').trim();
+    if (!valueText) {
+      showToast('Použi .countdown číslo, napríklad .countdown 10');
+      messageInput.value = '';
+      return;
+    }
+    startCountdown(valueText);
+    messageInput.value = '';
+    return;
+  }
+
   if (text.startsWith('.ignoruj')) {
     const parts = text.split(' ');
     const target = parts.slice(1).join(' ').trim();
@@ -1122,7 +1254,7 @@ navLogout?.addEventListener('click', (event) => {
 });
 navHelp?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, klik na meno adresuje a dvojklik pošle šepkanie, klik na miestnosť ju otvorí.');
+  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, .countdown 10 spustí hlasný odpočet, klik na meno adresuje, dvojklik pošle šepkanie a klik na miestnosť ju otvorí.');
 });
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();

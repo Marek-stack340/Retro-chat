@@ -118,6 +118,7 @@
             <h2>Príkazy</h2>
             <ul class="commands-list">
               <li><strong>.zmaz</strong> – vymaže chatové okno len u teba</li>
+              <li><strong>.countdown číslo</strong> – spustí hlasný fullscreen odpočet</li>
               <li><strong>.ignoruj meno</strong> – ignoruje používateľa</li>
               <li><strong>.neignoruj meno</strong> – zruší ignoráciu používateľa</li>
               <li><strong>.vyhodip meno</strong> – vyhodí používateľa na 24 hodín</li>
@@ -136,6 +137,12 @@
           </div>
         </aside>
       </main>
+    </div>
+    <div id="countdown-overlay" class="countdown-overlay" aria-live="assertive" aria-atomic="true" aria-hidden="true">
+      <div class="countdown-card">
+        <div id="countdown-label" class="countdown-label">Odpočítavanie</div>
+        <div id="countdown-value" class="countdown-value">0</div>
+      </div>
     </div>
     <script>
       const hasUsername = !!localStorage.getItem('chatUsername');
