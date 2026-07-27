@@ -32,11 +32,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#f
 .button-enter{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(180deg,#f7c65b 0%,#eea83a 100%);color:#4b2f0d;font-weight:700;cursor:pointer;box-shadow:0 8px 16px rgba(238,168,58,0.25)}
 .entry-links{margin-top:12px;color:#a85f10}
 .entry-links a{color:#c97a16;text-decoration:none;font-weight:700}
-.car-display-panel{margin-top:18px;padding:18px;border:1px solid rgba(54,123,45,0.22);border-radius:16px;background:#f0f7ee}
-.car-display-title{font-size:1.1rem;font-weight:700;color:#2f6a24;margin-bottom:8px}
-.car-display-desc{color:#3a3a3a;font-size:0.97rem;margin:0 0 14px}
-.car-display-btn{display:inline-block;padding:10px 18px;background:#3a7f2a;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;box-shadow:0 6px 14px rgba(54,123,45,0.22)}
-.car-display-btn:hover{background:#2f6a24}
+
 .times-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
 .time-entry{flex:1;padding:18px 0;background:#fff3d9;border:1px solid #e0b25c;border-radius:10px;text-align:center;font-size:1.3rem;color:#6a4110}
 .time-entry.active{background:#ffd98a;font-size:2rem;font-weight:700}
