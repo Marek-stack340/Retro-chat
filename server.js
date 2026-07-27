@@ -360,6 +360,14 @@ io.on('connection', (socket) => {
     io.emit('system-message', `${fromUser.username} vyhodil ${targetName} na 24 hodín.`);
   });
 
+  socket.on('clear-chat', () => {
+    const user = users.get(socket.id);
+    if (!user) return;
+    messages.length = 0;
+    io.emit('clear-chat');
+    io.emit('system-message', `${user.username} vymazal chat pre všetkých.`);
+  });
+
   socket.on('countdown:start', (data) => {
     const user = users.get(socket.id);
     if (!user) return;

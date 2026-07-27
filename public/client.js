@@ -1153,6 +1153,13 @@ socket.on('receive-message', (m) => {
   }
 });
 
+socket.on('clear-chat', () => {
+  lastClearTime = Date.now();
+  localStorage.setItem('chatClearAt', String(lastClearTime));
+  messagesDiv.innerHTML = '';
+  showToast('Chat bol vymazaný pre všetkých.');
+});
+
 socket.on('system-message', (msg) => {
   addMessage({ system: true, text: msg, timestamp: new Date().toISOString() });
 });
@@ -1201,10 +1208,7 @@ function sendMessage() {
   if (!text) return;
 
   if (text.startsWith('.zmaz')) {
-    lastClearTime = Date.now();
-    localStorage.setItem('chatClearAt', String(lastClearTime));
-    renderVisibleMessages();
-    showToast('Okno vymazané.');
+    socket.emit('clear-chat');
     messageInput.value = '';
     return;
   }
