@@ -1382,7 +1382,17 @@ navLogout?.addEventListener('click', (event) => {
 });
 navHelp?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast('Návod: Enter odosiela správu, Shift+Enter pridá nový riadok, .zmaz vymaže okno len u teba, .countdown 10 spustí hlasný odpočet, .vymena pošle žiadosť o výmenu všetkých OB (iba Správca/admin), klik na meno adresuje, dvojklik pošle šepkanie a klik na miestnosť ju otvorí.');
+  const overlay = document.getElementById('help-overlay');
+  if (!overlay) return;
+  const isOpen = overlay.style.display !== 'none';
+  overlay.style.display = isOpen ? 'none' : 'flex';
+});
+document.getElementById('help-close')?.addEventListener('click', () => {
+  const overlay = document.getElementById('help-overlay');
+  if (overlay) overlay.style.display = 'none';
+});
+document.getElementById('help-overlay')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
 });
 redeemPointsBtn?.addEventListener('click', () => {
   requestPointsRedeem();
