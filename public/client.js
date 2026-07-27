@@ -1260,6 +1260,14 @@ function sendMessage() {
     return;
   }
 
+  if (text.toLowerCase().startsWith('.afk')) {
+    const afkMsg = `${currentUsername} je AFK – na chvílu preč.`;
+    socket.emit('send-message', { text: afkMsg, username: currentUsername, timestamp: new Date().toISOString() });
+    showToast('AFK správa odoslaná. Budeš upozornený keď sa niekto ozve.');
+    messageInput.value = '';
+    return;
+  }
+
   if (text.startsWith('.vyhodip')) {
     const parts = text.split(' ');
     const target = parts.slice(1).join(' ').trim();
