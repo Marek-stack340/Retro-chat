@@ -171,12 +171,18 @@ body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#f
 .news-list li{margin-bottom:8px}
 
 /* Help overlay */
-.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center}
-.help-modal{background:#fff;border-radius:18px;padding:28px 32px;max-width:480px;width:90%;position:relative;box-shadow:0 20px 48px rgba(0,0,0,0.22)}
-.help-modal h2{margin:0 0 18px;font-size:1.2rem;color:#4a311e}
-.help-list{padding-left:18px;margin:0;color:#3f2a1c;line-height:1.9}
-.help-list li{margin-bottom:6px}
-.help-close{position:absolute;top:14px;right:16px;background:transparent;border:none;font-size:1.5rem;cursor:pointer;color:#6b4c33;line-height:1}
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px}
+.help-modal{background:#f5ead8;border:1px solid #b89a70;border-radius:4px;padding:0;max-width:560px;width:100%;position:relative;box-shadow:0 20px 48px rgba(0,0,0,0.28);font-size:0.93rem;color:#2e1f0e}
+.help-header-bar{background:#c8a87a;color:#fff;font-weight:700;font-size:1rem;padding:8px 14px;border-radius:4px 4px 0 0}
+.help-intro{margin:10px 14px;color:#3a2510;line-height:1.6}
+.help-section-title{font-size:1.05rem;font-weight:700;color:#5a3820;margin:14px 14px 6px;border-bottom:1px solid #c4a47a;padding-bottom:4px}
+.help-cmd-name{font-weight:700;color:#2e1f0e;margin:10px 14px 0;font-size:0.97rem}
+.help-table{width:calc(100% - 28px);margin:4px 14px 0;border-collapse:collapse;border:1px solid #c0a07a}
+.help-table tr{border-bottom:1px solid #d4b88a}
+.help-table tr:last-child{border-bottom:none}
+.help-label{background:#c8b090;color:#2e1f0e;font-weight:700;padding:6px 10px;width:72px;vertical-align:top;white-space:nowrap}
+.help-table td:last-child{background:#f5ead8;padding:6px 10px;line-height:1.5}
+.help-close{position:absolute;top:6px;right:10px;background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#fff;line-height:1;z-index:1}
 
 .news-history-backdrop{position:fixed;inset:0;background:rgba(30,20,10,0.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:1090}
 .news-history-panel{position:fixed;top:0;right:0;height:100vh;width:min(420px,92vw);background:#fffaf0;border-left:1px solid rgba(209,139,43,0.25);box-shadow:-16px 0 36px rgba(0,0,0,0.18);padding:18px 16px 20px;transform:translateX(105%);transition:transform .22s ease;z-index:1100;display:flex;flex-direction:column;gap:12px}

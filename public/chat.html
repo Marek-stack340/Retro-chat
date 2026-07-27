@@ -15,19 +15,56 @@
     <div id="help-overlay" class="help-overlay" style="display:none;">
       <div class="help-modal">
         <button id="help-close" class="help-close" aria-label="Zatvoriť">&times;</button>
-        <h2>Návod</h2>
-        <ul class="help-list">
-          <li><strong>Enter</strong> – odoslanie správy</li>
-          <li><strong>Shift+Enter</strong> – nový riadok</li>
-          <li><strong>Klik na meno</strong> – adresovanie</li>
-          <li><strong>Dvojklik na meno</strong> – súkromné šepkanie</li>
-          <li><strong>.zmaz</strong> – vymaže chat u všetkých</li>
-          <li><strong>.ignoruj meno</strong> – ignoruje používateľa</li>
-          <li><strong>.vyhodip meno</strong> – vyhodí používateľa na 24 hodín</li>
-          <li><strong>.AFK</strong> – oznámi ostatným že si preč</li>
-          <li><strong>.countdown číslo</strong> – admin spustí odpočet pre všetkých</li>
-          <li><strong>.vymena</strong> – iba správca vymiení OB za platobnú žiadosť</li>
-        </ul>
+        <div class="help-header-bar">? Návod</div>
+        <p class="help-intro"><strong>Príkazy</strong> sa píšu tam, kde sa píšu aj odkazy chaterom.<br><strong>Administrátorom</strong> je vo svojej miestnosti každý, kto si ju vytvoril.</p>
+
+        <div class="help-section-title">Šepkanie, adresovanie, ignorovanie</div>
+
+        <div class="help-cmd-name">.nick Odkaz...</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Odkaz sa zobrazí len zvolenému nicku. Dá sa aj kliknúť na zvolený nick v zozname prihlásených.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.fero Čau, toto vidíš len ty!</strong></td></tr></table>
+
+        <div class="help-cmd-name">nick:</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Odkaz sa príjemcovi zobrazí tučným písmom, preto ho rýchlejšie prečíta. Zobrazí sa tučne aj vtedy, ak je súčasťou odkazu tvoj nick.</td></tr><tr><td class="help-label">Príklad</td><td><strong>fero: Čau, toto máš napísané tučným písmom!</strong></td></tr></table>
+
+        <div class="help-cmd-name">.ignoruj</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Pridá zvolený nick do zoznamu ignorovaných nickov. Odkazy od ignorovaných nickov sa ti nezobrazujú. Zrušiť ignorovanie môžeš príkazom .neignoruj, alebo cez položku menu "Ignorovaní".</td></tr><tr><td class="help-label">Príklad</td><td><strong>.ignoruj fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">.neignoruj</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Chat ti bude opäť zobrazovať odkazy od ignorovaného nicku.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.neignoruj fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">All:</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Funguje len administrátorom miestnosti. Odkaz sa všetkým zobrazí tučným písmom.</td></tr><tr><td class="help-label">Príklad</td><td><strong>All: keď už ste v mojej miestnosti, správajte sa slušne!</strong></td></tr></table>
+
+        <div class="help-section-title">Príkaz pre všetkých</div>
+
+        <div class="help-cmd-name">.off</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Odhlási ťa z chatu.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.off</strong></td></tr></table>
+
+        <div class="help-cmd-name">.zmaz</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zmaže sklo u všetkých.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.zmaz</strong></td></tr></table>
+
+        <div class="help-cmd-name">.AFK</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Oznámi ostatným, že si na chvíľu preč.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.AFK</strong></td></tr></table>
+
+        <div class="help-section-title">Príkazy pre administrátorov</div>
+
+        <div class="help-cmd-name">.spravcom</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zvolený nick vymenuje za spolusprávcu miestnosti; ty zostávaš správcom naďalej. Nový správca môže menovať ďalších správcov.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.spravcom fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">.vpust</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Vpustí do zamknutej miestnosti užívateľa, ktorý do nej zaklopal.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vpust fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">.vyhod</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Vyhodí z miestnosti zvoleného užívateľa. Ak bol vyhodený zo súkromnej miestnosti, hodí ho to do spoločnej miestnosti. Ak bol vyhodený z verejnej miestnosti, vyhodí ho to z chatu.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vyhod fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">.vyhodip</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Najspoľahlivejšie vyhodenie, no môže vyhodiť aj iných chatujúcich – preto používať až v krajnom prípade.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vyhodip fero</strong></td></tr></table>
+
+        <div class="help-cmd-name">.zrusitmiestnost</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zruší miestnosť, v ktorej sa nachádzaš. Všetkých z nej presunie do spoločnej miestnosti.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.zrusitmiestnost</strong></td></tr></table>
+
+        <div class="help-cmd-name">.countdown číslo</div>
+        <table class="help-table"><tr><td class="help-label">Popis</td><td>Spustí hlasný fullscreen odpočet pre všetkých v chate.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.countdown 10</strong></td></tr></table>
       </div>
     </div>
     <div class="app chat-app">
