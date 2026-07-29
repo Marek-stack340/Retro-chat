@@ -1069,7 +1069,7 @@ roomsList?.addEventListener('click', (e) => {
   if (btn) {
     const isPermanent = roomEl.getAttribute('data-permanent') === 'true';
     if (isPermanent) {
-      showToast('Neblbni, stálu miestnosť nie je možné zrušiť');
+      showToast('Neblbni, stálu miestnosť neni možné zrušiť');
       return;
     }
     const removedRoom = normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', ''));
@@ -1357,7 +1357,7 @@ function sendMessage() {
     if (!canManageRooms()) {
       addMessage({
         system: true,
-        text: 'Neblbni, stálu miestnosť nie je možné zrušiť',
+        text: 'Neblbni, stálu miestnosť neni možné zrušiť',
         timestamp: new Date().toISOString()
       });
       messageInput.value = '';
