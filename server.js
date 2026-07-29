@@ -11,7 +11,7 @@ const io = require('socket.io')(server, { cors: { origin: '*' } });
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
@@ -22,6 +22,22 @@ const apiLimiter = rateLimit({
   limit: 120,
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Príliš veľa pokusov o prihlásenie. Skús to znova o chvíľu.' }
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Príliš veľa pokusov o registráciu. Skús to znova o chvíľu.' }
 });
 
 app.use('/api/', apiLimiter);
@@ -40,10 +56,18 @@ const authTokens = new Map();
 const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
 const testerUsernames = new Set(['kika_c123']);
 const oddychPoints = new Map();
+const antivirusStrikes = new Map();
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
 
 const curseWords = ['hovno', 'kurva', 'kokot', 'sranie', 'sračky', 'debil', 'blbec', 'piča', 'chuj', 'zmetok', 'sprostost', 'nadavka', 'nadávka', 'fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'fucker', 'motherfucker', 'slut', 'whore'];
 const curseWordsSet = new Set(curseWords);
+const MAX_MESSAGE_LENGTH = 280;
+const MAX_ROOM_LENGTH = 40;
+const MAX_USERNAME_LENGTH = 20;
+const SUSPICIOUS_PATTERN = /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i;
+const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.cookie|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\bcmd\.exe\b|\bpowershell\b|\bwget\s+https?:\/\/|\bcurl\s+https?:\/\/|\bmshta\b|\brundll32\b|\.exe\b|\.bat\b|\.ps1\b)/i;
+const ANTIVIRUS_MAX_STRIKES = 3;
+const ANTIVIRUS_STRIKE_WINDOW_MS = 30 * 60 * 1000;
 
 function sanitizeProfanity(text) {
   if (!text) return text;
@@ -152,6 +176,78 @@ function redeemAllOddychPoints(username) {
   return { ok: true, redeemed: current, balance: nextValue };
 }
 
+function sanitizeChatText(text) {
+  if (typeof text !== 'string') return '';
+  let cleaned = text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ');
+  cleaned = cleaned.replace(/<[^>]*>/g, ' ');
+  cleaned = cleaned.replace(/javascript:/gi, '');
+  cleaned = cleaned.replace(/on\w+=/gi, '');
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned.slice(0, MAX_MESSAGE_LENGTH);
+}
+
+function isSuspiciousText(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return false;
+  return SUSPICIOUS_PATTERN.test(trimmed) || trimmed.length > MAX_MESSAGE_LENGTH;
+}
+
+function detectDangerousContent(text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+  if (!ANTIVIRUS_DANGEROUS_PATTERN.test(value)) return null;
+  return {
+    reason: 'detegovaný podozrivý skript/škodlivý príkaz',
+    preview: value.slice(0, 80)
+  };
+}
+
+function getAntivirusState(username) {
+  const key = normalizeUsername(username).toLowerCase();
+  if (!key) return { strikes: 0, expiresAt: 0 };
+
+  const current = antivirusStrikes.get(key);
+  if (!current) return { strikes: 0, expiresAt: 0 };
+
+  if (current.expiresAt <= Date.now()) {
+    antivirusStrikes.delete(key);
+    return { strikes: 0, expiresAt: 0 };
+  }
+  return current;
+}
+
+function notifyAdminsSecurity(message) {
+  for (const [socketId, user] of users.entries()) {
+    if (!user || user.role !== 'admin') continue;
+    const targetSocket = io.sockets.sockets.get(socketId);
+    if (targetSocket) {
+      targetSocket.emit('system-message', message);
+    }
+  }
+}
+
+function registerAntivirusStrike(socket, user, threat) {
+  const key = normalizeUsername(user.username).toLowerCase();
+  if (!key) return;
+
+  const current = getAntivirusState(user.username);
+  const nextStrikes = Number(current.strikes || 0) + 1;
+  antivirusStrikes.set(key, {
+    strikes: nextStrikes,
+    expiresAt: Date.now() + ANTIVIRUS_STRIKE_WINDOW_MS
+  });
+
+  socket.emit('system-message', `🛡 Antivírus zablokoval správu (${threat.reason}). Pokus ${nextStrikes}/${ANTIVIRUS_MAX_STRIKES}.`);
+  notifyAdminsSecurity(`🛡 Antivírus: ${user.username} poslal podozrivý obsah (${threat.reason}).`);
+
+  if (nextStrikes < ANTIVIRUS_MAX_STRIKES) {
+    return;
+  }
+
+  socket.emit('system-message', '🛡 Antivírus: opakovaný podozrivý obsah bol zablokovaný. Správca môže použiť príkaz .ban meno 29 na zabanovanie na 29 hodín.');
+  notifyAdminsSecurity(`🛡 Antivírus: ${user.username} dosiahol ${nextStrikes} varovaní. Použi .ban ${user.username} 29.`);
+}
+
 function isValidUsername(username) {
   return usernamePattern.test(username);
 }
@@ -200,7 +296,7 @@ function requireAuthToken(req, res, next) {
   next();
 }
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
@@ -235,7 +331,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
@@ -295,6 +391,10 @@ io.on('connection', (socket) => {
     const safeUsername = username || 'Správca';
     socket.data.room = normalizeRoomName(data && data.room ? data.room : 'Spoločná');
     const normalizedUsername = safeUsername.toLowerCase();
+    if (safeUsername.length > MAX_USERNAME_LENGTH) {
+      socket.emit('join-denied', 'Meno je príliš dlhé. Použi max 20 znakov.');
+      return;
+    }
     if (!isValidUsername(safeUsername)) {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
       return;
@@ -326,14 +426,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('command', (data) => {
-    if (!data || data.type !== 'kick' || !data.target) return;
+    if (!data || !data.target) return;
     const fromUser = users.get(socket.id);
     if (!fromUser) return;
 
-    const targetName = data.target.trim();
+    const targetName = String(data.target).trim();
     if (!targetName) return;
     if (adminUsernames.has(targetName.toLowerCase())) {
-      socket.emit('system-message', 'Administrátora nevyhodíš.');
+      socket.emit('system-message', 'Administrátora nevyhodíš alebo nezakážeš.');
       return;
     }
 
@@ -346,6 +446,19 @@ io.on('connection', (socket) => {
     const targetSocket = io.sockets.sockets.get(targetEntry.id);
     if (!targetSocket) {
       socket.emit('system-message', `Užívateľ ${targetName} sa nenašiel.`);
+      return;
+    }
+
+    if (data.type === 'ban') {
+      const hoursValue = Number(data.hours);
+      const banHours = Number.isFinite(hoursValue) && hoursValue > 0 ? Math.min(Math.floor(hoursValue), 240) : 29;
+      const expires = Date.now() + banHours * 60 * 60 * 1000;
+      banList.set(targetName.toLowerCase(), expires);
+      targetSocket.emit('system-message', `Bol si zabanovaný na ${banHours} hodín.`);
+      targetSocket.disconnect(true);
+      users.delete(targetEntry.id);
+      broadcastUserList();
+      io.emit('system-message', `${fromUser.username} zabanoval ${targetName} na ${banHours} hodín.`);
       return;
     }
 
@@ -430,6 +543,23 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('antivirus:status', () => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('antivirus-status', {
+        ok: false,
+        message: 'Najprv sa prihlás do chatu.'
+      });
+      return;
+    }
+
+    const state = getAntivirusState(user.username);
+    socket.emit('antivirus-status', {
+      ok: true,
+      message: `🛡 Antivírus je aktívny. Tvoje varovania: ${state.strikes || 0}/${ANTIVIRUS_MAX_STRIKES}.`
+    });
+  });
+
   socket.on('send-message', (data) => {
     if (!allowMessage()) {
       socket.emit('system-message', 'Spomaľ trochu, posielaš správy príliš rýchlo.');
@@ -442,10 +572,26 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const rawText = String(data && data.text ? data.text : '');
+    const cleanedText = sanitizeChatText(rawText);
+    const dangerous = detectDangerousContent(rawText);
+    if (!cleanedText) {
+      socket.emit('system-message', 'Prázdna správa sa neodosiela.');
+      return;
+    }
+    if (dangerous) {
+      registerAntivirusStrike(socket, user, dangerous);
+      return;
+    }
+    if (isSuspiciousText(rawText)) {
+      socket.emit('system-message', 'Správa obsahuje nebezpečný obsah a nebola odoslaná.');
+      return;
+    }
+
     const msg = {
       id: Date.now(),
       username: user.username || 'Správca',
-      text: sanitizeProfanity(data.text || ''),
+      text: sanitizeProfanity(cleanedText),
       timestamp: new Date().toISOString(),
       room: normalizeRoomName(data && data.room ? data.room : socket.data.room || 'Spoločná'),
       reactions: {}
@@ -462,10 +608,20 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const text = String(data && data.text ? data.text : '').trim();
-    if (!text) return;
+    const rawText = String(data && data.text ? data.text : '');
+    const cleanedText = sanitizeChatText(rawText);
+    const dangerous = detectDangerousContent(rawText);
+    if (!cleanedText) return;
+    if (dangerous) {
+      registerAntivirusStrike(socket, user, dangerous);
+      return;
+    }
+    if (isSuspiciousText(rawText)) {
+      socket.emit('system-message', 'Oznam obsahuje nebezpečný obsah a nebol odoslaný.');
+      return;
+    }
 
-    io.emit('system-message', `📢 ${user.username}: ${sanitizeProfanity(text)}`);
+    io.emit('system-message', `📢 ${user.username}: ${sanitizeProfanity(cleanedText)}`);
   });
 
   socket.on('notify-ignored', (data) => {
@@ -525,15 +681,25 @@ io.on('connection', (socket) => {
       return;
     }
     const user = users.get(socket.id);
-    const text = data && data.text ? sanitizeProfanity(data.text.toString().trim()) : '';
+    const rawText = data && data.text ? data.text.toString() : '';
+    const text = sanitizeChatText(rawText);
+    const dangerous = detectDangerousContent(rawText);
     const toId = data && data.to;
     if (!user || !toId || !text) return;
+    if (dangerous) {
+      registerAntivirusStrike(socket, user, dangerous);
+      return;
+    }
+    if (isSuspiciousText(rawText)) {
+      socket.emit('system-message', 'Súkromná správa obsahuje nebezpečný obsah a nebola odoslaná.');
+      return;
+    }
 
     const payload = {
       id: Date.now(),
       from: user.username,
       to: toId,
-      text,
+      text: sanitizeProfanity(text),
       timestamp: new Date().toISOString(),
       self: false
     };

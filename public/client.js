@@ -1188,6 +1188,11 @@ socket.on('redeem-result', (payload) => {
   showToast(message);
 });
 
+socket.on('antivirus-status', (payload) => {
+  const message = payload && payload.message ? payload.message : 'Antivírusový stav nie je dostupný.';
+  showToast(message);
+});
+
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
 });
@@ -1249,6 +1254,12 @@ function sendMessage() {
     return;
   }
 
+  if (text.toLowerCase() === '.antivirus') {
+    socket.emit('antivirus:status');
+    messageInput.value = '';
+    return;
+  }
+
   if (text.startsWith('.ignoruj')) {
     const parts = text.split(' ');
     const target = parts.slice(1).join(' ').trim();
@@ -1286,6 +1297,30 @@ function sendMessage() {
     const afkMsg = `${currentUsername} je AFK – na chvílu preč.`;
     socket.emit('send-message', { text: afkMsg, username: currentUsername, timestamp: new Date().toISOString() });
     showToast('AFK správa odoslaná. Budeš upozornený keď sa niekto ozve.');
+    messageInput.value = '';
+    return;
+  }
+
+  if (text.startsWith('.ban')) {
+    const parts = text.split(/\s+/);
+    const target = parts[1] ? parts[1].trim() : '';
+    const hoursText = parts[2] ? parts[2].trim() : '29';
+    if (!target) {
+      showToast('Použi .ban meno 29');
+      return;
+    }
+    if (!canManageRooms()) {
+      showToast('Príkaz .ban môže spustiť iba Správca/admin.');
+      messageInput.value = '';
+      return;
+    }
+    const hours = Number(hoursText);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      showToast('Počet hodín musí byť kladné číslo.');
+      messageInput.value = '';
+      return;
+    }
+    socket.emit('command', { type: 'ban', target, hours, from: currentUsername });
     messageInput.value = '';
     return;
   }
