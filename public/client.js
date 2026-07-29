@@ -1396,6 +1396,21 @@ document.getElementById('help-suggestions-btn')?.addEventListener('click', () =>
   if (!panel) return;
   panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
 });
+document.getElementById('suggestion-submit')?.addEventListener('click', () => {
+  const input = document.getElementById('suggestion-input');
+  const text = input?.value.trim();
+  if (!text) {
+    showToast('Napíš najprv svoj návrh.');
+    return;
+  }
+  socket.emit('send-message', {
+    text: `💡 Návrh od ${currentUsername}: ${text}`,
+    username: currentUsername,
+    timestamp: new Date().toISOString()
+  });
+  if (input) input.value = '';
+  showToast('Návrh odoslaný do chatu.');
+});
 document.getElementById('help-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
 });
