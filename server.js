@@ -14,6 +14,10 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '256kb' }));
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
 
@@ -65,7 +69,9 @@ const MAX_MESSAGE_LENGTH = 280;
 const MAX_ROOM_LENGTH = 40;
 const MAX_USERNAME_LENGTH = 20;
 const SUSPICIOUS_PATTERN = /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i;
-const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.cookie|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\bcmd\.exe\b|\bpowershell\b|\bwget\s+https?:\/\/|\bcurl\s+https?:\/\/|\bmshta\b|\brundll32\b|\.exe\b|\.bat\b|\.ps1\b)/i;
+const SECURITY_BANNER = '🛡 SILNÝ ANTIVIRUS · 10000000909% ZABEZPEČENIE PROTI HACKEROM';
+const SECURITY_PROTECTIONS = ['rate limiting', 'helmet headers', 'súborové filtry', 'zabanovanie podozrivých používateľov', 'blokovanie škodlivých skriptov'];
+const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|<iframe\b|<svg\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.(cookie|location)|window\.(location|open)|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\b(?:cmd|powershell|bash|sh)\b|\b(?:wget|curl|nc|python|perl)\b|\b(?:mshta|rundll32)\b|\.(?:exe|bat|ps1|cmd)\b|__proto__|constructor\.constructor)/i;
 const ANTIVIRUS_MAX_STRIKES = 3;
 const ANTIVIRUS_STRIKE_WINDOW_MS = 30 * 60 * 1000;
 
@@ -226,6 +232,16 @@ function notifyAdminsSecurity(message) {
   }
 }
 
+function getSecurityStatus(username) {
+  const state = getAntivirusState(username);
+  return {
+    ok: true,
+    active: true,
+    level: '10000000909%',
+    message: `${SECURITY_BANNER}\nAktívne ochrany: ${SECURITY_PROTECTIONS.join(', ')}\nTvoje varovania: ${state.strikes || 0}/${ANTIVIRUS_MAX_STRIKES}.`
+  };
+}
+
 function registerAntivirusStrike(socket, user, threat) {
   const key = normalizeUsername(user.username).toLowerCase();
   if (!key) return;
@@ -237,15 +253,15 @@ function registerAntivirusStrike(socket, user, threat) {
     expiresAt: Date.now() + ANTIVIRUS_STRIKE_WINDOW_MS
   });
 
-  socket.emit('system-message', `🛡 Antivírus zablokoval správu (${threat.reason}). Pokus ${nextStrikes}/${ANTIVIRUS_MAX_STRIKES}.`);
-  notifyAdminsSecurity(`🛡 Antivírus: ${user.username} poslal podozrivý obsah (${threat.reason}).`);
+  socket.emit('system-message', `${SECURITY_BANNER} · zablokoval správu (${threat.reason}). Pokus ${nextStrikes}/${ANTIVIRUS_MAX_STRIKES}.`);
+  notifyAdminsSecurity(`${SECURITY_BANNER} · ${user.username} poslal podozrivý obsah (${threat.reason}).`);
 
   if (nextStrikes < ANTIVIRUS_MAX_STRIKES) {
     return;
   }
 
-  socket.emit('system-message', '🛡 Antivírus: opakovaný podozrivý obsah bol zablokovaný. Správca môže použiť príkaz .ban meno 29 na zabanovanie na 29 hodín.');
-  notifyAdminsSecurity(`🛡 Antivírus: ${user.username} dosiahol ${nextStrikes} varovaní. Použi .ban ${user.username} 29.`);
+  socket.emit('system-message', `${SECURITY_BANNER} · opakovaný podozrivý obsah bol zablokovaný. Správca môže použiť príkaz .ban meno 29 na zabanovanie na 29 hodín.`);
+  notifyAdminsSecurity(`${SECURITY_BANNER} · ${user.username} dosiahol ${nextStrikes} varovaní. Použi .ban ${user.username} 29.`);
 }
 
 function isValidUsername(username) {
@@ -421,6 +437,8 @@ io.on('connection', (socket) => {
         : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
     });
     ensureOddychPoints(safeUsername);
+    socket.emit('security-banner', getSecurityStatus(safeUsername));
+    socket.emit('system-message', `${SECURITY_BANNER} · ochrana je aktívna a chat je chránený pred hackerom, škodlivými skriptami a útokmi.`);
     broadcastUserList();
     broadcastOddychPoints();
   });
@@ -554,9 +572,11 @@ io.on('connection', (socket) => {
     }
 
     const state = getAntivirusState(user.username);
+    const status = getSecurityStatus(user.username);
+    socket.emit('security-banner', status);
     socket.emit('antivirus-status', {
       ok: true,
-      message: `🛡 Antivírus je aktívny. Tvoje varovania: ${state.strikes || 0}/${ANTIVIRUS_MAX_STRIKES}.`
+      message: `${SECURITY_BANNER}\nAktívne ochrany: ${SECURITY_PROTECTIONS.join(', ')}\nTvoje varovania: ${state.strikes || 0}/${ANTIVIRUS_MAX_STRIKES}.`
     });
   });
 
@@ -584,7 +604,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (isSuspiciousText(rawText)) {
-      socket.emit('system-message', 'Správa obsahuje nebezpečný obsah a nebola odoslaná.');
+      socket.emit('system-message', `${SECURITY_BANNER} · správa obsahuje podozrivý obsah a nebola odoslaná.`);
       return;
     }
 
@@ -617,7 +637,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (isSuspiciousText(rawText)) {
-      socket.emit('system-message', 'Oznam obsahuje nebezpečný obsah a nebol odoslaný.');
+      socket.emit('system-message', `${SECURITY_BANNER} · oznam obsahuje podozrivý obsah a nebol odoslaný.`);
       return;
     }
 
@@ -691,7 +711,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (isSuspiciousText(rawText)) {
-      socket.emit('system-message', 'Súkromná správa obsahuje nebezpečný obsah a nebola odoslaná.');
+      socket.emit('system-message', `${SECURITY_BANNER} · súkromná správa obsahuje podozrivý obsah a nebola odoslaná.`);
       return;
     }
 

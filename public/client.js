@@ -44,6 +44,7 @@ const remoteAudio = document.getElementById('remote-audio');
 const countdownOverlay = document.getElementById('countdown-overlay');
 const countdownValueEl = document.getElementById('countdown-value');
 const countdownLabelEl = document.getElementById('countdown-label');
+const securityBanner = document.getElementById('security-banner');
 
 let callState = null;
 let pendingCall = null;
@@ -1164,6 +1165,10 @@ socket.on('system-message', (msg) => {
   addMessage({ system: true, text: msg, timestamp: new Date().toISOString() });
 });
 
+socket.on('security-banner', (payload) => {
+  showSecurityBanner(payload);
+});
+
 socket.on('join-denied', (message) => {
   addMessage({ system: true, text: `⚠ ${message || 'Toto meno je už obsadené. Zvoľ si iné.'}`, timestamp: new Date().toISOString() });
 });
@@ -1191,6 +1196,7 @@ socket.on('redeem-result', (payload) => {
 socket.on('antivirus-status', (payload) => {
   const message = payload && payload.message ? payload.message : 'Antivírusový stav nie je dostupný.';
   showToast(message);
+  showSecurityBanner(payload);
 });
 
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {
@@ -1419,6 +1425,19 @@ socket.on('receive-private-message', (m) => {
     speakOfflineReminderLine();
   }
 });
+
+function showSecurityBanner(payload) {
+  if (!securityBanner) return;
+  const text = payload && payload.message ? payload.message : '🛡 SILNÝ ANTIVIRUS · 10000000909% ZABEZPEČENIE PROTI HACKEROM';
+  securityBanner.textContent = text;
+  securityBanner.style.display = 'flex';
+}
+
+function hideSecurityBanner() {
+  if (securityBanner) {
+    securityBanner.style.display = 'none';
+  }
+}
 
 function showToast(message) {
   addMessage({
