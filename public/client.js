@@ -1391,6 +1391,11 @@ document.getElementById('help-close')?.addEventListener('click', () => {
   const overlay = document.getElementById('help-overlay');
   if (overlay) overlay.style.display = 'none';
 });
+document.getElementById('help-suggestions-btn')?.addEventListener('click', () => {
+  const panel = document.getElementById('help-suggestions');
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+});
 document.getElementById('help-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
 });
