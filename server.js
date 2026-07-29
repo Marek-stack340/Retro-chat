@@ -455,6 +455,19 @@ io.on('connection', (socket) => {
     io.emit('receive-message', msg);
   });
 
+  socket.on('admin-broadcast', (data) => {
+    const user = users.get(socket.id);
+    if (!user || user.role !== 'admin') {
+      socket.emit('system-message', 'Príkaz :m môže spustiť iba Správca/admin.');
+      return;
+    }
+
+    const text = String(data && data.text ? data.text : '').trim();
+    if (!text) return;
+
+    io.emit('system-message', `📢 ${user.username}: ${sanitizeProfanity(text)}`);
+  });
+
   socket.on('notify-ignored', (data) => {
     if (!data || !data.targetName || !data.byName) return;
     const targetEntry = Array.from(users.values()).find(

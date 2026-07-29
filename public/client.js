@@ -1213,6 +1213,24 @@ function sendMessage() {
     return;
   }
 
+  const adminMessageMatch = text.match(/^:m(?:\s+(.+))?$/i);
+  if (adminMessageMatch) {
+    const valueText = (adminMessageMatch[1] || '').trim();
+    if (!valueText) {
+      showToast('Použi :m správu, napríklad :m Vítam vás všetkých.');
+      messageInput.value = '';
+      return;
+    }
+    if (!canManageRooms()) {
+      showToast('Príkaz :m môže spustiť iba Správca/admin.');
+      messageInput.value = '';
+      return;
+    }
+    socket.emit('admin-broadcast', { text: valueText });
+    messageInput.value = '';
+    return;
+  }
+
   const countdownMatch = text.match(/^\.countdown(?:\s+(.+))?$/i);
   if (countdownMatch) {
     const valueText = (countdownMatch[1] || '').trim();
