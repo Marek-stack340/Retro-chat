@@ -149,6 +149,11 @@ function broadcastOddychPoints() {
   io.emit('user-points', getOddychPointsSnapshot());
 }
 
+function emitPresenceSystemMessage(username, kind) {
+  const action = kind === 'join' ? 'vstúpil do miestnosti' : 'odišiel z chatu';
+  io.emit('system-message', `${username} ${action} (${formatChatTimestamp(new Date())})`);
+}
+
 function addOddychPoints(username, delta) {
   const key = normalizePointsKey(username);
   if (!key) return;
@@ -454,11 +459,12 @@ io.on('connection', (socket) => {
         : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
     });
     ensureOddychPoints(safeUsername);
+    socket.data.joined = true;
     socket.emit('security-banner', getSecurityStatus(safeUsername));
     socket.emit('system-message', `${SECURITY_BANNER} · ochrana je aktívna a chat je chránený pred hackerom, škodlivými skriptami a útokmi.`);
-    io.emit('system-message', `${safeUsername} vstúpil do miestnosti ${socket.data.room || 'Spoločná'} (${formatChatTimestamp(new Date())})`);
     broadcastUserList();
     broadcastOddychPoints();
+    emitPresenceSystemMessage(safeUsername, 'join');
   });
 
   socket.on('command', (data) => {
@@ -851,8 +857,8 @@ io.on('connection', (socket) => {
     console.log('disconnected', socket.id);
     const leavingUser = users.get(socket.id);
     users.delete(socket.id);
-    if (leavingUser && leavingUser.username) {
-      io.emit('system-message', `${leavingUser.username} odišiel z chatu (${formatChatTimestamp(new Date())})`);
+    if (leavingUser && leavingUser.username && socket.data && socket.data.joined) {
+      emitPresenceSystemMessage(leavingUser.username, 'leave');
     }
     broadcastUserList();
   });
