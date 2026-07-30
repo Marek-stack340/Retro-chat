@@ -1154,11 +1154,16 @@ socket.on('receive-message', (m) => {
   }
 });
 
-socket.on('clear-chat', () => {
+socket.on('clear-chat', (payload) => {
   lastClearTime = Date.now();
   localStorage.setItem('chatClearAt', String(lastClearTime));
+  publicMessageHistory = [];
   messagesDiv.innerHTML = '';
-  showToast('Chat bol vymazaný pre všetkých.');
+  if (payload && payload.byUsername) {
+    showToast(`Chat bol vymazaný pre všetkých používateľov ${payload.byUsername}.`);
+  } else {
+    showToast('Chat bol vymazaný pre všetkých.');
+  }
 });
 
 socket.on('system-message', (msg) => {

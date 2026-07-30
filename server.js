@@ -117,6 +117,18 @@ function normalizePointsKey(username) {
   return normalizeUsername(username).toLowerCase();
 }
 
+function formatChatTimestamp(value) {
+  const date = value ? new Date(value) : new Date();
+  return date.toLocaleString('sk-SK', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
 function ensureOddychPoints(username) {
   const key = normalizePointsKey(username);
   if (!key) return;
@@ -444,6 +456,7 @@ io.on('connection', (socket) => {
     ensureOddychPoints(safeUsername);
     socket.emit('security-banner', getSecurityStatus(safeUsername));
     socket.emit('system-message', `${SECURITY_BANNER} · ochrana je aktívna a chat je chránený pred hackerom, škodlivými skriptami a útokmi.`);
+    io.emit('system-message', `${safeUsername} vstúpil do miestnosti ${socket.data.room || 'Spoločná'} (${formatChatTimestamp(new Date())})`);
     broadcastUserList();
     broadcastOddychPoints();
   });
@@ -499,8 +512,12 @@ io.on('connection', (socket) => {
   socket.on('clear-chat', () => {
     const user = users.get(socket.id);
     if (!user) return;
+
     messages.length = 0;
-    io.emit('clear-chat');
+    io.emit('clear-chat', {
+      byUsername: user.username,
+      timestamp: new Date().toISOString()
+    });
     io.emit('system-message', `${user.username} vymazal chat pre všetkých.`);
   });
 
@@ -832,7 +849,11 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('disconnected', socket.id);
+    const leavingUser = users.get(socket.id);
     users.delete(socket.id);
+    if (leavingUser && leavingUser.username) {
+      io.emit('system-message', `${leavingUser.username} odišiel z chatu (${formatChatTimestamp(new Date())})`);
+    }
     broadcastUserList();
   });
 });
