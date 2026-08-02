@@ -212,6 +212,20 @@
             <button id="redeem-points-btn" type="button" class="redeem-btn" disabled>Výmenu môže robiť iba Správca/admin</button>
           </div>
           <div class="sidebar-block">
+            <h2>Vytvorenie témy</h2>
+            <label class="topic-label" for="topic-name-input">Názov témy:</label>
+            <input id="topic-name-input" class="topic-input" type="text" placeholder="Napíš názov témy..." />
+            <div class="topic-suggestions" role="list" aria-label="Návrhy tém">
+              <button class="topic-chip" type="button" data-topic="Futbal">⚽ Futbal</button>
+              <button class="topic-chip" type="button" data-topic="Jedlo">🍽️ Jedlo</button>
+              <button class="topic-chip" type="button" data-topic="Autá">🚗 Autá</button>
+              <button class="topic-chip" type="button" data-topic="Filmy">🎬 Filmy</button>
+              <button class="topic-chip" type="button" data-topic="Hry">🎮 Hry</button>
+              <button class="topic-chip" type="button" data-topic="Cestovanie">✈️ Cestovanie</button>
+            </div>
+            <button id="create-topic-btn" class="redeem-btn" type="button">Vytvoriť tému</button>
+          </div>
+          <div class="sidebar-block">
             <h2>Novinky</h2>
             <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
             <a href="#" id="news-history-toggle" class="small-link">História noviniek</a>

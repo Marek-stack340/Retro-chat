@@ -45,6 +45,8 @@ const countdownOverlay = document.getElementById('countdown-overlay');
 const countdownValueEl = document.getElementById('countdown-value');
 const countdownLabelEl = document.getElementById('countdown-label');
 const securityBanner = document.getElementById('security-banner');
+const topicNameInput = document.getElementById('topic-name-input');
+const createTopicBtn = document.getElementById('create-topic-btn');
 
 let callState = null;
 let pendingCall = null;
@@ -1444,6 +1446,22 @@ function hideSecurityBanner() {
   }
 }
 
+function createTopicMessage(topicName) {
+  const label = (topicName || '').toString().trim();
+  if (!label) {
+    showToast('Napíš názov témy.');
+    return;
+  }
+  addMessage({
+    system: true,
+    text: `📝 Téma: ${label}`,
+    timestamp: new Date().toISOString()
+  });
+  if (topicNameInput) {
+    topicNameInput.value = '';
+  }
+}
+
 function showToast(message) {
   addMessage({
     system: true,
@@ -1519,6 +1537,20 @@ navQuicklink?.addEventListener('click', (event) => {
   }
   showToast('Zatiaľ žiadny iný chater pre odkazovač.');
 });
+document.querySelectorAll('.topic-chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const topicName = chip.dataset.topic || chip.textContent.trim();
+    if (topicNameInput) {
+      topicNameInput.value = topicName;
+    }
+    createTopicMessage(topicName);
+  });
+});
+
+createTopicBtn?.addEventListener('click', () => {
+  createTopicMessage(topicNameInput?.value || '');
+});
+
 newsHistoryToggle?.addEventListener('click', (event) => {
   event.preventDefault();
   openNewsHistory();
