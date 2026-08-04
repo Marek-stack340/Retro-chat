@@ -60,6 +60,7 @@ const authTokens = new Map();
 const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc']);
 const testerUsernames = new Set(['kika_c123']);
 const protectedUsernames = new Set(['správca', 'spravca', 'marek', 'marekc']);
+const reservedJoinNames = new Set(['správca', 'spravca', 'marek', 'marekc']);
 const oddychPoints = new Map();
 const antivirusStrikes = new Map();
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
@@ -455,8 +456,8 @@ io.on('connection', (socket) => {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
       return;
     }
-    if (protectedUsernames.has(normalizedUsername)) {
-      socket.emit('join-denied', 'Meno je už obsadené. Skús si dať iné meno.');
+    if (protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) {
+      socket.emit('join-denied', 'Meno je už obsadené. Názov Správca alebo Marekc nie je možné použiť.');
       return;
     }
     if (isBanned(safeUsername)) {
