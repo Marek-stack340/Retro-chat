@@ -71,7 +71,7 @@ const MAX_MESSAGE_LENGTH = 280;
 const MAX_ROOM_LENGTH = 40;
 const MAX_USERNAME_LENGTH = 20;
 const SUSPICIOUS_PATTERN = /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i;
-const SECURITY_BANNER = '🛡 SILNÝ ANTIVIRUS · 10000000909% ZABEZPEČENIE PROTI HACKEROM';
+const SECURITY_BANNER = '🛡 Bezpečnostná ochrana';
 const SECURITY_PROTECTIONS = ['rate limiting', 'helmet headers', 'súborové filtry', 'zabanovanie podozrivých používateľov', 'blokovanie škodlivých skriptov'];
 const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|<iframe\b|<svg\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.(cookie|location)|window\.(location|open)|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\b(?:cmd|powershell|bash|sh)\b|\b(?:wget|curl|nc|python|perl)\b|\b(?:mshta|rundll32)\b|\.(?:exe|bat|ps1|cmd)\b|__proto__|constructor\.constructor)/i;
 const ANTIVIRUS_MAX_STRIKES = 3;

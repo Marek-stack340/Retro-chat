@@ -1132,7 +1132,7 @@ socket.on('receive-private-message', (m) => {
 
 function showSecurityBanner(payload) {
   if (!securityBanner) return;
-  const text = payload && payload.message ? payload.message : '🛡 SILNÝ ANTIVIRUS · 10000000909% ZABEZPEČENIE PROTI HACKEROM';
+  const text = payload && payload.message ? payload.message : '🛡 Bezpečnostná ochrana';
   securityBanner.textContent = text;
   securityBanner.style.display = 'flex';
 }
