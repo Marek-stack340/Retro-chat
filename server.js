@@ -358,6 +358,36 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   }
 });
 
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
+    const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
+
+    if (!username) {
+      res.status(400).json({ ok: false, message: 'Zadaj nick.' });
+      return;
+    }
+    if (password.length < 4) {
+      res.status(400).json({ ok: false, message: 'Heslo musí mať aspoň 4 znaky.' });
+      return;
+    }
+
+    const account = accounts.get(username.toLowerCase());
+    if (!account) {
+      res.status(404).json({ ok: false, message: 'Tento nick neexistuje. Najprv sa zaregistruj.' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    account.passwordHash = hashedPassword;
+    accounts.set(username.toLowerCase(), account);
+
+    res.json({ ok: true, message: 'Heslo bolo úspešne zmenené. Teraz sa môžeš prihlásiť novým heslom.' });
+  } catch (error) {
+    res.status(500).json({ ok: false, message: 'Obnovenie hesla zlyhalo.' });
+  }
+});
+
 app.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');

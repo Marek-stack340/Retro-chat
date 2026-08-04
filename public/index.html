@@ -49,7 +49,7 @@
               </div>
             </form>
             <div class="entry-links">
-              <a href="/register.html">Registrácia nicku</a> / <a href="#">Zabudol som heslo</a>
+              <a href="/register.html">Registrácia nicku</a> / <a href="#" id="forgot-password-link">Zabudol som heslo</a>
               <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
               <div class="guestbook-link"><a href="/guestbook.html">Oddych kniha návštev</a></div>
             </div>
@@ -80,6 +80,7 @@
     <script>
       const nickInput = document.getElementById('login-nick');
       const loginForm = document.getElementById('login-form');
+      const forgotPasswordLink = document.getElementById('forgot-password-link');
       const nextTimeLabel = document.getElementById('next-time-label');
       const timeEntries = Array.from(document.querySelectorAll('.time-entry'));
       const activeList = document.querySelector('.panel-left .chat-list');
@@ -192,13 +193,59 @@
         }
       }
 
-      function submitLogin() {
+      async function submitLogin() {
         const nick = nickInput.value.trim() || 'Správca';
         const password = document.getElementById('login-pass').value.trim();
-        localStorage.setItem('chatUsername', nick);
-        localStorage.setItem('chatRegistered', password ? 'true' : 'false');
-        window.location.href = '/chat.html';
+        if (!password) {
+          alert('Zadaj heslo.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: nick, password })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            alert(data.message || 'Prihlásenie zlyhalo.');
+            return;
+          }
+
+          localStorage.setItem('chatUsername', nick);
+          localStorage.setItem('chatRegistered', 'true');
+          if (data.token) {
+            localStorage.setItem('chatAuthToken', data.token);
+          }
+          window.location.href = '/chat.html';
+        } catch (error) {
+          alert('Prihlásenie zlyhalo. Skús to znova.');
+        }
       }
+
+      forgotPasswordLink?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        const username = prompt('Zadaj svoj nick, pre ktorý chceš zmeniť heslo:');
+        if (!username) return;
+        const newPassword = prompt('Zadaj nové heslo (minimálne 4 znaky):');
+        if (!newPassword || newPassword.length < 4) {
+          alert('Nové heslo musí mať aspoň 4 znaky.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password: newPassword })
+          });
+          const data = await response.json();
+          alert(data.message || 'Heslo bolo zmenené.');
+        } catch (error) {
+          alert('Nepodarilo sa zmeniť heslo.');
+        }
+      });
 
       loginForm.addEventListener('submit', (event) => {
         event.preventDefault();
