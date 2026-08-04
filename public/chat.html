@@ -222,8 +222,10 @@
       </div>
     </div>
     <script>
-      const hasUsername = !!localStorage.getItem('chatUsername');
-      if (!hasUsername) {
+      const username = localStorage.getItem('chatUsername')?.trim();
+      const authToken = localStorage.getItem('chatAuthToken')?.trim();
+      const hasValidSession = !!username && (!!authToken || localStorage.getItem('chatRegistered') === 'true');
+      if (!hasValidSession) {
         alert('Najprv sa prihlás do chatu. Musíš sa prihlásiť do chatu.');
         window.location.replace('/');
       }
