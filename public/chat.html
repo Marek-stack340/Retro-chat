@@ -99,7 +99,6 @@
           <a href="#" id="nav-settings">Nastavenia</a>
           <a href="#" id="nav-help">Návod</a>
           <a href="/messenger.html" id="nav-messenger">Messenger</a>
-          <a href="/meet.html" id="nav-meet" style="background:#16a34a !important;">📹 Meet</a>
           <a href="#" id="nav-logout">Odhlásiť</a>
         </nav>
       </header>
@@ -110,15 +109,6 @@
       <div class="status-row">Prihlásený: <strong id="current-username-display">Anon</strong> · Aktívni: <strong id="active-users-count">0</strong> · Oddych body: <strong id="my-points-display">0</strong></div>
       <div id="security-banner" class="security-banner" style="display:none;">🛡 SILNÝ ANTIVIRUS · 10000000909% ZABEZPEČENIE PROTI HACKEROM</div>
       <div class="status-row private-status" id="private-status" style="display:none;">Súkromná správa pre <strong id="private-target-name"></strong></div>
-
-      <!-- MODAL: Vyber komu zavolat -->
-      <div id="call-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:none;align-items:center;justify-content:center;">
-        <div style="background:#fff;border-radius:20px;padding:28px 24px;min-width:280px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-          <h2 style="margin:0 0 18px;font-size:1.1rem;color:#3e2513;">📞 Komu chceš zavolať?</h2>
-          <ul id="call-modal-list" style="list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:10px;"></ul>
-          <button id="call-modal-close" style="width:100%;padding:12px;border:none;border-radius:12px;background:#c0392b;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;">Zavrieť</button>
-        </div>
-      </div>
 
       <!-- MODAL: Nastavenia odosielania -->
       <div id="send-settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:520;align-items:center;justify-content:center;">
@@ -136,21 +126,6 @@
             <button id="send-settings-cancel" style="flex:1;padding:12px;border:none;border-radius:10px;background:#c0392b;color:#fff;font-weight:700;cursor:pointer;">Zavrieť</button>
           </div>
         </div>
-      </div>
-
-      <!-- AKTÍVNY HOVOR -->
-      <div id="call-active-bar" class="call-active-bar" style="display:none;">
-        📞 Na hovore s <strong id="call-peer-name"></strong>
-        <span id="call-timer" class="call-timer">0:00</span>
-        <button id="call-hangup-btn" class="call-hangup-btn">Zavesiť ✕</button>
-        <audio id="remote-audio" autoplay playsinline></audio>
-      </div>
-
-      <!-- PRICHÁDZAJÚCI HOVOR -->
-      <div id="call-incoming-bar" class="call-incoming-bar" style="display:none;">
-        📲 Volá <strong id="call-caller-name"></strong>
-        <button id="call-accept-btn" class="call-accept-btn">Prijať ✓</button>
-        <button id="call-reject-btn" class="call-reject-btn">Odmietnuť ✕</button>
       </div>
 
       <main class="chat-main-layout">

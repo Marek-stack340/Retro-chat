@@ -114,23 +114,6 @@ body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#f
 .reaction-btn:hover{background:#ffeabf}
 .reaction-btn.active{background:#ffd87a;border-color:#f0a62e;font-weight:700}
 .system-msg{padding:14px 18px;margin-bottom:14px;border-radius:16px;background:#fff0c7;border:1px solid rgba(209,139,43,0.2);color:#6b4310;font-weight:700}
-.call-active-bar{display:flex;align-items:center;gap:12px;background:#4d2c08;border:2px solid #f0b24b;border-radius:14px;padding:10px 16px;margin:0 22px 10px;color:#fff;font-size:0.9rem;flex-wrap:wrap}
-.call-timer{font-weight:700;color:#ffd86a;font-size:0.85rem;min-width:36px}
-.call-hangup-btn{margin-left:auto;background:#c95a12;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:0.85rem}
-.call-hangup-btn:hover{background:#e56b1c}
-.call-incoming-bar{display:flex;align-items:center;gap:12px;background:#5c3710;border:2px solid #f0b24b;border-radius:14px;padding:10px 16px;margin:0 22px 10px;color:#fff;font-size:0.9rem;flex-wrap:wrap;animation:call-pulse 1s ease-in-out infinite alternate}
-@keyframes call-pulse{from{border-color:#f0b24b}to{border-color:#ffd86a}}
-.call-accept-btn{background:#d8891e;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:0.85rem}
-.call-reject-btn{background:#c95a12;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:0.85rem}
-.call-btn{border:1px solid rgba(54,123,45,0.4);background:#f0fff0;border-radius:8px;padding:3px 8px;font-size:0.78rem;cursor:pointer;color:#2f6a24;margin-left:6px}
-.call-btn:hover{background:#d0f0d0}
-.nav-call-btn{background:linear-gradient(180deg,#ffd66d 0%,#f2a93a 100%) !important;color:#4b2f0d !important;border-radius:12px !important;padding:8px 14px !important;font-weight:700 !important;animation:call-nav-pulse 2s ease-in-out infinite}
-@keyframes call-nav-pulse{0%,100%{box-shadow:0 0 0 0 rgba(242,169,58,0.34)}50%{box-shadow:0 0 0 8px rgba(242,169,58,0)}}
-.call-users-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
-.call-user-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff;border:1px solid rgba(54,123,45,0.2);border-radius:12px}
-.call-user-item span{font-weight:700;color:#3e2513;font-size:0.9rem}
-.call-user-call-btn{background:linear-gradient(180deg,#ffd66d 0%,#f2a93a 100%);color:#4b2f0d;border:none;border-radius:10px;padding:8px 14px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap}
-.call-user-call-btn:hover{background:linear-gradient(180deg,#ffe08a 0%,#efb24b 100%)}
 .chat-bottom-row{display:flex;flex-direction:column;gap:14px}
 .emoji-line{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;border-radius:16px;background:#ffeecb;border:1px solid rgba(209,139,43,0.16)}
 .emoji-btn{border:none;background:#fff8df;border:1px solid rgba(209,139,43,0.18);border-radius:10px;padding:6px 8px;font-size:1.1rem;cursor:pointer}
