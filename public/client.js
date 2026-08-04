@@ -59,7 +59,6 @@ let oddychPoints = {};
 const ignoreList = new Set(JSON.parse(localStorage.getItem('chatIgnoreList') || '[]'));
 const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || '[]'));
 const onlineFriends = new Set();
-let audioCtx = null;
 let messengerMode = localStorage.getItem('chatMessengerMode') === 'true';
 let lastSpokenAt = Date.now();
 
@@ -158,81 +157,10 @@ function applyMessengerMode() {
   navMessenger.style.background = messengerMode ? '#2563eb' : '';
 }
 
-function playNotificationTone() {
-  try {
-    const AudioContextRef = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextRef) return;
-    if (!audioCtx) audioCtx = new AudioContextRef();
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.16, audioCtx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.24);
-  } catch (_) {
-    // Ignore notification sound errors silently.
-  }
-}
-
-function speakNotificationLine() {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance('Oddych chat, nova sprava, pozrite si.');
-    utterance.lang = 'sk-SK';
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  } catch (_) {
-    // Ignore speech errors silently.
-  }
-}
-
-function speakOfflineReminderLine() {
-  try {
-    playNotificationTone();
-    setTimeout(() => {
-      if (!('speechSynthesis' in window)) return;
-      const utterance = new SpeechSynthesisUtterance('Pod si pozriet spravu, ty parena babka!');
-      utterance.lang = 'sk-SK';
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    }, 260);
-  } catch (_) {
-    // Ignore offline reminder speech errors silently.
-  }
-}
-
 function isAwayFromChat() {
   const hidden = document.visibilityState !== 'visible';
   const notFocused = typeof document.hasFocus === 'function' ? !document.hasFocus() : false;
   return hidden || notFocused;
-}
-
-function speakCountdownValue(value) {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(String(value));
-    utterance.lang = 'sk-SK';
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  } catch (_) {
-    // Ignore countdown speech errors silently.
-  }
 }
 
 function openNewsHistory() {
@@ -298,9 +226,6 @@ function stopCountdown() {
     clearTimeout(countdownState.finishTimeout);
   }
   countdownState = null;
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-  }
   hideCountdownOverlay();
   exitCountdownFullscreen();
 }
@@ -327,7 +252,6 @@ function startCountdown(rawValue, options = {}) {
   };
 
   renderCountdownOverlay(total, total, countdownState.headline);
-  speakCountdownValue(total);
   enterCountdownFullscreen();
 
   countdownState.timer = setInterval(() => {
@@ -341,7 +265,6 @@ function startCountdown(rawValue, options = {}) {
       }
       if (countdownValueEl) countdownValueEl.textContent = countdownState.finishText;
       if (countdownLabelEl) countdownLabelEl.textContent = countdownState.headline;
-      speakCountdownValue(countdownState.finishText);
       countdownState.finishTimeout = setTimeout(() => {
         stopCountdown();
       }, 1000);
@@ -349,14 +272,10 @@ function startCountdown(rawValue, options = {}) {
     }
 
     renderCountdownOverlay(countdownState.current, countdownState.total, countdownState.headline);
-    speakCountdownValue(countdownState.current);
   }, 1000);
 }
 
 function notifyIncomingMessage(fromName, previewText) {
-  playNotificationTone();
-  speakNotificationLine();
-
   if (!('Notification' in window)) return;
   const title = 'Oddych chat';
   const body = fromName ? `${fromName}: ${previewText || 'nova sprava'}` : (previewText || 'Nova sprava');
@@ -946,9 +865,6 @@ socket.on('receive-message', (m) => {
   if (isVisible) {
     addMessage(m);
   }
-  if (isVisible && m && m.username && m.username !== currentUsername) {
-    speakOfflineReminderLine();
-  }
 });
 
 socket.on('clear-chat', (payload) => {
@@ -1212,9 +1128,6 @@ socket.on('receive-private-message', (m) => {
     self: m.self,
     toUsername: m.toUsername
   });
-  if (!m.self) {
-    speakOfflineReminderLine();
-  }
 });
 
 function showSecurityBanner(payload) {

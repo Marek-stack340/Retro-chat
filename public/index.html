@@ -108,7 +108,7 @@
           .map(([key, user]) => ({
             key,
             name: user.displayName || key,
-            score: Number(user.messages || 0) + Number(user.voiceNotes || 0) * 2,
+            score: Number(user.messages || 0),
             lastActive: Number(user.lastActive || 0)
           }))
           .filter((item) => !hiddenActiveUsers.has(String(item.key || '').toLowerCase()))
