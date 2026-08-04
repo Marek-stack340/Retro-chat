@@ -13,7 +13,6 @@
         <p class="hero-text">Zadaj svoje meno a e-mail pre rýchlu prípravu do chatu.</p>
         <form id="register-form" class="register-form">
           <input id="reg-username" type="text" placeholder="Tvoje meno" maxlength="20" required />
-          <input id="reg-password" type="password" placeholder="Tvoje heslo" minlength="4" required />
           <input id="reg-email" type="email" placeholder="Tvoj e-mail" required />
           <button class="button-large" type="submit">Uložiť</button>
         </form>
@@ -24,7 +23,6 @@
     <script>
       const form = document.getElementById('register-form');
       const usernameField = document.getElementById('reg-username');
-      const passwordField = document.getElementById('reg-password');
       const emailField = document.getElementById('reg-email');
 
       const savedUsername = localStorage.getItem('chatUsername');
@@ -35,14 +33,9 @@
       form.addEventListener('submit', (event) => {
         event.preventDefault();
         const username = usernameField.value.trim();
-        const password = passwordField.value.trim();
         const email = emailField.value.trim();
         if (!username) {
           alert('Zadaj meno.');
-          return;
-        }
-        if (!password) {
-          alert('Zadaj heslo.');
           return;
         }
         if (!email) {
@@ -52,7 +45,7 @@
         fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, email })
+          body: JSON.stringify({ username, email })
         })
           .then(async (response) => {
             const payload = await response.json().catch(() => ({}));
