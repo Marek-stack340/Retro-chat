@@ -19,6 +19,7 @@ const newsHistoryToggle = document.getElementById('news-history-toggle');
 const newsHistoryPanel = document.getElementById('news-history-panel');
 const newsHistoryClose = document.getElementById('news-history-close');
 const newsHistoryBackdrop = document.getElementById('news-history-backdrop');
+const newsHistoryList = document.getElementById('news-history-list');
 
 const privateStatus = document.getElementById('private-status');
 const privateTargetNameDisplay = document.getElementById('private-target-name');
@@ -39,6 +40,41 @@ const createTopicBtn = document.getElementById('create-topic-btn');
 
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
+const newsHistoryStorageKey = 'chatNewsHistoryV1';
+function loadNewsHistoryEntries() {
+  try {
+    const stored = localStorage.getItem(newsHistoryStorageKey);
+    if (!stored) {
+      return [
+        {
+          title: 'Oddych body',
+          body: 'Pridané Oddych body za aktivitu v chate, reakcie a súkromné správy.',
+          createdAt: '2026-07-26T00:00:00.000Z'
+        },
+        {
+          title: '.countdown odmena',
+          body: 'Pri príkaze .countdown číslo dostanú všetci pripojení používatelia rovnaký počet bodov a na displeji sa zobrazí hláška o odmene.',
+          createdAt: '2026-07-26T00:00:00.000Z'
+        },
+        {
+          title: 'Globálny .countdown',
+          body: 'Pridaný globálny príkaz .countdown číslo, ktorý admin zobrazí všetkým na celej obrazovke aj s hlasným odpočtom.',
+          createdAt: '2026-07-26T00:00:00.000Z'
+        },
+        {
+          title: 'Filter nadávok',
+          body: 'Filter nadávok bol upravený. Namiesto dvojitých hashtagov sa nadávky maskujú na znaky #.',
+          createdAt: '2026-07-19T00:00:00.000Z'
+        }
+      ];
+    }
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+let newsHistoryEntries = loadNewsHistoryEntries();
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 let countdownState = null;
 
@@ -406,6 +442,44 @@ function updateRoomHighlight() {
     const roomName = normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', ''));
     roomEl.classList.toggle('active', roomName === currentRoom);
   });
+}
+
+function formatNewsDate(value) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('sk-SK', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+function saveNewsHistoryEntries() {
+  localStorage.setItem(newsHistoryStorageKey, JSON.stringify(newsHistoryEntries));
+}
+
+function renderNewsHistory() {
+  if (!newsHistoryList) return;
+  const sortedEntries = [...newsHistoryEntries].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  newsHistoryList.innerHTML = '';
+  if (!sortedEntries.length) {
+    const emptyItem = document.createElement('li');
+    emptyItem.textContent = 'Zatiaľ žiadne novinky.';
+    newsHistoryList.appendChild(emptyItem);
+    return;
+  }
+  sortedEntries.forEach((entry) => {
+    const item = document.createElement('li');
+    const title = entry.title ? `<strong>${escapeHtml(entry.title)}</strong>` : '';
+    const dateText = entry.createdAt ? `<strong>${escapeHtml(formatNewsDate(entry.createdAt))}</strong>` : '';
+    item.innerHTML = `${dateText ? `${dateText} – ` : ''}${title ? `${title}: ` : ''}${escapeHtml(entry.body || '')}`;
+    newsHistoryList.appendChild(item);
+  });
+}
+
+function addNewsHistoryEntry(title, body, createdAt = new Date().toISOString()) {
+  newsHistoryEntries.push({ title, body, createdAt });
+  saveNewsHistoryEntries();
+  renderNewsHistory();
 }
 
 function renderVisibleMessages() {
@@ -1154,6 +1228,7 @@ function createTopicMessage(topicName) {
     text: `📝 Téma: ${label}`,
     timestamp: new Date().toISOString()
   });
+  addNewsHistoryEntry('Vytvorená téma', `Bola vytvorená téma „${label}“.`);
   if (topicNameInput) {
     topicNameInput.value = '';
   }
@@ -1166,6 +1241,8 @@ function showToast(message) {
     timestamp: new Date().toISOString()
   });
 }
+
+renderNewsHistory();
 
 navLogout?.addEventListener('click', (event) => {
   event.preventDefault();
