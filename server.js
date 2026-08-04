@@ -260,8 +260,19 @@ function registerAntivirusStrike(socket, user, threat) {
     return;
   }
 
-  socket.emit('system-message', `${SECURITY_BANNER} · opakovaný podozrivý obsah bol zablokovaný. Správca môže použiť príkaz .ban meno 29 na zabanovanie na 29 hodín.`);
-  notifyAdminsSecurity(`${SECURITY_BANNER} · ${user.username} dosiahol ${nextStrikes} varovaní. Použi .ban ${user.username} 29.`);
+  const banHours = 24;
+  const banUntil = Date.now() + banHours * 60 * 60 * 1000;
+  banList.set(key, banUntil);
+
+  socket.emit('system-message', `${SECURITY_BANNER} · podozrivá aktivita bola zaznamenaná. Získal si automatický ban na ${banHours} hodín.`);
+  socket.emit('security-banner', {
+    ok: true,
+    active: true,
+    level: '10000000909%',
+    message: `${SECURITY_BANNER}\nAutomatický ban: ${banHours} hodín. Pokus o ďalšie útoky bude okamžite zablokovaný.`
+  });
+  socket.disconnect(true);
+  notifyAdminsSecurity(`${SECURITY_BANNER} · ${user.username} bol automaticky zabanovaný na ${banHours} hodín kvôli opakovanému podozrivému obsahu.`);
 }
 
 function isValidUsername(username) {
