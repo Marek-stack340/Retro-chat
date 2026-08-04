@@ -6,7 +6,6 @@ const activeUsersCount = document.getElementById('active-users-count');
 const usersList = document.getElementById('users-list');
 const currentUsernameDisplay = document.getElementById('current-username-display');
 const myPointsDisplay = document.getElementById('my-points-display');
-const redeemPointsBtn = document.getElementById('redeem-points-btn');
 const navLogout = document.getElementById('nav-logout');
 const navHelp = document.getElementById('nav-help');
 const navProfile = document.getElementById('nav-profile');
@@ -595,26 +594,6 @@ function getOddychPoints(username) {
 function refreshMyPoints() {
   if (!myPointsDisplay) return;
   myPointsDisplay.textContent = String(getOddychPoints(currentUsername));
-  updateRedeemControls();
-}
-
-function updateRedeemControls() {
-  if (!redeemPointsBtn) return;
-  const isAdmin = canManageRooms();
-  const currentPoints = getOddychPoints(currentUsername);
-  const canRedeem = isAdmin && currentPoints > 0;
-  redeemPointsBtn.disabled = !canRedeem;
-  if (!isAdmin) {
-    redeemPointsBtn.textContent = 'Výmenu môže robiť iba Správca/admin';
-    return;
-  }
-  redeemPointsBtn.textContent = canRedeem
-    ? `Vymeniť všetky body (${currentPoints} OB)`
-    : 'Nemáš body na výmenu';
-}
-
-function requestPointsRedeem() {
-  socket.emit('redeem-points');
 }
 
 function isFriend(username) {
@@ -1195,11 +1174,6 @@ socket.on('user-points', (pointsSnapshot) => {
   }
 });
 
-socket.on('redeem-result', (payload) => {
-  const message = payload && payload.message ? payload.message : 'Žiadosť o výmenu bola spracovaná.';
-  showToast(message);
-});
-
 socket.on('antivirus-status', (payload) => {
   const message = payload && payload.message ? payload.message : 'Antivírusový stav nie je dostupný.';
   showToast(message);
@@ -1354,12 +1328,6 @@ function sendMessage() {
     return;
   }
 
-  if (text.startsWith('.vymena')) {
-    requestPointsRedeem();
-    messageInput.value = '';
-    return;
-  }
-
   if (text.startsWith('.zrusitmiestnost')) {
     if (!canManageRooms()) {
       addMessage({
@@ -1508,9 +1476,6 @@ document.getElementById('suggestion-submit')?.addEventListener('click', () => {
 });
 document.getElementById('help-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
-});
-redeemPointsBtn?.addEventListener('click', () => {
-  requestPointsRedeem();
 });
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();
