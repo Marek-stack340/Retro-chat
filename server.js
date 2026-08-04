@@ -456,7 +456,8 @@ io.on('connection', (socket) => {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
       return;
     }
-    if (protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) {
+    const isProtectedAdminName = ['správca', 'spravca', 'marek', 'marekc'].includes(normalizedUsername);
+    if ((protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) && !isProtectedAdminName) {
       socket.emit('join-denied', 'Meno je už obsadené. Názov Správca alebo Marekc nie je možné použiť.');
       return;
     }
