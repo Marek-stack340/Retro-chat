@@ -384,6 +384,14 @@ function refreshMyPoints() {
   myPointsDisplay.textContent = String(getOddychPoints(currentUsername));
 }
 
+function refreshIgnoreStatus() {
+  const pill = document.getElementById('ignore-status-pill');
+  if (!pill) return;
+  const count = ignoreList.size;
+  pill.textContent = `Ignorovaní: ${count}`;
+  pill.classList.toggle('muted', count === 0);
+}
+
 function isFriend(username) {
   return friendList.has(normalizeName(username));
 }
@@ -405,31 +413,35 @@ function toggleFriend(username) {
 
 function toggleIgnoreUser(username) {
   if (!username) return;
-  const lower = username.toLowerCase();
+  const lower = normalizeName(username);
+  if (!lower) return;
   if (ignoreList.has(lower)) {
     ignoreList.delete(lower);
     saveIgnoreList();
+    refreshIgnoreStatus();
     showToast(`Už neignoruješ ${username}.`);
     return;
   }
   ignoreList.add(lower);
   saveIgnoreList();
+  refreshIgnoreStatus();
   showToast(`Ignoruješ ${username}.`);
 }
 
 function removeIgnoredUser(username) {
   if (!username) return false;
-  const lower = username.toLowerCase();
+  const lower = normalizeName(username);
   if (!ignoreList.has(lower)) {
     return false;
   }
   ignoreList.delete(lower);
   saveIgnoreList();
+  refreshIgnoreStatus();
   return true;
 }
 
 function isIgnored(username) {
-  return ignoreList.has(username.toLowerCase());
+  return ignoreList.has(normalizeName(username));
 }
 
 function escapeHtml(s) {
@@ -628,6 +640,7 @@ function updateUserList(users) {
     currentUsernameDisplay.textContent = currentUsername;
   }
   refreshMyPoints();
+  refreshIgnoreStatus();
   if (!usersList) return;
   usersList.innerHTML = '';
   users.forEach((user) => {
@@ -1077,7 +1090,8 @@ function sendMessage() {
       showToast('Použi .ignoruj meno');
       return;
     }
-    const wasAdded = !ignoreList.has(normalizeName(target));
+    const lowerTarget = normalizeName(target);
+    const wasAdded = !ignoreList.has(lowerTarget);
     toggleIgnoreUser(target);
     if (wasAdded) {
       socket.emit('notify-ignored', { targetName: target, byName: currentUsername });
@@ -1302,7 +1316,7 @@ document.getElementById('help-overlay')?.addEventListener('click', (e) => {
 });
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast(`Prihlásený ako: ${currentUsername}`);
+  showToast(`Môj profil: ${currentUsername} · Oddych body: ${getOddychPoints(currentUsername)} · Ignorovaní: ${ignoreList.size}`);
 });
 navFriends?.addEventListener('click', (event) => {
   event.preventDefault();
@@ -1310,7 +1324,8 @@ navFriends?.addEventListener('click', (event) => {
 });
 navIgnore?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast('Ignorovaní budú dostupní čoskoro.');
+  const names = Array.from(ignoreList).join(', ') || 'žiadni';
+  showToast(`Ignorovaní: ${names}`);
 });
 navSettings?.addEventListener('click', (event) => {
   event.preventDefault();
