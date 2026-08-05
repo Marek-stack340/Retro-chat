@@ -4,6 +4,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
@@ -61,6 +62,15 @@ const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca',
 const testerUsernames = new Set(['kika_c123']);
 const protectedUsernames = new Set(['správca', 'spravca', 'marek', 'marekc']);
 const reservedJoinNames = new Set(['správca', 'spravca', 'marek', 'marekc']);
+const resetEmailTransporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || ''
+  }
+});
 const oddychPoints = new Map();
 const antivirusStrikes = new Map();
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
@@ -362,14 +372,9 @@ app.post('/api/register', registerLimiter, async (req, res) => {
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
-    const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
 
     if (!username) {
       res.status(400).json({ ok: false, message: 'Zadaj nick.' });
-      return;
-    }
-    if (password.length < 4) {
-      res.status(400).json({ ok: false, message: 'Heslo musí mať aspoň 4 znaky.' });
       return;
     }
 
@@ -379,11 +384,19 @@ app.post('/api/forgot-password', async (req, res) => {
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    account.passwordHash = hashedPassword;
-    accounts.set(username.toLowerCase(), account);
+    const resetCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const resetMessage = `Ahoj ${account.username},\n\nTvoje nové dočasné heslo je: ${resetCode}\n\nPo prihlásení sa môžeš prihlásiť a zmeniť ho v nastaveniach alebo po prihlásení.\n\nOddych Chat`;
 
-    res.json({ ok: true, message: 'Heslo bolo úspešne zmenené. Teraz sa môžeš prihlásiť novým heslom.' });
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      await resetEmailTransporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: account.email,
+        subject: 'Oddych Chat – obnovenie hesla',
+        text: resetMessage
+      });
+    }
+
+    res.json({ ok: true, message: `Ak je e-mail správny, bol odoslaný resetovací kód na ${account.email}.` });
   } catch (error) {
     res.status(500).json({ ok: false, message: 'Obnovenie hesla zlyhalo.' });
   }

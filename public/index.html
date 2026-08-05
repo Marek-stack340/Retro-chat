@@ -49,7 +49,7 @@
               </div>
             </form>
             <div class="entry-links">
-              <a href="/register.html">Registrácia nicku</a>
+              <a href="/register.html">Registrácia nicku</a> / <a href="#" id="forgot-password-link">Zabudol som heslo</a>
               <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
               <div class="guestbook-link"><a href="/guestbook.html">Oddych kniha návštev</a></div>
             </div>
@@ -80,6 +80,7 @@
     <script>
       const nickInput = document.getElementById('login-nick');
       const loginForm = document.getElementById('login-form');
+      const forgotPasswordLink = document.getElementById('forgot-password-link');
       const nextTimeLabel = document.getElementById('next-time-label');
       const timeEntries = Array.from(document.querySelectorAll('.time-entry'));
       const activeList = document.querySelector('.panel-left .chat-list');
@@ -226,6 +227,24 @@
           alert('Prihlásenie zlyhalo. Skús to znova.');
         }
       }
+
+      forgotPasswordLink?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        const username = prompt('Zadaj svoj nick, pre ktorý chceš obnoviť heslo:');
+        if (!username) return;
+
+        try {
+          const response = await fetch('/api/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+          });
+          const data = await response.json().catch(() => ({}));
+          alert(data.message || 'Obnova hesla bola odoslaná.');
+        } catch (error) {
+          alert('Nepodarilo sa obnoviť heslo.');
+        }
+      });
 
       loginForm.addEventListener('submit', (event) => {
         event.preventDefault();
