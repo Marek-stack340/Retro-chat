@@ -235,6 +235,20 @@ async function exitCountdownFullscreen() {
   }
 }
 
+function speakCountdownMessage(text) {
+  try {
+    if (!('speechSynthesis' in window) || !text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'sk-SK';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } catch (_) {
+    // Ignore speech errors and keep the countdown working.
+  }
+}
+
 function renderCountdownOverlay(value, total, headlineText) {
   if (!countdownOverlay || !countdownValueEl || !countdownLabelEl) return;
   countdownValueEl.textContent = String(value);
@@ -289,6 +303,7 @@ function startCountdown(rawValue, options = {}) {
 
   renderCountdownOverlay(total, total, countdownState.headline);
   enterCountdownFullscreen();
+  speakCountdownMessage(`${countdownState.headline}. Odpočítavanie začína na ${total}.`);
 
   countdownState.timer = setInterval(() => {
     if (!countdownState) return;
@@ -301,6 +316,7 @@ function startCountdown(rawValue, options = {}) {
       }
       if (countdownValueEl) countdownValueEl.textContent = countdownState.finishText;
       if (countdownLabelEl) countdownLabelEl.textContent = countdownState.headline;
+      speakCountdownMessage(countdownState.finishText || 'Hotovo.');
       countdownState.finishTimeout = setTimeout(() => {
         stopCountdown();
       }, 1000);
@@ -308,6 +324,7 @@ function startCountdown(rawValue, options = {}) {
     }
 
     renderCountdownOverlay(countdownState.current, countdownState.total, countdownState.headline);
+    speakCountdownMessage(String(countdownState.current));
   }, 1000);
 }
 
