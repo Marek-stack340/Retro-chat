@@ -34,7 +34,6 @@ const sendSettingsCancel = document.getElementById('send-settings-cancel');
 const countdownOverlay = document.getElementById('countdown-overlay');
 const countdownValueEl = document.getElementById('countdown-value');
 const countdownLabelEl = document.getElementById('countdown-label');
-const securityBanner = document.getElementById('security-banner');
 const topicNameInput = document.getElementById('topic-name-input');
 const createTopicBtn = document.getElementById('create-topic-btn');
 
@@ -987,9 +986,6 @@ socket.on('system-message', (msg) => {
   addMessage({ system: true, text: msg, timestamp: new Date().toISOString() });
 });
 
-socket.on('security-banner', (payload) => {
-  showSecurityBanner(payload);
-});
 
 socket.on('join-denied', (message) => {
   addMessage({ system: true, text: `⚠ ${message || 'Toto meno je už obsadené. Zvoľ si iné.'}`, timestamp: new Date().toISOString() });
@@ -1010,11 +1006,6 @@ socket.on('user-points', (pointsSnapshot) => {
   }
 });
 
-socket.on('antivirus-status', (payload) => {
-  const message = payload && payload.message ? payload.message : 'Antivírusový stav nie je dostupný.';
-  showToast(message);
-  showSecurityBanner(payload);
-});
 
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
@@ -1073,12 +1064,6 @@ function sendMessage() {
       return;
     }
     socket.emit('countdown:start', { value: valueText });
-    messageInput.value = '';
-    return;
-  }
-
-  if (text.toLowerCase() === '.antivirus') {
-    socket.emit('antivirus:status');
     messageInput.value = '';
     return;
   }
@@ -1234,19 +1219,6 @@ socket.on('receive-private-message', (m) => {
     toUsername: m.toUsername
   });
 });
-
-function showSecurityBanner(payload) {
-  if (!securityBanner) return;
-  const text = payload && payload.message ? payload.message : '🛡 Bezpečnostná ochrana';
-  securityBanner.textContent = text;
-  securityBanner.style.display = 'flex';
-}
-
-function hideSecurityBanner() {
-  if (securityBanner) {
-    securityBanner.style.display = 'none';
-  }
-}
 
 function createTopicMessage(topicName) {
   const label = (topicName || '').toString().trim();
