@@ -33,6 +33,10 @@
                 <input id="login-nick" type="text" placeholder="Marekc" />
               </div>
               <div class="form-row">
+                <label for="login-pass">Heslo:</label>
+                <input id="login-pass" type="password" placeholder="●●●●●" />
+              </div>
+              <div class="form-row">
                 <label for="login-room">Miestnosť (ľudí):</label>
                 <select id="login-room">
                   <option>Spoločná (1)</option>
@@ -190,14 +194,37 @@
 
       async function submitLogin() {
         const nick = nickInput.value.trim() || 'Správca';
+        const password = document.getElementById('login-pass').value.trim();
         if (!nick) {
           alert('Zadaj nick.');
           return;
         }
+        if (!password) {
+          alert('Zadaj heslo.');
+          return;
+        }
 
-        localStorage.setItem('chatUsername', nick);
-        localStorage.setItem('chatRegistered', 'true');
-        window.location.href = '/chat.html';
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: nick, password })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            alert(data.message || 'Prihlásenie zlyhalo.');
+            return;
+          }
+
+          localStorage.setItem('chatUsername', nick);
+          localStorage.setItem('chatRegistered', 'true');
+          if (data.token) {
+            localStorage.setItem('chatAuthToken', data.token);
+          }
+          window.location.href = '/chat.html';
+        } catch (error) {
+          alert('Prihlásenie zlyhalo. Skús to znova.');
+        }
       }
 
       loginForm.addEventListener('submit', (event) => {
