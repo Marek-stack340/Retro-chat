@@ -313,6 +313,32 @@ function createAuthToken(username) {
   return `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}.${username.toLowerCase()}`;
 }
 
+function hasSmtpConfiguration() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+async function sendPasswordResetEmail(account, resetCode) {
+  const resetMessage = `Ahoj ${account.username},\n\nTvoje nové dočasné heslo je: ${resetCode}\n\nPo prihlásení sa môžeš prihlásiť a zmeniť ho v nastaveniach alebo po prihlásení.\n\nOddych Chat`;
+
+  if (!hasSmtpConfiguration()) {
+    console.log(`[password-reset] fallback email delivery for ${account.email}: ${resetCode}`);
+    return { delivered: false, fallback: true, resetCode };
+  }
+
+  try {
+    await resetEmailTransporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: account.email,
+      subject: 'Oddych Chat – obnovenie hesla',
+      text: resetMessage
+    });
+    return { delivered: true, fallback: false, resetCode };
+  } catch (error) {
+    console.error('[password-reset] email send failed', error.message);
+    return { delivered: false, fallback: true, resetCode };
+  }
+}
+
 function cleanupAuthTokens() {
   const now = Date.now();
   for (const [token, record] of authTokens.entries()) {
@@ -385,18 +411,20 @@ app.post('/api/forgot-password', async (req, res) => {
     }
 
     const resetCode = Math.random().toString(36).slice(2, 10).toUpperCase();
-    const resetMessage = `Ahoj ${account.username},\n\nTvoje nové dočasné heslo je: ${resetCode}\n\nPo prihlásení sa môžeš prihlásiť a zmeniť ho v nastaveniach alebo po prihlásení.\n\nOddych Chat`;
+    const hashedResetCode = await bcrypt.hash(resetCode, 10);
+    account.resetCodeHash = hashedResetCode;
+    account.resetCodeExpiresAt = Date.now() + 15 * 60 * 1000;
 
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      await resetEmailTransporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: account.email,
-        subject: 'Oddych Chat – obnovenie hesla',
-        text: resetMessage
-      });
-    }
+    const delivery = await sendPasswordResetEmail(account, resetCode);
+    const responseMessage = delivery.delivered
+      ? `Ak je e-mail správny, bol odoslaný resetovací kód na ${account.email}.`
+      : `Dočasné heslo bolo nastavené. ${delivery.fallback ? `Email sa nepodarilo odoslať, preto použite tento kód pri prihlásení: ${resetCode}` : ''}`;
 
-    res.json({ ok: true, message: `Ak je e-mail správny, bol odoslaný resetovací kód na ${account.email}.` });
+    res.json({
+      ok: true,
+      message: responseMessage,
+      resetCode: delivery.delivered ? undefined : resetCode
+    });
   } catch (error) {
     res.status(500).json({ ok: false, message: 'Obnovenie hesla zlyhalo.' });
   }
@@ -406,13 +434,14 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
+    const resetCode = normalizePassword(req.body && req.body.resetCode ? req.body.resetCode : '');
 
     if (!isValidUsername(username)) {
       res.status(400).json({ ok: false, message: 'Neplatné meno.' });
       return;
     }
-    if (!password) {
-      res.status(400).json({ ok: false, message: 'Zadaj heslo.' });
+    if (!password && !resetCode) {
+      res.status(400).json({ ok: false, message: 'Zadaj heslo alebo resetovací kód.' });
       return;
     }
 
@@ -422,9 +451,24 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       return;
     }
 
-    const ok = await bcrypt.compare(password, account.passwordHash);
-    if (!ok) {
-      res.status(401).json({ ok: false, message: 'Nesprávne heslo.' });
+    let authenticated = false;
+    if (password) {
+      authenticated = await bcrypt.compare(password, account.passwordHash);
+    }
+
+    if (!authenticated && resetCode) {
+      const resetCodeExpiresAt = Number(account.resetCodeExpiresAt || 0);
+      if (resetCodeExpiresAt > Date.now() && account.resetCodeHash) {
+        authenticated = await bcrypt.compare(resetCode, account.resetCodeHash);
+        if (authenticated) {
+          delete account.resetCodeHash;
+          delete account.resetCodeExpiresAt;
+        }
+      }
+    }
+
+    if (!authenticated) {
+      res.status(401).json({ ok: false, message: 'Nesprávne heslo alebo resetovací kód.' });
       return;
     }
 

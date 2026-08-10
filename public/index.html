@@ -37,6 +37,10 @@
                 <input id="login-pass" type="password" placeholder="●●●●●" />
               </div>
               <div class="form-row">
+                <label for="login-reset-code">Resetovací kód (voliteľné):</label>
+                <input id="login-reset-code" type="text" placeholder="Kód z e-mailu" />
+              </div>
+              <div class="form-row">
                 <label for="login-room">Miestnosť (ľudí):</label>
                 <select id="login-room">
                   <option>Spoločná (1)</option>
@@ -196,12 +200,13 @@
       async function submitLogin() {
         const nick = nickInput.value.trim() || 'Správca';
         const password = document.getElementById('login-pass').value.trim();
+        const resetCode = document.getElementById('login-reset-code').value.trim();
         if (!nick) {
           alert('Zadaj nick.');
           return;
         }
-        if (!password) {
-          alert('Zadaj heslo.');
+        if (!password && !resetCode) {
+          alert('Zadaj heslo alebo resetovací kód.');
           return;
         }
 
@@ -209,7 +214,7 @@
           const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: nick, password })
+            body: JSON.stringify({ username: nick, password, resetCode })
           });
           const data = await response.json();
           if (!response.ok || !data.ok) {
@@ -240,7 +245,12 @@
             body: JSON.stringify({ username })
           });
           const data = await response.json().catch(() => ({}));
-          alert(data.message || 'Obnova hesla bola odoslaná.');
+          const message = data.message || 'Obnova hesla bola odoslaná.';
+          if (data.resetCode) {
+            alert(`${message}\n\nDočasné heslo: ${data.resetCode}`);
+          } else {
+            alert(message);
+          }
         } catch (error) {
           alert('Nepodarilo sa obnoviť heslo.');
         }
