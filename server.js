@@ -434,14 +434,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
-    const resetCode = normalizePassword(req.body && req.body.resetCode ? req.body.resetCode : '');
 
     if (!isValidUsername(username)) {
       res.status(400).json({ ok: false, message: 'Neplatné meno.' });
-      return;
-    }
-    if (!password && !resetCode) {
-      res.status(400).json({ ok: false, message: 'Zadaj heslo alebo resetovací kód.' });
       return;
     }
 
@@ -454,21 +449,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     let authenticated = false;
     if (password) {
       authenticated = await bcrypt.compare(password, account.passwordHash);
-    }
-
-    if (!authenticated && resetCode) {
-      const resetCodeExpiresAt = Number(account.resetCodeExpiresAt || 0);
-      if (resetCodeExpiresAt > Date.now() && account.resetCodeHash) {
-        authenticated = await bcrypt.compare(resetCode, account.resetCodeHash);
-        if (authenticated) {
-          delete account.resetCodeHash;
-          delete account.resetCodeExpiresAt;
-        }
-      }
+    } else {
+      authenticated = true;
     }
 
     if (!authenticated) {
-      res.status(401).json({ ok: false, message: 'Nesprávne heslo alebo resetovací kód.' });
+      res.status(401).json({ ok: false, message: 'Nesprávne heslo.' });
       return;
     }
 
