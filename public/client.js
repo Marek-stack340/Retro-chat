@@ -36,6 +36,9 @@ const countdownValueEl = document.getElementById('countdown-value');
 const countdownLabelEl = document.getElementById('countdown-label');
 const topicNameInput = document.getElementById('topic-name-input');
 const createTopicBtn = document.getElementById('create-topic-btn');
+const securityBadge = document.getElementById('security-badge');
+const securityMessage = document.getElementById('security-message');
+const securityCheckBtn = document.getElementById('security-check-btn');
 
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
@@ -196,6 +199,22 @@ function isAwayFromChat() {
   const hidden = document.visibilityState !== 'visible';
   const notFocused = typeof document.hasFocus === 'function' ? !document.hasFocus() : false;
   return hidden || notFocused;
+}
+
+function containsSuspiciousClientText(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return false;
+  return /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i.test(trimmed) || trimmed.length > 280;
+}
+
+function updateSecurityPanel(payload) {
+  const safeMessage = payload && payload.message ? String(payload.message).replace(/\n/g, ' • ') : 'Chat je chránený pred podvodmi, škodlivým obsahom a útokmi.';
+  if (securityBadge) {
+    securityBadge.textContent = payload && payload.active === false ? '⚠ Ochrana neaktívna' : '🛡 Ochrana aktívna';
+  }
+  if (securityMessage) {
+    securityMessage.textContent = safeMessage;
+  }
 }
 
 function openNewsHistory() {
@@ -1006,6 +1025,8 @@ socket.on('user-points', (pointsSnapshot) => {
   }
 });
 
+socket.on('security-banner', updateSecurityPanel);
+socket.on('antivirus-status', (payload) => updateSecurityPanel(payload));
 
 socket.on('message-reaction-updated', ({ messageId, reactions }) => {
   updateReactionRow(messageId, reactions);
@@ -1025,6 +1046,12 @@ socket.on('countdown:start', ({ value, byUsername, rewardText }) => {
 function sendMessage() {
   let text = messageInput.value.trim();
   if (!text) return;
+
+  if (containsSuspiciousClientText(text)) {
+    showToast('Správa obsahuje podozrivý obsah a nebola odoslaná.');
+    messageInput.value = '';
+    return;
+  }
 
   if (text.startsWith('.zmaz')) {
     socket.emit('clear-chat');

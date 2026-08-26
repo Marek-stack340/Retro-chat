@@ -46,6 +46,16 @@ const registerLimiter = rateLimit({
 });
 
 app.use('/api/', apiLimiter);
+app.use('/api/', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return next();
+  }
+  if (req.body && containsSuspiciousPayload(req.body)) {
+    res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
+    return;
+  }
+  next();
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -82,7 +92,7 @@ const MAX_ROOM_LENGTH = 40;
 const MAX_USERNAME_LENGTH = 20;
 const SUSPICIOUS_PATTERN = /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i;
 const SECURITY_BANNER = '🛡 Bezpečnostná ochrana';
-const SECURITY_PROTECTIONS = ['rate limiting', 'helmet headers', 'súborové filtry', 'zabanovanie podozrivých používateľov', 'blokovanie škodlivých skriptov'];
+const SECURITY_PROTECTIONS = ['rate limiting', 'helmet headers', 'súborové filtry', 'zabanovanie podozrivých používateľov', 'blokovanie škodlivých skriptov', 'kontrola vstupov'];
 const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|<iframe\b|<svg\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.(cookie|location)|window\.(location|open)|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\b(?:cmd|powershell|bash|sh)\b|\b(?:wget|curl|nc|python|perl)\b|\b(?:mshta|rundll32)\b|\.(?:exe|bat|ps1|cmd)\b|__proto__|constructor\.constructor)/i;
 const ANTIVIRUS_MAX_STRIKES = 3;
 const ANTIVIRUS_STRIKE_WINDOW_MS = 30 * 60 * 1000;
@@ -201,6 +211,21 @@ function sanitizeChatText(text) {
   cleaned = cleaned.replace(/on\w+=/gi, '');
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
   return cleaned.slice(0, MAX_MESSAGE_LENGTH);
+}
+
+function containsSuspiciousPayload(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') {
+    return SUSPICIOUS_PATTERN.test(value) || ANTIVIRUS_DANGEROUS_PATTERN.test(value);
+  }
+  if (typeof value === 'object') {
+    try {
+      return containsSuspiciousPayload(JSON.stringify(value));
+    } catch (_) {
+      return false;
+    }
+  }
+  return false;
 }
 
 function isSuspiciousText(text) {
@@ -366,6 +391,10 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
     const email = normalizePassword(req.body && req.body.email ? req.body.email : '');
 
+    if (containsSuspiciousPayload({ username, password, email })) {
+      res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
+      return;
+    }
     if (!isValidUsername(username)) {
       res.status(400).json({ ok: false, message: 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.' });
       return;
@@ -435,6 +464,10 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
 
+    if (containsSuspiciousPayload({ username, password })) {
+      res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
+      return;
+    }
     if (!isValidUsername(username)) {
       res.status(400).json({ ok: false, message: 'Neplatné meno.' });
       return;

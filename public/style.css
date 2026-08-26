@@ -127,6 +127,10 @@ body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#f
 .commands-list{padding-left:18px;margin:0;color:#4d3725;line-height:1.7}
 .commands-list li{margin-bottom:10px}
 .commands-list strong{color:#2f6a24}
+.security-badge{display:inline-block;padding:8px 12px;border-radius:999px;background:#e7f6e2;color:#2b6b2a;font-weight:700;margin-bottom:8px}
+.security-message{font-size:0.92rem;line-height:1.5;color:#5b3c1a;margin-bottom:10px}
+.security-check-btn{width:100%;padding:10px 12px;border:none;border-radius:10px;background:#3a7f2a;color:#fff;font-weight:700;cursor:pointer}
+.security-check-btn:hover{background:#2f6a24}
 .sidebar-user{padding:12px;border-radius:12px;background:#fff9eb;border:1px solid rgba(209,139,43,0.16);font-weight:700;color:#4b3524}
 .sidebar-note, .room-text, .room-note, .contact{margin-top:10px;color:#5a3a2d;line-height:1.6;font-size:0.95rem}
 .contact-link{color:#0056cc;text-decoration:none;font-weight:700}
