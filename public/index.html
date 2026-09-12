@@ -1,261 +1,96 @@
 <!doctype html>
-<html>
+<html lang="sk">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Oddych Chat</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#fff5e0">
     <meta property="og:title" content="Oddych Chat">
-    <meta property="og:description" content="Retro slovenský chat. Odkazovač, súkromné správy a jednoduché prihlásenie.">
+    <meta property="og:description" content="Jednoduchý retro chat bez zbytočného komplikovania.">
     <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css">
   </head>
-  <body>
-    <div class="page-wrap">
-      <header class="landing-topbar">
-        <div class="brand-left">🙂</div>
-        <div class="brand-title">Oddych Chat</div>
-      </header>
+  <body class="landing-page-body">
+    <div class="landing-shell-new">
+      <div class="promo-banner">Povedzte druhým o tomto chate nech je nás tu viac!</div>
+      <section class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Oddych Chat</p>
+          <h1>Vitaj v novom, jednoduchom a priateľskom chate.</h1>
+          <p class="hero-text">Vstúp rovno, vyber si prezývku a už môžeš chatovať. Ak účet neexistuje, vytvorí sa automaticky a bez zbytočných komplikácií.</p>
+          <div class="hero-actions">
+            <a class="ghost-link" href="/chat.html">Otvoriť chat</a>
+            <a class="ghost-link secondary" href="/guestbook.html">Kniha návštev</a>
+          </div>
+        </div>
+        <form id="entry-form" class="entry-card">
+          <h2>Vstúpiť do chatu</h2>
+          <label for="entry-nick">Prezývka</label>
+          <input id="entry-nick" name="username" type="text" maxlength="20" placeholder="napr. Marek" required>
+          <label for="entry-password">Heslo (voliteľné)</label>
+          <input id="entry-password" name="password" type="password" placeholder="Ak chceš, môžeš pridať heslo">
+          <button type="submit">Vstúpiť</button>
+          <p class="entry-note">Bez emailov, bez resetovacích kódov a bez zbytočných blokov.</p>
+        </form>
+      </section>
 
-      <div class="landing-grid">
-        <aside class="panel panel-left">
-          <div class="panel-header">Najaktívnejší chateri</div>
-          <ol class="chat-list"></ol>
-        </aside>
-
-        <main class="main-panel">
-          <section class="entry-section">
-            <div class="section-title">Vstup</div>
-            <form id="login-form" class="entry-form">
-              <div class="form-row">
-                <label for="login-nick">Nick:</label>
-                <input id="login-nick" type="text" placeholder="Marekc" />
-              </div>
-              <div class="form-row">
-                <label for="login-pass">Heslo (voliteľné):</label>
-                <input id="login-pass" type="password" placeholder="●●●●●" />
-              </div>
-              <div class="form-row">
-                <label for="login-room">Miestnosť (ľudí):</label>
-                <select id="login-room">
-                  <option>Spoločná (1)</option>
-                  <option>Retro (0)</option>
-                  <option>Slovensko (0)</option>
-                </select>
-              </div>
-              <div class="form-actions">
-                <button id="login-submit" type="submit" class="button-enter">Vstúpiť</button>
-              </div>
-            </form>
-            <div class="entry-links">
-              <a href="/register.html">Registrácia nicku</a> / <a href="#" id="forgot-password-link">Zabudol som heslo</a>
-              <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
-              <div class="guestbook-link"><a href="/guestbook.html">Oddych kniha návštev</a></div>
-            </div>
-
-          </section>
-
-
-          <section class="info-section">
-            <div class="section-title">Kedy sem prísť?</div>
-            <div class="times-row">
-              <div class="time-entry active" data-hour="9">9:00</div>
-              <div class="time-entry" data-hour="15">15:00</div>
-              <div class="time-entry" data-hour="19">19:00</div>
-            </div>
-            <div class="time-note">Najbližší: <span id="next-time-label">9:00</span></div>
-          </section>
-
-        </main>
-
-        <aside class="panel panel-right">
-          <div class="panel-header">Najobľúbenejší chateri</div>
-          <ol class="chat-list favorites"></ol>
-          <div class="panel-note">Najobľúbenejších označilo najviac ľudí za priateľov.</div>
-        </aside>
-      </div>
+      <section class="feature-grid">
+        <article class="feature-card">
+          <h3>Rýchly vstup</h3>
+          <p>Stačí zadať prezývku a môžeš hneď začať.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Bez problémov</h3>
+          <p>Prihlasovací proces bol zjednodušený a už nezasahuje do chatu.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Retro nálada</h3>
+          <p>Nechali sme si pokojný retro vzhľad, ale s moderným jednoduchosťou.</p>
+        </article>
+      </section>
     </div>
 
     <script>
-      const nickInput = document.getElementById('login-nick');
-      const loginForm = document.getElementById('login-form');
-      const forgotPasswordLink = document.getElementById('forgot-password-link');
-      const nextTimeLabel = document.getElementById('next-time-label');
-      const timeEntries = Array.from(document.querySelectorAll('.time-entry'));
-      const activeList = document.querySelector('.panel-left .chat-list');
-      const favoriteList = document.querySelector('.panel-right .chat-list.favorites');
-      const hiddenActiveUsers = new Set(['kika_c123']);
+      const nickInput = document.getElementById('entry-nick');
+      const form = document.getElementById('entry-form');
       const savedNick = localStorage.getItem('chatUsername');
-      if (savedNick) nickInput.value = savedNick;
-
-      function loadChatStats() {
-        try {
-          const raw = localStorage.getItem('chatStatsV1');
-          if (!raw) return { users: {}, popularity: {} };
-          const parsed = JSON.parse(raw);
-          return { users: parsed.users || {}, popularity: parsed.popularity || {} };
-        } catch (e) {
-          return { users: {}, popularity: {} };
-        }
+      if (savedNick) {
+        nickInput.value = savedNick;
       }
 
-      function renderLeaderboards() {
-        if (!activeList || !favoriteList) return;
-        const stats = loadChatStats();
-        const users = Object.entries(stats.users || {});
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const username = nickInput.value.trim();
+        const password = document.getElementById('entry-password').value.trim();
 
-        const mostActive = users
-          .map(([key, user]) => ({
-            key,
-            name: user.displayName || key,
-            score: Number(user.messages || 0),
-            lastActive: Number(user.lastActive || 0)
-          }))
-          .filter((item) => !hiddenActiveUsers.has(String(item.key || '').toLowerCase()))
-          .sort((a, b) => b.score - a.score || b.lastActive - a.lastActive)
-          .slice(0, 5);
-
-        const mostPopular = users
-          .map(([key, user]) => ({
-            key,
-            name: user.displayName || key,
-            score: Number((stats.popularity || {})[key] || 0)
-          }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5);
-
-        activeList.innerHTML = '';
-        favoriteList.innerHTML = '';
-
-        if (!mostActive.length) {
-          const li = document.createElement('li');
-          li.textContent = 'Zatiaľ bez dát';
-          activeList.appendChild(li);
-        } else {
-          mostActive.forEach((item) => {
-            const li = document.createElement('li');
-            li.textContent = `${item.name} (${item.score})`;
-            activeList.appendChild(li);
-          });
-        }
-
-        if (!mostPopular.length) {
-          const li = document.createElement('li');
-          li.textContent = 'Zatiaľ bez dát';
-          favoriteList.appendChild(li);
-        } else {
-          mostPopular.forEach((item) => {
-            const li = document.createElement('li');
-            li.textContent = `${item.name} (${item.score})`;
-            favoriteList.appendChild(li);
-          });
-        }
-      }
-
-      function getNextTime() {
-        const now = new Date();
-        const schedule = [9, 15, 19];
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTotal = currentHour * 60 + currentMinute;
-        const times = schedule.map((hour) => hour * 60);
-
-        if (currentTotal < times[0]) {
-          return schedule[0];
-        }
-        if (currentTotal < times[1] || currentTotal === times[0]) {
-          return schedule[1];
-        }
-        if (currentTotal < times[2] || currentTotal === times[1]) {
-          return schedule[2];
-        }
-        return schedule[0];
-      }
-
-      function updateScheduleHighlight() {
-        const nextHour = getNextTime();
-        const nextValue = `${String(nextHour).padStart(2, '0')}:00`;
-        nextTimeLabel.textContent = nextValue;
-        timeEntries.forEach((entry) => {
-          const hour = Number(entry.dataset.hour);
-          entry.classList.toggle('active', hour === nextHour);
-        });
-      }
-
-      async function copyChatLink() {
-        const chatUrl = `${window.location.origin}/chat.html`;
-        try {
-          await navigator.clipboard.writeText(chatUrl);
-          alert('Odkaz na chat bol skopírovaný.');
-        } catch (error) {
-          prompt('Skopíruj tento odkaz na chat:', chatUrl);
-        }
-      }
-
-      async function submitLogin() {
-        const nick = nickInput.value.trim() || 'Správca';
-        const password = document.getElementById('login-pass').value.trim();
-        if (!nick) {
-          alert('Zadaj nick.');
+        if (!username) {
+          alert('Zadaj prezývku.');
           return;
         }
 
         try {
-          const response = await fetch('/api/login', {
+          const response = await fetch('/api/enter', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: nick, password })
+            body: JSON.stringify({ username, password })
           });
-          const data = await response.json();
+          const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.ok) {
-            alert(data.message || 'Prihlásenie zlyhalo.');
+            alert(data.message || 'Vstup do chatu zlyhal.');
             return;
           }
 
-          localStorage.setItem('chatUsername', nick);
+          localStorage.setItem('chatUsername', username);
           localStorage.setItem('chatRegistered', 'true');
           if (data.token) {
             localStorage.setItem('chatAuthToken', data.token);
           }
           window.location.href = '/chat.html';
         } catch (error) {
-          alert('Prihlásenie zlyhalo. Skús to znova.');
-        }
-      }
-
-      forgotPasswordLink?.addEventListener('click', async (event) => {
-        event.preventDefault();
-        const username = prompt('Zadaj svoj nick, pre ktorý chceš obnoviť heslo:');
-        if (!username) return;
-
-        try {
-          const response = await fetch('/api/forgot-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username })
-          });
-          const data = await response.json().catch(() => ({}));
-          const message = data.message || 'Obnova hesla bola odoslaná.';
-          if (data.resetCode) {
-            alert(`${message}\n\nDočasné heslo: ${data.resetCode}`);
-          } else {
-            alert(message);
-          }
-        } catch (error) {
-          alert('Nepodarilo sa obnoviť heslo.');
+          alert('Vstup do chatu zlyhal. Skús to znova.');
         }
       });
-
-      loginForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        submitLogin();
-      });
-
-      updateScheduleHighlight();
-      renderLeaderboards();
-      setInterval(updateScheduleHighlight, 60 * 1000);
-      setInterval(renderLeaderboards, 10 * 1000);
     </script>
   </body>
 </html>

@@ -1,0 +1,3 @@
+Bezpečnostný procesný súbor projektu.
+
+Tento súbor slúži ako záznam o bezpečnostných kontrolách, pravidlách spracovania dát a evidencii ochrany používateľských informácií.

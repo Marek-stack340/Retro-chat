@@ -1,0 +1,3 @@
+AVG bezpečnostný súbor projektu.
+
+Tento súbor slúži ako bezpečnostný auditný záznam pre kontrolu ochrany aplikácie, používateľských údajov a správneho spracovania prístupov.

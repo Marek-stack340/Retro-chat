@@ -650,6 +650,68 @@ function updateReactionRow(messageId, reactions) {
   container.replaceWith(newRow);
 }
 
+function isCurrentUserAdmin() {
+  const name = (currentUsername || '').trim().toLowerCase();
+  return ['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name);
+}
+
+function updateAdminPanel(users) {
+  const panel = document.getElementById('admin-portal');
+  const list = document.getElementById('admin-portal-list');
+  const count = document.getElementById('admin-portal-count');
+  const title = document.getElementById('admin-portal-title');
+  if (!panel || !list || !count || !title) return;
+
+  const currentIsAdmin = isCurrentUserAdmin();
+  panel.style.display = currentIsAdmin ? 'block' : 'none';
+  if (!currentIsAdmin) return;
+
+  title.textContent = 'Owner panel';
+  count.textContent = String(Array.isArray(users) ? users.length : 0);
+  list.innerHTML = '';
+
+  users.forEach((user) => {
+    const row = document.createElement('div');
+    row.className = 'admin-portal-user';
+
+    const name = document.createElement('span');
+    name.className = 'admin-portal-user-name';
+    name.textContent = user.username;
+
+    const badge = document.createElement('span');
+    badge.className = 'admin-user-badge';
+    badge.textContent = user.role === 'admin' ? 'owner' : 'user';
+
+    const actions = document.createElement('div');
+    actions.className = 'admin-portal-actions';
+
+    const kickBtn = document.createElement('button');
+    kickBtn.type = 'button';
+    kickBtn.className = 'admin-action-btn kick';
+    kickBtn.textContent = 'Kick';
+    kickBtn.disabled = user.username === currentUsername || user.role === 'admin';
+    kickBtn.addEventListener('click', () => {
+      socket.emit('command', { type: 'kick', target: user.username, from: currentUsername });
+    });
+
+    const banBtn = document.createElement('button');
+    banBtn.type = 'button';
+    banBtn.className = 'admin-action-btn ban';
+    banBtn.textContent = 'Ban 24h';
+    banBtn.disabled = user.username === currentUsername || user.role === 'admin';
+    banBtn.addEventListener('click', () => {
+      socket.emit('command', { type: 'ban', target: user.username, hours: 24, from: currentUsername });
+    });
+
+    actions.appendChild(kickBtn);
+    actions.appendChild(banBtn);
+    row.appendChild(name);
+    row.appendChild(badge);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
 function updateUserList(users) {
   if (activeUsersCount) {
     activeUsersCount.textContent = users.length;
@@ -659,6 +721,7 @@ function updateUserList(users) {
   }
   refreshMyPoints();
   refreshIgnoreStatus();
+  updateAdminPanel(users);
   if (!usersList) return;
   usersList.innerHTML = '';
   users.forEach((user) => {
@@ -846,7 +909,7 @@ function canCreateRoom() {
   const storedUser = localStorage.getItem('chatUsername')?.trim();
   const registered = localStorage.getItem('chatRegistered') === 'true';
   const isAdmin = ['admin', 'administrator', 'spravca', 'správca'].includes((storedUser || '').toLowerCase());
-  return registered || isAdmin;
+  return !!storedUser || registered || isAdmin;
 }
 
 function canManageRooms() {
@@ -1013,6 +1076,7 @@ socket.on('join-denied', (message) => {
 socket.on('user-list', (users) => {
   activeUsers = users;
   updateUserList(users);
+  updateAdminPanel(users);
   notifyFriendOnlineStatus(users);
   refreshPrivateStatus();
 });

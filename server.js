@@ -385,77 +385,85 @@ function requireAuthToken(req, res, next) {
   next();
 }
 
+async function handleEntryRequest({ username, password }) {
+  const normalizedUsername = normalizeUsername(username);
+  const passwordValue = normalizePassword(password);
+
+  if (!isValidUsername(normalizedUsername)) {
+    throw new Error('Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
+  }
+
+  const normalizedKey = normalizedUsername.toLowerCase();
+  const existingAccount = accounts.get(normalizedKey);
+  if (existingAccount) {
+    if (passwordValue && existingAccount.passwordHash) {
+      const passwordOk = await bcrypt.compare(passwordValue, existingAccount.passwordHash);
+      if (!passwordOk) {
+        throw new Error('Nesprávne heslo.');
+      }
+    }
+    return {
+      ok: true,
+      created: false,
+      username: existingAccount.username,
+      role: existingAccount.role || null
+    };
+  }
+
+  const newAccount = {
+    username: normalizedUsername,
+    passwordHash: passwordValue ? await bcrypt.hash(passwordValue, 10) : null,
+    role: adminUsernames.has(normalizedKey)
+      ? 'admin'
+      : (testerUsernames.has(normalizedKey) ? 'tester' : null)
+  };
+  accounts.set(normalizedKey, newAccount);
+  return {
+    ok: true,
+    created: true,
+    username: newAccount.username,
+    role: newAccount.role || null
+  };
+}
+
+app.post('/api/enter', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
+    const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
+
+    if (containsSuspiciousPayload({ username, password })) {
+      res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
+      return;
+    }
+
+    const result = await handleEntryRequest({ username, password });
+    const token = createAuthToken(result.username);
+    authTokens.set(token, {
+      username: result.username,
+      role: result.role || null,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000
+    });
+
+    res.json({ ok: true, created: result.created, token, username: result.username, role: result.role || null });
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error.message || 'Vstup do chatu zlyhal.' });
+  }
+});
+
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
-    const email = normalizePassword(req.body && req.body.email ? req.body.email : '');
 
-    if (containsSuspiciousPayload({ username, password, email })) {
+    if (containsSuspiciousPayload({ username, password })) {
       res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
       return;
     }
-    if (!isValidUsername(username)) {
-      res.status(400).json({ ok: false, message: 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.' });
-      return;
-    }
-    if (password.length < 4) {
-      res.status(400).json({ ok: false, message: 'Heslo musí mať aspoň 4 znaky.' });
-      return;
-    }
-    if (!email) {
-      res.status(400).json({ ok: false, message: 'Zadaj e-mail.' });
-      return;
-    }
 
-    const normalizedUsername = username.toLowerCase();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    accounts.set(normalizedUsername, {
-      username,
-      email,
-      passwordHash: hashedPassword,
-      role: adminUsernames.has(normalizedUsername)
-        ? 'admin'
-        : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
-    });
-    res.json({ ok: true, message: 'Registrácia uložená.' });
+    const result = await handleEntryRequest({ username, password });
+    res.json({ ok: true, created: result.created, username: result.username, role: result.role || null });
   } catch (error) {
-    res.status(500).json({ ok: false, message: 'Registrácia zlyhala.' });
-  }
-});
-
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
-
-    if (!username) {
-      res.status(400).json({ ok: false, message: 'Zadaj nick.' });
-      return;
-    }
-
-    const account = accounts.get(username.toLowerCase());
-    if (!account) {
-      res.status(404).json({ ok: false, message: 'Tento nick neexistuje. Najprv sa zaregistruj.' });
-      return;
-    }
-
-    const resetCode = Math.random().toString(36).slice(2, 10).toUpperCase();
-    const hashedResetCode = await bcrypt.hash(resetCode, 10);
-    account.resetCodeHash = hashedResetCode;
-    account.resetCodeExpiresAt = Date.now() + 15 * 60 * 1000;
-
-    const delivery = await sendPasswordResetEmail(account, resetCode);
-    const responseMessage = delivery.delivered
-      ? `Ak je e-mail správny, bol odoslaný resetovací kód na ${account.email}.`
-      : `Dočasné heslo bolo nastavené. ${delivery.fallback ? `Email sa nepodarilo odoslať, preto použite tento kód pri prihlásení: ${resetCode}` : ''}`;
-
-    res.json({
-      ok: true,
-      message: responseMessage,
-      resetCode: delivery.delivered ? undefined : resetCode
-    });
-  } catch (error) {
-    res.status(500).json({ ok: false, message: 'Obnovenie hesla zlyhalo.' });
+    res.status(400).json({ ok: false, message: error.message || 'Registrácia zlyhala.' });
   }
 });
 
@@ -468,39 +476,18 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       res.status(400).json({ ok: false, message: 'Neplatná požiadavka.' });
       return;
     }
-    if (!isValidUsername(username)) {
-      res.status(400).json({ ok: false, message: 'Neplatné meno.' });
-      return;
-    }
 
-    const account = accounts.get(username.toLowerCase());
-    if (!account) {
-      res.status(401).json({ ok: false, message: 'Účet neexistuje. Najprv sa zaregistruj.' });
-      return;
-    }
-
-    let authenticated = false;
-    if (password) {
-      authenticated = await bcrypt.compare(password, account.passwordHash);
-    } else {
-      authenticated = true;
-    }
-
-    if (!authenticated) {
-      res.status(401).json({ ok: false, message: 'Nesprávne heslo.' });
-      return;
-    }
-
-    const token = createAuthToken(account.username);
+    const result = await handleEntryRequest({ username, password });
+    const token = createAuthToken(result.username);
     authTokens.set(token, {
-      username: account.username,
-      role: account.role || null,
+      username: result.username,
+      role: result.role || null,
       expiresAt: Date.now() + 24 * 60 * 60 * 1000
     });
 
-    res.json({ ok: true, token, username: account.username, role: account.role || null });
+    res.json({ ok: true, token, username: result.username, role: result.role || null, created: result.created });
   } catch (error) {
-    res.status(500).json({ ok: false, message: 'Prihlásenie zlyhalo.' });
+    res.status(400).json({ ok: false, message: error.message || 'Prihlásenie zlyhalo.' });
   }
 });
 
@@ -547,8 +534,12 @@ io.on('connection', (socket) => {
       (user) => user.username.toLowerCase() === normalizedUsername && user.id !== socket.id
     );
     if (duplicateUser) {
-      socket.emit('join-denied', 'Meno je už obsadené. Skús si dať iné meno.');
-      return;
+      const existingSocket = io.sockets.sockets.get(duplicateUser.id);
+      if (existingSocket && existingSocket !== socket) {
+        existingSocket.emit('system-message', 'Tvoje spojenie bolo nahradené novým pripojením.');
+        existingSocket.disconnect(true);
+      }
+      users.delete(duplicateUser.id);
     }
 
     users.set(socket.id, {
@@ -561,7 +552,6 @@ io.on('connection', (socket) => {
     ensureOddychPoints(safeUsername);
     socket.data.joined = true;
     socket.emit('security-banner', getSecurityStatus(safeUsername));
-    socket.emit('system-message', `${SECURITY_BANNER} · ochrana je aktívna a chat je chránený pred hackerom, škodlivými skriptami a útokmi.`);
     broadcastUserList();
     broadcastOddychPoints();
     emitPresenceSystemMessage(safeUsername, 'join');

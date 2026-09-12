@@ -19,7 +19,7 @@
           <span>? Návod</span>
           <button id="help-suggestions-btn" class="help-icon-btn" type="button">💡 Návrhy na vylepšenie chatu</button>
         </div>
-        <p class="help-intro"><strong>Príkazy</strong> sa píšu tam, kde sa píšu aj odkazy chaterom.<br><strong>Administrátorom</strong> je vo svojej miestnosti každý, kto si ju vytvoril.</p>
+        <p class="help-intro">Toto je jednoduchý návod pre nováčikov: napíš správu do okna, môžeš kliknúť na meno pre adresovanie alebo súkromné šepkanie, a ak chceš, skúšaj aj miestnosti a jednoduché príkazy.<br><strong>Administrátorom</strong> je vo svojej miestnosti každý, kto si ju vytvoril.</p>
         <div id="help-suggestions" class="help-suggestions" style="display:none;">
           <div class="help-suggestions-title">Návrhy</div>
           <ul class="help-suggestions-list">
@@ -110,6 +110,16 @@
         <span>Oddych body: <strong id="my-points-display">0</strong></span>
         <span id="ignore-status-pill" class="profile-pill muted">Ignorovaní: 0</span>
       </div>
+      <div id="admin-portal" class="admin-portal" style="display:none;">
+        <div class="admin-portal-header">
+          <span id="admin-portal-title">Owner panel</span>
+          <span class="admin-portal-role">Admin</span>
+        </div>
+        <div class="admin-portal-body">
+          <div class="admin-portal-summary">Počet online: <strong id="admin-portal-count">0</strong></div>
+          <div id="admin-portal-list" class="admin-portal-list"></div>
+        </div>
+      </div>
       <div class="status-row private-status" id="private-status" style="display:none;">Súkromná správa pre <strong id="private-target-name"></strong></div>
 
       <!-- MODAL: Nastavenia odosielania -->
@@ -137,75 +147,47 @@
           <div class="chat-bottom-row">
             <div class="emoji-line" id="emoji-line" aria-label="Emotikony"></div>
             <div class="message-input-row">
-              <label for="message-input">Povedz:</label>
+              <label for="message-input">Správa</label>
               <textarea id="message-input" placeholder="Napíš správu..." rows="2"></textarea>
-              <button id="send-btn" type="button">Enter</button>
+              <button id="send-btn" type="button">Odoslať</button>
             </div>
           </div>
         </section>
 
         <aside class="sidebar-right">
           <div class="sidebar-block">
-            <h2>V miestnosti:</h2>
+            <h2>V miestnosti</h2>
             <ul id="users-list"></ul>
-            <div class="sidebar-note">1x klik: adresovanie<br>2x klik: šepkanie</div>
+            <div class="sidebar-note">1x klik = adresovanie<br>2x klik = šepkanie</div>
           </div>
           <div class="sidebar-block">
-            <h2>Miestnosti:</h2>
+            <h2>Miestnosti</h2>
             <div class="rooms-list">
               <div class="room-item active" data-permanent="true" data-room-name="Spoločná">Spoločná (1)
                 <button class="room-delete" title="Zmazať miestnosť" aria-label="Zmazať">✕</button>
               </div>
             </div>
-            <p class="room-text">Klikni na miestnosť a prepneš sa do nej.</p>
             <div class="room-create">
-              <label for="create-room">Vytvoriť miestnosť:</label>
+              <label for="create-room">Nová miestnosť</label>
               <input id="create-room" type="text" placeholder="Iba registrovaný a admin môže vytvoriť" disabled />
-              <button id="create-room-btn" type="button" class="small-link">Vytvoriť miestnosť</button>
-              <p class="room-note">Stála miestnosť sa nedá zmazať.</p>
+              <button id="create-room-btn" type="button" class="small-link">Vytvoriť</button>
             </div>
           </div>
-          <div class="sidebar-block">
+          <div class="sidebar-block compact">
             <h2>Príkazy</h2>
             <ul class="commands-list">
-              <li><strong>.zmaz</strong> – vymaže chat u všetkých</li>
-              <li><strong>:m správa</strong> – iba správca pošle oznam pre všetkých</li>
-              <li><strong>.countdown číslo</strong> – admin spustí hlasný fullscreen odpočet pre všetkých</li>
-              <li><strong>.ban meno 29</strong> – správca zabanuje používateľa na 29 hodín</li>
-              <li><strong>.ignoruj meno</strong> – ignoruje používateľa</li>
-              <li><strong>.neignoruj meno</strong> – zruší ignoráciu používateľa</li>
-              <li><strong>.vyhodip meno</strong> – vyhodí používateľa na 24 hodín</li>
-              <li><strong>.AFK</strong> – oznámi ostatným že si preč</li>
-              <li><strong>Klik na miestnosť</strong> – otvorí ju a prepne ťa do nej</li>
-              <li><strong>1x klik na meno</strong> – adresovanie, <strong>2x klik</strong> – šepkanie</li>
+              <li><strong>.zmaz</strong> – vymaže chat</li>
+              <li><strong>:m správa</strong> – oznam pre všetkých</li>
+              <li><strong>.AFK</strong> – som preč</li>
+              <li><strong>.ignoruj meno</strong> – ignorácia</li>
             </ul>
-            <p class="room-text">Napíš príkaz priamo do políčka na chat.</p>
           </div>
-          <div class="sidebar-block">
+          <div class="sidebar-block compact">
             <h2>Bezpečnosť</h2>
-            <div id="security-badge" class="security-badge">🛡 Ochrana aktívna</div>
-            <div id="security-message" class="security-message">Chat je chránený pred podvodmi, škodlivým obsahom a útokmi.</div>
-            <button id="security-check-btn" class="security-check-btn" type="button">Skontrolovať stav</button>
+            <div id="security-message" class="security-message">Chat je chránený pred podvodmi a škodlivým obsahom.</div>
+            <button id="security-check-btn" class="security-check-btn" type="button">Skontrolovať</button>
           </div>
-          <div class="sidebar-block">
-            <h2>Vytvorenie témy</h2>
-            <label class="topic-label" for="topic-name-input">Názov témy:</label>
-            <input id="topic-name-input" class="topic-input" type="text" placeholder="Napíš názov témy..." />
-            <div class="topic-suggestions" role="list" aria-label="Návrhy tém">
-              <button class="topic-chip" type="button" data-topic="Futbal">⚽ Futbal</button>
-              <button class="topic-chip" type="button" data-topic="Jedlo">🍽️ Jedlo</button>
-              <button class="topic-chip" type="button" data-topic="Autá">🚗 Autá</button>
-              <button class="topic-chip" type="button" data-topic="Filmy">🎬 Filmy</button>
-              <button class="topic-chip" type="button" data-topic="Hry">🎮 Hry</button>
-              <button class="topic-chip" type="button" data-topic="Cestovanie">✈️ Cestovanie</button>
-            </div>
-            <button id="create-topic-btn" class="create-topic-btn" type="button">Vytvoriť tému</button>
-          </div>
-          <div class="sidebar-block">
-            <h2>Novinky</h2>
-            <div class="contact">Kontakt: <a class="contact-link" href="mailto:marekcicilla@gmail.com?subject=Oddych%20Chat%20kontakt&body=Vitaj%2C%20chcem%20sa%20ozva%C5%A5%20oh%C4%BEadom%20chatu.%0A%0AMoje%20meno%3A%20">upload@oddych-chat.com</a></div>
-            <a href="#" id="news-history-toggle" class="small-link">História noviniek</a>
-          </div>
+
         </aside>
       </main>
     </div>
@@ -224,12 +206,10 @@
       </div>
     </div>
     <script>
-      const username = localStorage.getItem('chatUsername')?.trim();
-      const authToken = localStorage.getItem('chatAuthToken')?.trim();
-      const hasValidSession = !!username && (!!authToken || localStorage.getItem('chatRegistered') === 'true');
-      if (!hasValidSession) {
-        alert('Najprv sa prihlás do chatu. Musíš sa prihlásiť do chatu.');
-        window.location.replace('/');
+      const storedUsername = localStorage.getItem('chatUsername')?.trim();
+      if (!storedUsername) {
+        const fallbackUsername = `návštevník-${Math.floor(Math.random() * 900 + 100)}`;
+        localStorage.setItem('chatUsername', fallbackUsername);
       }
     </script>
     <script src="/socket.io/socket.io.js"></script>
