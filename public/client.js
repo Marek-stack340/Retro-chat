@@ -1095,9 +1095,6 @@ socket.on('connect', () => {
     addRoomToList(currentRoom, { persist: false });
   }
   updateRoomHighlight();
-  const adText = '📣 SLEDUJ NA YOUTUBE: http://www.youtube.com/@Marekovkan%C3%A1l-l4j';
-  addMessage({ system: true, text: adText, timestamp: new Date().toISOString() });
-  showToast(adText);
   const joinPrompt = 'Ak chceš vedieť, kto tu kedy prišiel, napíš do okna ANO. Ak nechceš, napíš NIE.';
   addMessage({ system: true, text: joinPrompt, timestamp: new Date().toISOString() });
   joinHistoryPromptState = 'pending';
