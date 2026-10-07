@@ -120,6 +120,20 @@
           <div id="admin-portal-list" class="admin-portal-list"></div>
         </div>
       </div>
+      <div id="quicklink-overlay" class="quicklink-overlay" style="display:none;">
+        <div class="quicklink-modal" role="dialog" aria-modal="true" aria-labelledby="quicklink-title">
+          <div class="quicklink-header">
+            <div id="quicklink-title" class="quicklink-title">Odkazovač</div>
+            <button id="quicklink-close" class="quicklink-close" type="button" aria-label="Zavrieť odkazovač">&times;</button>
+          </div>
+          <div class="quicklink-compose">
+            <div class="quicklink-backline"><span class="quicklink-back-arrow">←</span> <span>Nový odkaz</span></div>
+            <label for="quicklink-target-input" class="quicklink-label">Komu:</label>
+            <input id="quicklink-target-input" class="quicklink-input" type="text" placeholder="napíš nick" autocomplete="off">
+            <button id="quicklink-continue" class="quicklink-continue" type="button">Pokračovať</button>
+          </div>
+        </div>
+      </div>
       <div class="status-row private-status" id="private-status" style="display:none;">Súkromná správa pre <strong id="private-target-name"></strong></div>
 
       <!-- MODAL: Nastavenia odosielania -->
@@ -145,6 +159,13 @@
           <div class="messages" id="messages"></div>
 
           <div class="chat-bottom-row">
+            <div id="private-thread-header" class="private-thread-header" style="display:none;">
+              <div class="private-thread-avatar" id="private-thread-avatar">U</div>
+              <div class="private-thread-meta">
+                <span class="private-thread-name" id="private-thread-name">—</span>
+                <span class="private-thread-sub">Profilová konverzácia</span>
+              </div>
+            </div>
             <div class="emoji-line" id="emoji-line" aria-label="Emotikony"></div>
             <div class="message-input-row">
               <label for="message-input">Správa</label>
@@ -182,12 +203,6 @@
               <li><strong>.ignoruj meno</strong> – ignorácia</li>
             </ul>
           </div>
-          <div class="sidebar-block compact">
-            <h2>Bezpečnosť</h2>
-            <div id="security-message" class="security-message">Chat je chránený pred podvodmi a škodlivým obsahom.</div>
-            <button id="security-check-btn" class="security-check-btn" type="button">Skontrolovať</button>
-          </div>
-
         </aside>
       </main>
     </div>

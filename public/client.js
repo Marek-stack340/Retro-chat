@@ -20,6 +20,13 @@ const newsHistoryPanel = document.getElementById('news-history-panel');
 const newsHistoryClose = document.getElementById('news-history-close');
 const newsHistoryBackdrop = document.getElementById('news-history-backdrop');
 const newsHistoryList = document.getElementById('news-history-list');
+const quicklinkOverlay = document.getElementById('quicklink-overlay');
+const quicklinkClose = document.getElementById('quicklink-close');
+const quicklinkTargetInput = document.getElementById('quicklink-target-input');
+const quicklinkContinue = document.getElementById('quicklink-continue');
+const privateThreadHeader = document.getElementById('private-thread-header');
+const privateThreadName = document.getElementById('private-thread-name');
+const privateThreadAvatar = document.getElementById('private-thread-avatar');
 
 const privateStatus = document.getElementById('private-status');
 const privateTargetNameDisplay = document.getElementById('private-target-name');
@@ -86,6 +93,14 @@ const roomsList = document.querySelector('.rooms-list');
 const emojiLine = document.getElementById('emoji-line');
 const emojiSet = ['🙂', '😃', '😍', '😎', '😏', '😡', '😂', '🙃', '😮'];
 const reactionSet = ['👍', '❤️', '😂', '😮', '😡'];
+const diceRiddles = [
+  { value: 1, text: 'Hádanka: Čo je to, čo máš v rukách, ale nikdy nevidíš?' },
+  { value: 2, text: 'Hádanka: Čo má dvere, ale neotvára ich nikto?' },
+  { value: 3, text: 'Hádanka: Čo môže bežať, aj keď nemá nohy?' },
+  { value: 4, text: 'Hádanka: Čo má steny, ale nie je dom?' },
+  { value: 5, text: 'Hádanka: Čo môžeš držať v prstoch, ale nikdy nedržíš?' },
+  { value: 6, text: 'Hádanka: Čo máš vždy pred sebou, ale nikdy nevidíš?' }
+];
 const savedUsername = localStorage.getItem('chatUsername');
 let currentUsername = savedUsername ? savedUsername.trim() : 'Správca';
 let autoPrivateEnabled = localStorage.getItem('autoPrivateEnabled') === 'true';
@@ -99,6 +114,7 @@ const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || 
 const onlineFriends = new Set();
 let messengerMode = localStorage.getItem('chatMessengerMode') === 'true';
 let lastSpokenAt = Date.now();
+let joinHistoryPromptState = 'pending';
 
 const CHAT_INACTIVITY_MS = 60 * 60 * 1000;
 const MESSENGER_INACTIVITY_MS = 60 * 60 * 1000;
@@ -361,6 +377,35 @@ function notifyIncomingMessage(fromName, previewText) {
         new Notification(title, { body });
       }
     }).catch(() => {});
+  }
+}
+
+function playPrivateMessageSound() {
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+
+    const context = window.__oddychPrivateMessageAudioContext || new AudioCtor();
+    window.__oddychPrivateMessageAudioContext = context;
+
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const now = context.currentTime;
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(660, now);
+    oscillator.frequency.exponentialRampToValueAtTime(920, now + 0.14);
+
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.28);
+  } catch (error) {
+    console.warn('Private message sound unavailable:', error);
   }
 }
 
@@ -842,6 +887,11 @@ function setPrivateTarget(id, username) {
     privateTargetNameDisplay.textContent = privateTargetName;
     privateStatus.style.display = 'block';
   }
+  if (privateThreadHeader && privateThreadName && privateThreadAvatar) {
+    privateThreadName.textContent = privateTargetName;
+    privateThreadAvatar.textContent = (privateTargetName || 'U').charAt(0).toUpperCase();
+    privateThreadHeader.style.display = 'flex';
+  }
   showToast(`Odkazovač aktivovaný: súkromná správa pre ${privateTargetName}`);
   messageInput.focus();
 }
@@ -857,14 +907,27 @@ function refreshPrivateStatus() {
   if (privateTargetName) {
     privateTargetNameDisplay.textContent = privateTargetName;
     privateStatus.style.display = 'block';
+    if (privateThreadHeader && privateThreadName && privateThreadAvatar) {
+      privateThreadName.textContent = privateTargetName;
+      privateThreadAvatar.textContent = privateTargetName.charAt(0).toUpperCase();
+      privateThreadHeader.style.display = 'flex';
+    }
     return;
   }
   if (autoPrivateEnabled && autoPrivateTargetName) {
     privateTargetNameDisplay.textContent = `${autoPrivateTargetName} (AUTO)`;
     privateStatus.style.display = 'block';
+    if (privateThreadHeader && privateThreadName && privateThreadAvatar) {
+      privateThreadName.textContent = autoPrivateTargetName;
+      privateThreadAvatar.textContent = autoPrivateTargetName.charAt(0).toUpperCase();
+      privateThreadHeader.style.display = 'flex';
+    }
     return;
   }
   privateStatus.style.display = 'none';
+  if (privateThreadHeader) {
+    privateThreadHeader.style.display = 'none';
+  }
 }
 
 function openSendSettings() {
@@ -1013,6 +1076,7 @@ function initEmojiLine() {
   });
 }
 
+
 function sendJoin() {
   currentUsername = localStorage.getItem('chatUsername')?.trim() || 'Správca';
   if (!currentUsername) currentUsername = 'Správca';
@@ -1031,6 +1095,12 @@ socket.on('connect', () => {
     addRoomToList(currentRoom, { persist: false });
   }
   updateRoomHighlight();
+  const adText = '📣 SLEDUJ NA YOUTUBE: http://www.youtube.com/@Marekovkan%C3%A1l-l4j';
+  addMessage({ system: true, text: adText, timestamp: new Date().toISOString() });
+  showToast(adText);
+  const joinPrompt = 'Ak chceš vedieť, kto tu kedy prišiel, napíš do okna ANO. Ak nechceš, napíš NIE.';
+  addMessage({ system: true, text: joinPrompt, timestamp: new Date().toISOString() });
+  joinHistoryPromptState = 'pending';
   sendJoin();
   applyMessengerMode();
   lastSpokenAt = Date.now();
@@ -1065,7 +1135,17 @@ socket.on('clear-chat', (payload) => {
 });
 
 socket.on('system-message', (msg) => {
-  addMessage({ system: true, text: msg, timestamp: new Date().toISOString() });
+  const rawText = String(msg || '').trim();
+  const nowLabel = new Date().toLocaleTimeString('sk-SK', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const cleanedText = rawText
+    .replace(/\s*\(.*?\)\s*$/, '')
+    .replace(/\s*\d{1,2}:\d{2}\s*$/, '')
+    .trim();
+  const displayText = cleanedText ? `${cleanedText} ${nowLabel}`.trim() : `Systém ${nowLabel}`;
+  addMessage({ system: true, text: displayText, timestamp: new Date().toISOString() });
 });
 
 
@@ -1110,6 +1190,21 @@ socket.on('countdown:start', ({ value, byUsername, rewardText }) => {
 function sendMessage() {
   let text = messageInput.value.trim();
   if (!text) return;
+
+  if (joinHistoryPromptState === 'pending' && /^(ano|nie)$/i.test(text)) {
+    const choice = text.toLowerCase();
+    joinHistoryPromptState = choice === 'ano' ? 'accepted' : 'declined';
+    localStorage.setItem('joinHistoryConsent', choice === 'ano' ? 'accept' : 'decline');
+    addMessage({
+      system: true,
+      text: choice === 'ano'
+        ? 'Emailové upozornenie o návštevách je zapnuté. Ak chceš zmeniť rozhodnutie, napíš NIE.'
+        : 'Emailové upozornenie o návštevách je vypnuté. Ak chceš zmeniť rozhodnutie, napíš ANO.',
+      timestamp: new Date().toISOString()
+    });
+    messageInput.value = '';
+    return;
+  }
 
   if (containsSuspiciousClientText(text)) {
     showToast('Správa obsahuje podozrivý obsah a nebola odoslaná.');
@@ -1301,6 +1396,11 @@ function sendMessage() {
 }
 
 socket.on('receive-private-message', (m) => {
+  if (!m.self) {
+    playPrivateMessageSound();
+    notifyIncomingMessage(m.from, m.text);
+  }
+
   addMessage({
     username: m.self ? currentUsername : m.from,
     text: m.text,
@@ -1334,6 +1434,22 @@ function showToast(message) {
     text: message,
     timestamp: new Date().toISOString()
   });
+}
+
+function openQuicklinkModal() {
+  if (!quicklinkOverlay) return;
+  if (quicklinkTargetInput) {
+    const otherUser = activeUsers.find((user) => user.username !== currentUsername);
+    quicklinkTargetInput.value = otherUser ? otherUser.username : '';
+    quicklinkTargetInput.focus();
+  }
+  quicklinkOverlay.style.display = 'flex';
+}
+
+function closeQuicklinkModal() {
+  if (quicklinkOverlay) {
+    quicklinkOverlay.style.display = 'none';
+  }
 }
 
 renderNewsHistory();
@@ -1377,6 +1493,24 @@ document.getElementById('suggestion-submit')?.addEventListener('click', () => {
 document.getElementById('help-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
 });
+quicklinkOverlay?.addEventListener('click', (event) => {
+  if (event.target === quicklinkOverlay) closeQuicklinkModal();
+});
+quicklinkClose?.addEventListener('click', closeQuicklinkModal);
+quicklinkContinue?.addEventListener('click', () => {
+  const targetName = (quicklinkTargetInput?.value || '').trim();
+  if (!targetName) {
+    showToast('Napíš nick príjemcu.');
+    return;
+  }
+  const matchedUser = activeUsers.find((user) => user.username.toLowerCase() === targetName.toLowerCase());
+  if (!matchedUser) {
+    showToast('Tento používateľ nie je online.');
+    return;
+  }
+  closeQuicklinkModal();
+  setPrivateTarget(matchedUser.id, matchedUser.username);
+});
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();
   showToast(`Môj profil: ${currentUsername} · Oddych body: ${getOddychPoints(currentUsername)} · Ignorovaní: ${ignoreList.size}`);
@@ -1396,12 +1530,7 @@ navSettings?.addEventListener('click', (event) => {
 });
 navQuicklink?.addEventListener('click', (event) => {
   event.preventDefault();
-  const otherUser = activeUsers.find((user) => user.username !== currentUsername);
-  if (otherUser) {
-    setPrivateTarget(otherUser.id, otherUser.username);
-    return;
-  }
-  showToast('Zatiaľ žiadny iný chater pre odkazovač.');
+  openQuicklinkModal();
 });
 document.querySelectorAll('.topic-chip').forEach((chip) => {
   chip.addEventListener('click', () => {

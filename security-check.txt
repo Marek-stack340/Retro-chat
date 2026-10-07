@@ -1,0 +1,3 @@
+Bezpečnostný kontrolný záznam projektu.
+
+Tento súbor obsahuje evidenciu o bezpečnostných kontrolách, ochrane prístupu a správnom chode systému.

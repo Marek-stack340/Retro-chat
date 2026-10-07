@@ -12,14 +12,64 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body class="landing-page-body">
+    <div id="cookie-banner" class="cookie-banner" role="dialog" aria-live="polite">
+      <div class="cookie-content">
+        <div class="cookie-copy">
+          <h3>Táto webová stránka používa súbor Cookie</h3>
+          <p>Vážime si Vaša súkromie. Ak chcete na webe bezpečnejšie súkromie, dajte AKCEPTUJEM. Ak nie, dajte NEAKCEPTUJEM.</p>
+        </div>
+        <div class="cookie-actions">
+          <button type="button" class="cookie-btn accept" data-cookie-choice="accept">AKCEPTUJEM</button>
+          <button type="button" class="cookie-btn decline" data-cookie-choice="decline">NEAKCEPTUJEM</button>
+        </div>
+      </div>
+    </div>
+
     <div class="landing-shell-new">
-      <div class="promo-banner">Povedzte druhým o tomto chate nech je nás tu viac!</div>
+      <header class="site-header">
+        <div class="brand-lockup">
+          <div class="brand-mark">O</div>
+          <div>
+            <strong>Oddych Chat</strong>
+            <span>Komunitné centrum</span>
+          </div>
+        </div>
+        <nav class="top-nav" aria-label="Navigácia">
+          <a href="#">Domov</a>
+          <a href="#">Chat</a>
+          <a href="#">Hry</a>
+          <a href="#">Leaderboard</a>
+        </nav>
+        <a class="mini-btn" href="/chat.html">Vstúpiť</a>
+      </header>
+
+      <div class="promo-banner"><strong>SLEDUJ NA YOUTUBE:</strong> <a href="http://www.youtube.com/@Marekovkan%C3%A1l-l4j" target="_blank" rel="noopener noreferrer">http://www.youtube.com/@Marekovkan%C3%A1l-l4j</a></div>
       <section class="hero-card">
         <div class="hero-copy">
           <p class="eyebrow">Oddych Chat</p>
-          <h1>Vitaj v novom, jednoduchom a priateľskom chate.</h1>
-          <p class="hero-text">Vstúp rovno, vyber si prezývku a už môžeš chatovať. Ak účet neexistuje, vytvorí sa automaticky a bez zbytočných komplikácií.</p>
+          <div class="hero-badges">
+            <span>💬 Chat</span>
+            <span>🧠 Hry</span>
+            <span>🎯 Komunita</span>
+          </div>
+          <h1>Vitaj v zábavnom a aktívnom chatovom svete.</h1>
+          <p class="hero-text">Vstúp rovno, vyber si prezývku a hneď sa pusti do rozhovorov, zábavy a komunitného prostredia. Ak ešte nemáš účet, vytvorí sa automaticky.</p>
+          <div class="hero-stats">
+            <div class="stat-box">
+              <strong>24/7</strong>
+              <span>Online</span>
+            </div>
+            <div class="stat-box">
+              <strong>Skupiny</strong>
+              <span>Miestnosti</span>
+            </div>
+            <div class="stat-box">
+              <strong>Bezpeč.</strong>
+              <span>Prístup</span>
+            </div>
+          </div>
           <div class="hero-actions">
+            <a class="ghost-link" href="/chat.html">Spustiť kvíz</a>
             <a class="ghost-link" href="/chat.html">Otvoriť chat</a>
             <a class="ghost-link secondary" href="/guestbook.html">Kniha návštev</a>
           </div>
@@ -35,16 +85,41 @@
         </form>
       </section>
 
+      <section class="leaderboard-card" aria-label="Rebríček najviac vstupov">
+        <div class="leaderboard-header">
+          <h2>Rebríček návštev</h2>
+          <span>Najviac krát v chate</span>
+        </div>
+        <div class="leaderboard-table-wrap">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Meno</th>
+                <th>Vstupy</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <tr>
+                <td colspan="2">Načítavam...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="feature-grid">
         <article class="feature-card">
+          <span class="feature-tag">Rýchly vstup</span>
           <h3>Rýchly vstup</h3>
           <p>Stačí zadať prezývku a môžeš hneď začať.</p>
         </article>
         <article class="feature-card">
+          <span class="feature-tag">Bez problémov</span>
           <h3>Bez problémov</h3>
           <p>Prihlasovací proces bol zjednodušený a už nezasahuje do chatu.</p>
         </article>
         <article class="feature-card">
+          <span class="feature-tag">Komunita</span>
           <h3>Retro nálada</h3>
           <p>Nechali sme si pokojný retro vzhľad, ale s moderným jednoduchosťou.</p>
         </article>
@@ -54,10 +129,89 @@
     <script>
       const nickInput = document.getElementById('entry-nick');
       const form = document.getElementById('entry-form');
+      const leaderboardBody = document.getElementById('leaderboard-body');
+      const cookieBanner = document.getElementById('cookie-banner');
+      const leaderboardKey = 'oddychLeaderboardV1';
+      const cookieKey = 'oddychCookieConsentV1';
+
+      function applyCookiePreference() {
+        const choice = localStorage.getItem(cookieKey);
+        if (cookieBanner) {
+          if (choice === 'accept' || choice === 'decline') {
+            cookieBanner.style.display = 'none';
+          } else {
+            cookieBanner.style.display = 'block';
+          }
+        }
+      }
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-cookie-choice]');
+        if (!button || !cookieBanner) return;
+
+        const choice = button.dataset.cookieChoice;
+        if (choice === 'accept' || choice === 'decline') {
+          localStorage.setItem(cookieKey, choice);
+          applyCookiePreference();
+        }
+      });
+
+      function getLeaderboard() {
+        try {
+          const raw = localStorage.getItem(leaderboardKey);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveLeaderboard(items) {
+        localStorage.setItem(leaderboardKey, JSON.stringify(items));
+      }
+
+      function updateLeaderboard(username) {
+        const name = (username || '').trim();
+        if (!name) return;
+
+        const list = getLeaderboard();
+        const index = list.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase());
+
+        if (index >= 0) {
+          list[index].count += 1;
+        } else {
+          list.push({ name, count: 1 });
+        }
+
+        list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+        saveLeaderboard(list.slice(0, 10));
+        renderLeaderboard();
+      }
+
+      function renderLeaderboard() {
+        const list = getLeaderboard();
+        if (!leaderboardBody) return;
+
+        if (!list.length) {
+          leaderboardBody.innerHTML = '<tr><td colspan="2">Zatiaľ nie sú žiadne záznamy.</td></tr>';
+          return;
+        }
+
+        leaderboardBody.innerHTML = list.map((entry, index) => `
+          <tr>
+            <td><span class="leaderboard-rank">${index + 1}.</span> ${entry.name}</td>
+            <td>${entry.count}</td>
+          </tr>
+        `).join('');
+      }
+
       const savedNick = localStorage.getItem('chatUsername');
       if (savedNick) {
         nickInput.value = savedNick;
       }
+
+      renderLeaderboard();
+      applyCookiePreference();
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -86,6 +240,7 @@
           if (data.token) {
             localStorage.setItem('chatAuthToken', data.token);
           }
+          updateLeaderboard(username);
           window.location.href = '/chat.html';
         } catch (error) {
           alert('Vstup do chatu zlyhal. Skús to znova.');
