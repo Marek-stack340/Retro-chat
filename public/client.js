@@ -41,6 +41,27 @@ const sendSettingsCancel = document.getElementById('send-settings-cancel');
 const countdownOverlay = document.getElementById('countdown-overlay');
 const countdownValueEl = document.getElementById('countdown-value');
 const countdownLabelEl = document.getElementById('countdown-label');
+const profileModal = document.getElementById('profile-modal');
+const profileCloseBtn = document.getElementById('profile-close');
+const profileCancelBtn = document.getElementById('profile-cancel');
+const profileSaveBtn = document.getElementById('profile-save');
+const profileAvatarInput = document.getElementById('profile-avatar-input');
+const profileAvatarPreview = document.getElementById('profile-avatar-preview');
+const profileAvatarEmpty = document.getElementById('profile-avatar-empty');
+const profileBioInput = document.getElementById('profile-bio');
+const profileAgeInput = document.getElementById('profile-age');
+const profileBirthdateInput = document.getElementById('profile-birthdate');
+const profileCityInput = document.getElementById('profile-city');
+const profileStatusInput = document.getElementById('profile-status');
+const profileHobbiesInput = document.getElementById('profile-hobbies');
+const snakeGameButton = document.getElementById('snake-game-button');
+const snakeGameModal = document.getElementById('snake-game-modal');
+const snakeGameBoard = document.getElementById('snake-game-board');
+const snakeGameScore = document.getElementById('snake-game-score');
+const snakeGameOverlay = document.getElementById('snake-game-overlay');
+const snakeGameClose = document.getElementById('snake-game-close');
+const snakeGameRetry = document.getElementById('snake-game-retry');
+const snakeGameBack = document.getElementById('snake-game-back');
 const topicNameInput = document.getElementById('topic-name-input');
 const createTopicBtn = document.getElementById('create-topic-btn');
 const securityBadge = document.getElementById('security-badge');
@@ -82,6 +103,47 @@ function loadNewsHistoryEntries() {
   } catch (_) {
     return [];
   }
+}
+function loadProfileData() {
+  try {
+    const raw = localStorage.getItem('chatProfileV1');
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+function saveProfileData(data) {
+  localStorage.setItem('chatProfileV1', JSON.stringify(data));
+}
+function renderProfileForm() {
+  const data = loadProfileData();
+  if (profileBioInput) profileBioInput.value = data.bio || '';
+  if (profileAgeInput) profileAgeInput.value = data.age || '';
+  if (profileBirthdateInput) profileBirthdateInput.value = data.birthdate || '';
+  if (profileCityInput) profileCityInput.value = data.city || '';
+  if (profileStatusInput) profileStatusInput.value = data.status || '';
+  if (profileHobbiesInput) profileHobbiesInput.value = data.hobbies || '';
+
+  if (profileAvatarPreview && profileAvatarEmpty) {
+    if (data.avatarDataUrl) {
+      profileAvatarPreview.src = data.avatarDataUrl;
+      profileAvatarPreview.style.display = 'block';
+      profileAvatarEmpty.style.display = 'none';
+    } else {
+      profileAvatarPreview.removeAttribute('src');
+      profileAvatarPreview.style.display = 'none';
+      profileAvatarEmpty.style.display = 'flex';
+    }
+  }
+}
+function openProfileModal() {
+  renderProfileForm();
+  if (profileModal) profileModal.style.display = 'flex';
+}
+function closeProfileModal() {
+  if (profileModal) profileModal.style.display = 'none';
 }
 let newsHistoryEntries = loadNewsHistoryEntries();
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
@@ -288,12 +350,14 @@ function renderCountdownOverlay(value, total, headlineText) {
   countdownValueEl.textContent = String(value);
   countdownLabelEl.textContent = headlineText || (total ? `Odpočítavam od ${total}` : 'Odpočítavanie');
   countdownOverlay.classList.add('visible');
+  countdownOverlay.setAttribute('aria-hidden', 'false');
   document.body.classList.add('countdown-active');
 }
 
 function hideCountdownOverlay() {
   if (countdownOverlay) {
     countdownOverlay.classList.remove('visible');
+    countdownOverlay.setAttribute('aria-hidden', 'true');
   }
   document.body.classList.remove('countdown-active');
 }
@@ -406,6 +470,40 @@ function playPrivateMessageSound() {
     oscillator.stop(now + 0.28);
   } catch (error) {
     console.warn('Private message sound unavailable:', error);
+  }
+}
+
+function playBanAlarm() {
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+
+    const context = window.__oddychBanAlarmAudioContext || new AudioCtor();
+    window.__oddychBanAlarmAudioContext = context;
+
+    const base = [880, 660, 540, 420];
+    const now = context.currentTime;
+
+    base.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const start = now + index * 0.18;
+
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(frequency * 0.7, 180), start + 0.16);
+
+      gainNode.gain.setValueAtTime(0.0001, start);
+      gainNode.gain.exponentialRampToValueAtTime(0.11, start + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.18);
+    });
+  } catch (error) {
+    console.warn('Ban alarm unavailable:', error);
   }
 }
 
@@ -608,6 +706,21 @@ function setActiveRoom(roomName, options = {}) {
   }
 }
 
+function reportMessageToAdmin(message) {
+  if (!message || message.private || !message.username || !socket) {
+    return;
+  }
+
+  socket.emit('report-message', {
+    username: message.username,
+    text: message.text,
+    room: message.room || currentRoom || 'Spoločná',
+    reporter: currentUsername || 'Anon',
+    messageId: message.id || null,
+    timestamp: message.timestamp || new Date().toISOString()
+  });
+}
+
 function addMessage(m) {
   if (!m.system) {
     try {
@@ -654,6 +767,22 @@ function addMessage(m) {
   `;
 
   if (!m.private) {
+    const actions = document.createElement('div');
+    actions.className = 'bubble-actions';
+
+    const reportBtn = document.createElement('button');
+    reportBtn.type = 'button';
+    reportBtn.className = 'report-btn';
+    reportBtn.textContent = 'Nahlásiť správcovi';
+    reportBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      reportMessageToAdmin(m);
+    });
+
+    actions.appendChild(reportBtn);
+    bubble.appendChild(actions);
+
     const reactionRow = buildReactionRow(m.id, m.reactions || {});
     bubble.appendChild(reactionRow);
   }
@@ -1087,6 +1216,21 @@ function sendJoin() {
   socket.emit('join', { username: currentUsername, room: currentRoom });
 }
 
+function showRandomConversationTopic() {
+  const topics = [
+    '💬 Téma na rozhovor: Aký film by si si dnes pozrel znova?',
+    '💬 Téma na rozhovor: Čo by si vymenil za lepšie v tejto komunite?',
+    '💬 Téma na rozhovor: Aký je tvoj najlepší tip na relax po dni?',
+    '💬 Téma na rozhovor: Čo ťa v poslednom čase najviac zaujalo?',
+    '💬 Téma na rozhovor: Ktorý zvyk máš a nikto iný nepochopí?',
+    '💬 Téma na rozhovor: Aký je tvoj najlepší spôsob, ako si oddýchnuť?',
+    '💬 Téma na rozhovor: Ktoré miesto by si chcel navštíviť raz v živote?',
+    '💬 Téma na rozhovor: Čo by si dal na večeru s kamarátmi?' 
+  ];
+  const pick = topics[Math.floor(Math.random() * topics.length)];
+  addMessage({ system: true, text: pick, timestamp: new Date().toISOString() });
+}
+
 socket.on('connect', () => {
   initEmojiLine();
   const savedRooms = JSON.parse(localStorage.getItem('chatRoomNamesV1') || '[]');
@@ -1097,6 +1241,7 @@ socket.on('connect', () => {
   updateRoomHighlight();
   const joinPrompt = 'Ak chceš vedieť, kto tu kedy prišiel, napíš do okna ANO. Ak nechceš, napíš NIE.';
   addMessage({ system: true, text: joinPrompt, timestamp: new Date().toISOString() });
+  showRandomConversationTopic();
   joinHistoryPromptState = 'pending';
   sendJoin();
   applyMessengerMode();
@@ -1142,6 +1287,11 @@ socket.on('system-message', (msg) => {
     .replace(/\s*\d{1,2}:\d{2}\s*$/, '')
     .trim();
   const displayText = cleanedText ? `${cleanedText} ${nowLabel}`.trim() : `Systém ${nowLabel}`;
+  const isBanWarning = /zabanovan|banovan|bol si zabanovan|si zabanovan|vyhodený na 24 hodín|vyhodil/i.test(rawText);
+  if (isBanWarning) {
+    playBanAlarm();
+    showToast(cleanedText || 'Bol si zabanovaný.');
+  }
   addMessage({ system: true, text: displayText, timestamp: new Date().toISOString() });
 });
 
@@ -1508,9 +1658,255 @@ quicklinkContinue?.addEventListener('click', () => {
   closeQuicklinkModal();
   setPrivateTarget(matchedUser.id, matchedUser.username);
 });
+profileModal?.addEventListener('click', (event) => {
+  if (event.target === profileModal) closeProfileModal();
+});
+profileCloseBtn?.addEventListener('click', closeProfileModal);
+profileCancelBtn?.addEventListener('click', closeProfileModal);
+profileAvatarInput?.addEventListener('change', (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('Nahraj obrázok vo formáte JPG, PNG alebo WEBP.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = String(reader.result || '');
+    if (profileAvatarPreview) {
+      profileAvatarPreview.src = dataUrl;
+      profileAvatarPreview.style.display = 'block';
+    }
+    if (profileAvatarEmpty) {
+      profileAvatarEmpty.style.display = 'none';
+    }
+  };
+  reader.readAsDataURL(file);
+});
+profileSaveBtn?.addEventListener('click', () => {
+  const avatarUrl = profileAvatarPreview && profileAvatarPreview.getAttribute('src') ? profileAvatarPreview.getAttribute('src') : '';
+  const profileData = {
+    bio: profileBioInput?.value || '',
+    age: profileAgeInput?.value || '',
+    birthdate: profileBirthdateInput?.value || '',
+    city: profileCityInput?.value || '',
+    status: profileStatusInput?.value || '',
+    hobbies: profileHobbiesInput?.value || '',
+    avatarDataUrl: avatarUrl
+  };
+  saveProfileData(profileData);
+  closeProfileModal();
+  showToast('Profil bol uložený.');
+});
 navProfile?.addEventListener('click', (event) => {
   event.preventDefault();
-  showToast(`Môj profil: ${currentUsername} · Oddych body: ${getOddychPoints(currentUsername)} · Ignorovaní: ${ignoreList.size}`);
+  openProfileModal();
+});
+
+const snakeGameState = {
+  boardSize: 10,
+  snake: [],
+  apple: { x: 0, y: 0 },
+  direction: { x: 1, y: 0 },
+  nextDirection: { x: 1, y: 0 },
+  score: 0,
+  timer: null,
+  over: false
+};
+const snakeGameCells = [];
+
+function initializeSnakeBoard() {
+  if (!snakeGameBoard) return;
+  if (snakeGameCells.length) return;
+
+  for (let y = 0; y < snakeGameState.boardSize; y += 1) {
+    for (let x = 0; x < snakeGameState.boardSize; x += 1) {
+      const cell = document.createElement('div');
+      cell.className = 'snake-game-cell';
+      cell.dataset.x = String(x);
+      cell.dataset.y = String(y);
+      snakeGameBoard.appendChild(cell);
+      snakeGameCells.push(cell);
+    }
+  }
+}
+
+function resetSnakeGame() {
+  initializeSnakeBoard();
+  snakeGameState.snake = [
+    { x: 2, y: 5 },
+    { x: 1, y: 5 },
+    { x: 0, y: 5 }
+  ];
+  snakeGameState.direction = { x: 1, y: 0 };
+  snakeGameState.nextDirection = { x: 1, y: 0 };
+  snakeGameState.score = 0;
+  snakeGameState.over = false;
+  if (snakeGameState.timer) {
+    clearInterval(snakeGameState.timer);
+    snakeGameState.timer = null;
+  }
+  placeAppleInSnakeGame();
+  renderSnakeGame();
+}
+
+function placeAppleInSnakeGame() {
+  const cells = [];
+  for (let y = 0; y < snakeGameState.boardSize; y += 1) {
+    for (let x = 0; x < snakeGameState.boardSize; x += 1) {
+      const occupied = snakeGameState.snake.some((part) => part.x === x && part.y === y);
+      if (!occupied) {
+        cells.push({ x, y });
+      }
+    }
+  }
+  if (!cells.length) {
+    snakeGameState.apple = { x: -1, y: -1 };
+    return;
+  }
+  const pick = cells[Math.floor(Math.random() * cells.length)];
+  snakeGameState.apple = pick;
+}
+
+function renderSnakeGame() {
+  if (!snakeGameBoard || !snakeGameCells.length) {
+    initializeSnakeBoard();
+  }
+
+  for (const cell of snakeGameCells) {
+    const x = Number(cell.dataset.x);
+    const y = Number(cell.dataset.y);
+    const isApple = snakeGameState.apple.x === x && snakeGameState.apple.y === y;
+    const snakeHead = snakeGameState.snake[0];
+    const isSnake = snakeGameState.snake.some((part) => part.x === x && part.y === y);
+
+    cell.className = 'snake-game-cell';
+    if (isSnake) {
+      cell.classList.add('snake');
+    }
+    if (snakeHead && snakeHead.x === x && snakeHead.y === y) {
+      cell.classList.add('snake-head');
+      if (snakeGameState.over) {
+        cell.classList.add('crashed');
+      }
+    }
+    if (isApple) {
+      cell.classList.add('apple');
+    }
+  }
+
+  if (snakeGameScore) {
+    snakeGameScore.textContent = String(snakeGameState.score);
+  }
+}
+
+function setSnakeDirection(next) {
+  if (!snakeGameState || snakeGameState.over) return;
+  const current = snakeGameState.direction;
+  if (current.x + next.x === 0 && current.y + next.y === 0) {
+    return;
+  }
+  snakeGameState.nextDirection = next;
+}
+
+function finishSnakeGame() {
+  snakeGameState.over = true;
+  if (snakeGameState.timer) {
+    clearInterval(snakeGameState.timer);
+    snakeGameState.timer = null;
+  }
+  if (snakeGameOverlay) {
+    snakeGameOverlay.style.display = 'flex';
+  }
+}
+
+function stepSnakeGame() {
+  if (!snakeGameState || snakeGameState.over) return;
+  snakeGameState.direction = { ...snakeGameState.nextDirection };
+  const head = snakeGameState.snake[0];
+  const nextHead = {
+    x: head.x + snakeGameState.direction.x,
+    y: head.y + snakeGameState.direction.y
+  };
+
+  const hitsWall = nextHead.x < 0 || nextHead.y < 0 || nextHead.x >= snakeGameState.boardSize || nextHead.y >= snakeGameState.boardSize;
+  if (hitsWall) {
+    finishSnakeGame();
+    return;
+  }
+
+  const hitsSelf = snakeGameState.snake.some((part) => part.x === nextHead.x && part.y === nextHead.y);
+  if (hitsSelf) {
+    finishSnakeGame();
+    return;
+  }
+
+  const nextSnake = [nextHead, ...snakeGameState.snake];
+  const ateApple = nextHead.x === snakeGameState.apple.x && nextHead.y === snakeGameState.apple.y;
+
+  if (ateApple) {
+    snakeGameState.score += 1;
+    placeAppleInSnakeGame();
+  } else {
+    nextSnake.pop();
+  }
+
+  snakeGameState.snake = nextSnake;
+  renderSnakeGame();
+}
+
+function openSnakeGame() {
+  if (!snakeGameModal) return;
+  resetSnakeGame();
+  snakeGameModal.style.display = 'flex';
+  if (snakeGameOverlay) {
+    snakeGameOverlay.style.display = 'none';
+  }
+  if (snakeGameState.timer) {
+    clearInterval(snakeGameState.timer);
+  }
+  snakeGameState.timer = setInterval(stepSnakeGame, 320);
+}
+
+function closeSnakeGame() {
+  if (snakeGameModal) {
+    snakeGameModal.style.display = 'none';
+  }
+  if (snakeGameOverlay) {
+    snakeGameOverlay.style.display = 'none';
+  }
+  if (snakeGameState.timer) {
+    clearInterval(snakeGameState.timer);
+    snakeGameState.timer = null;
+  }
+}
+
+snakeGameButton?.addEventListener('click', () => {
+  openSnakeGame();
+});
+snakeGameClose?.addEventListener('click', closeSnakeGame);
+snakeGameBack?.addEventListener('click', closeSnakeGame);
+snakeGameRetry?.addEventListener('click', () => {
+  if (snakeGameOverlay) {
+    snakeGameOverlay.style.display = 'none';
+  }
+  openSnakeGame();
+});
+snakeGameModal?.addEventListener('click', (event) => {
+  if (event.target === snakeGameModal) closeSnakeGame();
+});
+window.addEventListener('keydown', (event) => {
+  if (snakeGameModal && snakeGameModal.style.display === 'flex') {
+    const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key);
+    if (!isArrowKey) {
+      return;
+    }
+    event.preventDefault();
+    if (event.key === 'ArrowUp') setSnakeDirection({ x: 0, y: -1 });
+    if (event.key === 'ArrowDown') setSnakeDirection({ x: 0, y: 1 });
+    if (event.key === 'ArrowLeft') setSnakeDirection({ x: -1, y: 0 });
+    if (event.key === 'ArrowRight') setSnakeDirection({ x: 1, y: 0 });
+  }
 });
 navFriends?.addEventListener('click', (event) => {
   event.preventDefault();

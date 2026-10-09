@@ -50,37 +50,8 @@
         <div class="help-cmd-name">All:</div>
         <table class="help-table"><tr><td class="help-label">Popis</td><td>Funguje len administrátorom miestnosti. Odkaz sa všetkým zobrazí tučným písmom.</td></tr><tr><td class="help-label">Príklad</td><td><strong>All: keď už ste v mojej miestnosti, správajte sa slušne!</strong></td></tr></table>
 
-        <div class="help-section-title">Príkaz pre všetkých</div>
-
-        <div class="help-cmd-name">.off</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Odhlási ťa z chatu.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.off</strong></td></tr></table>
-
-        <div class="help-cmd-name">.zmaz</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zmaže sklo u všetkých.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.zmaz</strong></td></tr></table>
-
-        <div class="help-cmd-name">.AFK</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Oznámi ostatným, že si na chvíľu preč.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.AFK</strong></td></tr></table>
-
-
-        <div class="help-section-title">Príkazy pre administrátorov</div>
-
-        <div class="help-cmd-name">.spravcom</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zvolený nick vymenuje za spolusprávcu miestnosti; ty zostávaš správcom naďalej. Nový správca môže menovať ďalších správcov.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.spravcom fero</strong></td></tr></table>
-
-        <div class="help-cmd-name">.vpust</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Vpustí do zamknutej miestnosti užívateľa, ktorý do nej zaklopal.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vpust fero</strong></td></tr></table>
-
-        <div class="help-cmd-name">.vyhod</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Vyhodí z miestnosti zvoleného užívateľa. Ak bol vyhodený zo súkromnej miestnosti, hodí ho to do spoločnej miestnosti. Ak bol vyhodený z verejnej miestnosti, vyhodí ho to z chatu.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vyhod fero</strong></td></tr></table>
-
-        <div class="help-cmd-name">.vyhodip</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Najspoľahlivejšie vyhodenie, no môže vyhodiť aj iných chatujúcich – preto používať až v krajnom prípade.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.vyhodip fero</strong></td></tr></table>
-
-        <div class="help-cmd-name">.zrusitmiestnost</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Zruší miestnosť, v ktorej sa nachádzaš. Všetkých z nej presunie do spoločnej miestnosti.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.zrusitmiestnost</strong></td></tr></table>
-
-        <div class="help-cmd-name">.countdown číslo</div>
-        <table class="help-table"><tr><td class="help-label">Popis</td><td>Spustí hlasný fullscreen odpočet pre všetkých v chate.</td></tr><tr><td class="help-label">Príklad</td><td><strong>.countdown 10</strong></td></tr></table>
+        <div class="help-section-title">Príkazy</div>
+        <p class="help-intro">Všetky dostupné príkazy nájdeš v sekcii <strong>Príkazy</strong> v pravom paneli chatu. Návod tu popisuje hlavné spôsoby komunikácie, zatiaľ čo samotné príkazy sú sústredené v paneli na boku.</p>
       </div>
     </div>
     <div class="app chat-app">
@@ -110,16 +81,6 @@
         <span>Oddych body: <strong id="my-points-display">0</strong></span>
         <span id="ignore-status-pill" class="profile-pill muted">Ignorovaní: 0</span>
       </div>
-      <div id="admin-portal" class="admin-portal" style="display:none;">
-        <div class="admin-portal-header">
-          <span id="admin-portal-title">Owner panel</span>
-          <span class="admin-portal-role">Admin</span>
-        </div>
-        <div class="admin-portal-body">
-          <div class="admin-portal-summary">Počet online: <strong id="admin-portal-count">0</strong></div>
-          <div id="admin-portal-list" class="admin-portal-list"></div>
-        </div>
-      </div>
       <div id="quicklink-overlay" class="quicklink-overlay" style="display:none;">
         <div class="quicklink-modal" role="dialog" aria-modal="true" aria-labelledby="quicklink-title">
           <div class="quicklink-header">
@@ -131,6 +92,95 @@
             <label for="quicklink-target-input" class="quicklink-label">Komu:</label>
             <input id="quicklink-target-input" class="quicklink-input" type="text" placeholder="napíš nick" autocomplete="off">
             <button id="quicklink-continue" class="quicklink-continue" type="button">Pokračovať</button>
+          </div>
+        </div>
+      </div>
+      <div id="profile-modal" class="profile-modal" style="display:none;">
+        <div class="profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+          <div class="profile-header">
+            <div>
+              <div class="profile-kicker">Profil</div>
+              <h2 id="profile-title">Môj profil</h2>
+            </div>
+            <button id="profile-close" class="profile-close" type="button" aria-label="Zavrieť profil">&times;</button>
+          </div>
+
+          <div class="profile-body">
+            <div class="profile-avatar-box">
+              <img id="profile-avatar-preview" class="profile-avatar-preview" alt="Profilová fotka" />
+              <div id="profile-avatar-empty" class="profile-avatar-empty">👤</div>
+              <label class="profile-upload" for="profile-avatar-input">Nahrať profilovku</label>
+              <input id="profile-avatar-input" class="profile-avatar-input" type="file" accept="image/*">
+            </div>
+
+            <div class="profile-fields">
+              <label class="profile-field">
+                <span>Text o sebe</span>
+                <textarea id="profile-bio" rows="4" placeholder="Napíš niečo o sebe..."></textarea>
+              </label>
+
+              <div class="profile-grid-two">
+                <label class="profile-field">
+                  <span>Koľko máš rokov</span>
+                  <input id="profile-age" type="number" min="0" max="120" placeholder="25">
+                </label>
+
+                <label class="profile-field">
+                  <span>Kedy si sa narodil</span>
+                  <input id="profile-birthdate" type="date">
+                </label>
+              </div>
+
+              <div class="profile-grid-two">
+                <label class="profile-field">
+                  <span>Mesto</span>
+                  <input id="profile-city" type="text" placeholder="Bratislava">
+                </label>
+
+                <label class="profile-field">
+                  <span>Stav</span>
+                  <input id="profile-status" type="text" placeholder="online / v práci / študujem">
+                </label>
+              </div>
+
+              <label class="profile-field">
+                <span>Záľuby</span>
+                <input id="profile-hobbies" type="text" placeholder="knihy, hudba, gaming, cestovanie">
+              </label>
+            </div>
+          </div>
+
+          <div class="profile-footer">
+            <button id="profile-cancel" class="profile-secondary" type="button">Zavrieť</button>
+            <button id="profile-save" class="profile-primary" type="button">Uložiť profil</button>
+          </div>
+        </div>
+      </div>
+      <div id="snake-game-modal" class="snake-game-modal" style="display:none;">
+        <div class="snake-game-panel" role="dialog" aria-modal="true" aria-labelledby="snake-game-title">
+          <div class="snake-game-header">
+            <div>
+              <div class="snake-game-kicker">Hra</div>
+              <h2 id="snake-game-title">Hadík</h2>
+            </div>
+            <button id="snake-game-close" class="snake-game-close" type="button" aria-label="Zavrieť hru">&times;</button>
+          </div>
+
+          <div class="snake-game-meta">
+            <span>Jablká: <strong id="snake-game-score">0</strong></span>
+            <span>Používaj šípky alebo WASD</span>
+          </div>
+
+          <div id="snake-game-board" class="snake-game-board" aria-live="polite"></div>
+
+          <div id="snake-game-overlay" class="snake-game-overlay" style="display:none;">
+            <div class="snake-game-over-card">
+              <div class="snake-game-over-title">Nabúral si</div>
+              <div class="snake-game-over-actions">
+                <button id="snake-game-retry" class="snake-game-btn primary" type="button">Ešte raz</button>
+                <button id="snake-game-back" class="snake-game-btn secondary" type="button">Späť na sklo</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -198,10 +248,18 @@
             <h2>Príkazy</h2>
             <ul class="commands-list">
               <li><strong>.zmaz</strong> – vymaže chat</li>
+              <li><strong>.AFK</strong> – označí ťa ako preč</li>
+              <li><strong>.ignoruj meno</strong> – ignorovať používateľa</li>
+              <li><strong>.neignoruj meno</strong> – zrušiť ignorovanie</li>
               <li><strong>:m správa</strong> – oznam pre všetkých</li>
-              <li><strong>.AFK</strong> – som preč</li>
-              <li><strong>.ignoruj meno</strong> – ignorácia</li>
+              <li><strong>.countdown 10</strong> – odpočet pre chat</li>
+              <li><strong>.ban meno 24</strong> – admin príkaz</li>
+              <li><strong>.vyhodip meno</strong> – admin príkaz</li>
             </ul>
+          </div>
+          <div class="sidebar-block compact game-block">
+            <h2>Hry</h2>
+            <button id="snake-game-button" class="snake-game-button" type="button">🎮 Hadík</button>
           </div>
         </aside>
       </main>

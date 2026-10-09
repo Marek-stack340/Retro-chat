@@ -7,24 +7,11 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="theme-color" content="#fff5e0">
     <meta property="og:title" content="Oddych Chat">
-    <meta property="og:description" content="Jednoduchý retro chat bez zbytočného komplikovania.">
+    <meta property="og:description" content="Jednoduchý komunitný chat bez zbytočného komplikovania.">
     <meta property="og:type" content="website">
     <link rel="stylesheet" href="style.css">
   </head>
   <body class="landing-page-body">
-    <div id="cookie-banner" class="cookie-banner" role="dialog" aria-live="polite">
-      <div class="cookie-content">
-        <div class="cookie-copy">
-          <h3>Táto webová stránka používa súbor Cookie</h3>
-          <p>Vážime si Vaša súkromie. Ak chcete na webe bezpečnejšie súkromie, dajte AKCEPTUJEM. Ak nie, dajte NEAKCEPTUJEM.</p>
-        </div>
-        <div class="cookie-actions">
-          <button type="button" class="cookie-btn accept" data-cookie-choice="accept">AKCEPTUJEM</button>
-          <button type="button" class="cookie-btn decline" data-cookie-choice="decline">NEAKCEPTUJEM</button>
-        </div>
-      </div>
-    </div>
-
     <div class="landing-shell-new">
       <header class="site-header">
         <div class="brand-lockup">
@@ -39,6 +26,7 @@
           <a href="#">Chat</a>
           <a href="#">Hry</a>
           <a href="#">Leaderboard</a>
+          <a href="#" id="landing-logout">Odhlásiť</a>
         </nav>
         <a class="mini-btn" href="/chat.html">Vstúpiť</a>
       </header>
@@ -70,8 +58,9 @@
           <div class="hero-actions">
             <a class="ghost-link" href="/chat.html">Spustiť kvíz</a>
             <a class="ghost-link" href="/chat.html">Otvoriť chat</a>
-            <a class="ghost-link secondary" href="/guestbook.html">Kniha návštev</a>
+            <a class="ghost-link secondary" href="/guestbook.html">Oddych Kniha návštev</a>
           </div>
+          <a class="youtube-follow-link" href="https://www.youtube.com/@Marekovkan%C3%A1l-l4j" target="_blank" rel="noopener noreferrer">SLEDUJ NA YOUTUBE!</a>
         </div>
         <form id="entry-form" class="entry-card">
           <h2>Vstúpiť do chatu</h2>
@@ -80,7 +69,6 @@
           <label for="entry-password">Heslo (voliteľné)</label>
           <input id="entry-password" name="password" type="password" placeholder="Ak chceš, môžeš pridať heslo">
           <button type="submit">Vstúpiť</button>
-          <p class="entry-note">Bez emailov, bez resetovacích kódov a bez zbytočných blokov.</p>
         </form>
       </section>
 
@@ -119,8 +107,8 @@
         </article>
         <article class="feature-card">
           <span class="feature-tag">Komunita</span>
-          <h3>Retro nálada</h3>
-          <p>Nechali sme si pokojný retro vzhľad, ale s moderným jednoduchosťou.</p>
+          <h3>Moderný prístup</h3>
+          <p>Jednoduché rozhranie, príjemná atmosféra a bez zbytočných komplikácií.</p>
         </article>
       </section>
     </div>
@@ -129,44 +117,22 @@
       const nickInput = document.getElementById('entry-nick');
       const form = document.getElementById('entry-form');
       const leaderboardBody = document.getElementById('leaderboard-body');
-      const cookieBanner = document.getElementById('cookie-banner');
+      const landingLogout = document.getElementById('landing-logout');
       const leaderboardKey = 'oddychLeaderboardV1';
-      const cookieKey = 'oddychCookieConsentV1';
-
-      function applyCookiePreference() {
-        const choice = localStorage.getItem(cookieKey);
-        if (cookieBanner) {
-          if (choice === 'accept' || choice === 'decline') {
-            cookieBanner.style.display = 'none';
-          } else {
-            cookieBanner.style.display = 'block';
-          }
-        }
-      }
-
-      document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-cookie-choice]');
-        if (!button || !cookieBanner) return;
-
-        const choice = button.dataset.cookieChoice;
-        if (choice === 'accept' || choice === 'decline') {
-          localStorage.setItem(cookieKey, choice);
-          applyCookiePreference();
-        }
-      });
 
       function getLeaderboard() {
         try {
           const raw = localStorage.getItem(leaderboardKey);
           const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed) ? parsed : [];
+          const filtered = Array.isArray(parsed) ? parsed.filter((entry) => String(entry && entry.name || '').trim().toLowerCase() !== 'tester1') : [];
+          return filtered;
         } catch (error) {
           return [];
         }
       }
 
       function saveLeaderboard(items) {
-        localStorage.setItem(leaderboardKey, JSON.stringify(items));
+        localStorage.setItem(leaderboardKey, JSON.stringify(items.filter((entry) => String(entry && entry.name || '').trim().toLowerCase() !== 'tester1')));
       }
 
       function updateLeaderboard(username) {
@@ -210,7 +176,14 @@
       }
 
       renderLeaderboard();
-      applyCookiePreference();
+
+      landingLogout?.addEventListener('click', (event) => {
+        event.preventDefault();
+        localStorage.removeItem('chatUsername');
+        localStorage.removeItem('chatRegistered');
+        localStorage.removeItem('chatAuthToken');
+        window.location.href = '/';
+      });
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();

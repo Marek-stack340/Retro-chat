@@ -8,27 +8,25 @@
   </head>
   <body>
     <div class="page-wrap">
-      <header class="landing-topbar">
-        <div class="brand-left">📘</div>
-        <div class="brand-title">Oddych kniha návštev</div>
+      <header class="guestbook-header">
+        <div class="guestbook-brand-mark" aria-hidden="true"></div>
+        <div class="guestbook-brand-title">Oddych Kniha návštev</div>
       </header>
 
-      <main class="main-panel">
-        <section class="entry-section">
-          <div class="section-title">Vitaj v knihe návštev</div>
-          <p class="hero-text">Do knihy návštev sa zapíše len to, čo sem napíšeš ty.</p>
+      <main class="guestbook-main">
+        <section class="guestbook-modern">
           <div id="entries"></div>
-          <form id="guest-form" class="entry-form">
-            <div class="form-row">
+          <form id="guest-form" class="guestbook-form">
+            <div class="guestbook-form-row">
               <label for="guest-name">Meno:</label>
               <input id="guest-name" type="text" placeholder="Tvoje meno" />
             </div>
-            <div class="form-row">
+            <div class="guestbook-form-row">
               <label for="guest-msg">Odkaz:</label>
               <input id="guest-msg" type="text" placeholder="Zanechaj odkaz..." />
             </div>
-            <div class="form-actions">
-              <button id="guest-save" class="button-enter" type="submit">Zapísať sa</button>
+            <div class="guestbook-form-actions">
+              <button id="guest-save" class="guestbook-button" type="submit">Zapísať sa</button>
             </div>
           </form>
         </section>
@@ -53,6 +51,8 @@
       function saveEntries(list) {
         localStorage.setItem('guestbookEntries', JSON.stringify(list));
       }
+
+      localStorage.removeItem('guestbookEntries');
 
       function render() {
         const list = loadEntries();

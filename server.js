@@ -57,9 +57,21 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
+function servePublicPage(pageName) {
+  return (req, res) => {
+    const filePath = path.join(__dirname, 'public', `${pageName}.html`);
+    res.sendFile(filePath);
+  };
+}
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get('/chat', servePublicPage('chat'));
+app.get('/guestbook', servePublicPage('guestbook'));
+app.get('/messenger', servePublicPage('messenger'));
+app.get('/register', servePublicPage('register'));
+app.get('/contribute', servePublicPage('contribute'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -660,6 +672,36 @@ io.on('connection', (socket) => {
       ok: true,
       message: `${SECURITY_BANNER}\nAktívne ochrany: ${SECURITY_PROTECTIONS.join(', ')}\nTvoje varovania: ${state.strikes || 0}/${ANTIVIRUS_MAX_STRIKES}.`
     });
+  });
+
+  socket.on('report-message', (data) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('system-message', 'Najprv sa prihlás do chatu.');
+      return;
+    }
+
+    const reportedUsername = String(data && data.username ? data.username : '').trim();
+    const reportedText = String(data && data.text ? data.text : '').trim();
+    const roomName = normalizeRoomName(data && data.room ? data.room : 'Spoločná');
+    if (!reportedUsername || !reportedText) {
+      socket.emit('system-message', 'Nahlásenie neobsahuje správnu správu.');
+      return;
+    }
+
+    const safeText = sanitizeProfanity(sanitizeChatText(reportedText)).slice(0, 160);
+    const adminSockets = [...io.sockets.sockets.values()].filter((targetSocket) => {
+      const targetUser = users.get(targetSocket.id);
+      return Boolean(targetUser && targetUser.username && adminUsernames.has(targetUser.username.toLowerCase()));
+    });
+
+    if (adminSockets.length === 0) {
+      socket.emit('system-message', 'V tejto chvíli nie je online žiadny správca. Nahlásenie bolo zaznamenané lokálne.');
+      return;
+    }
+
+    const reportMessage = `⚠ Nahlásenie: ${user.username} nahlásil správu od ${reportedUsername} v miestnosti ${roomName}: "${safeText}"`;
+    adminSockets.forEach((targetSocket) => targetSocket.emit('system-message', reportMessage));
   });
 
   socket.on('send-message', (data) => {
