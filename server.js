@@ -68,10 +68,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get('/chat', servePublicPage('chat'));
-app.get('/guestbook', servePublicPage('guestbook'));
-app.get('/messenger', servePublicPage('messenger'));
-app.get('/register', servePublicPage('register'));
-app.get('/contribute', servePublicPage('contribute'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
