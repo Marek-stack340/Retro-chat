@@ -108,7 +108,9 @@ socket.on('load-messages', (msgs) => {
   (msgs || []).forEach(addMessage);
 });
 
-socket.on('receive-message', addMessage);
+socket.on('receive-message', (m) => {
+  addMessage(m);
+});
 
 socket.on('receive-private-message', (m) => {
   addMessage({

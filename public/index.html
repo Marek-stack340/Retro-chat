@@ -15,20 +15,24 @@
     <div class="landing-shell-new">
       <header class="site-header">
         <div class="brand-lockup">
-          <div class="brand-mark">O</div>
-          <div>
+          <div class="brand-mark" aria-label="Logo Oddych Chat">
+            <svg class="brand-gmail-mark" viewBox="0 0 64 64" aria-hidden="true">
+              <rect x="4" y="4" width="56" height="56" rx="16" fill="#d63a3a"/>
+              <text x="32" y="36.5" text-anchor="middle" dominant-baseline="middle" font-size="26" font-weight="900" fill="#ffffff" font-family="Arial, Segoe UI, sans-serif" letter-spacing="-1">OC</text>
+            </svg>
+          </div>
+          <div class="brand-copy">
             <strong>Oddych Chat</strong>
-            <span>Komunitné centrum</span>
           </div>
         </div>
         <nav class="top-nav" aria-label="Navigácia">
-          <a href="#">Domov</a>
-          <a href="#">Chat</a>
-          <a href="#">Hry</a>
-          <a href="#">Leaderboard</a>
-          <a href="#" id="landing-logout">Odhlásiť</a>
+          <a href="/">Domov</a>
+          <a href="/chat">Chat</a>
+          <a href="/chat">Hry</a>
+          <a href="#leaderboard">Leaderboard</a>
+          <a href="/" id="landing-logout">Odhlásiť</a>
         </nav>
-        <a class="mini-btn" href="/chat.html">Vstúpiť</a>
+        <a class="mini-btn" href="/chat">Vstúpiť</a>
       </header>
 
       <section class="hero-card">
@@ -56,9 +60,8 @@
             </div>
           </div>
           <div class="hero-actions">
-            <a class="ghost-link" href="/chat.html">Spustiť kvíz</a>
-            <a class="ghost-link" href="/chat.html">Otvoriť chat</a>
-            <a class="ghost-link secondary" href="/guestbook.html">Oddych Kniha návštev</a>
+            <a class="ghost-link" href="/chat">Otvoriť chat</a>
+            <a class="ghost-link secondary" href="/guestbook">Oddych Kniha návštev</a>
           </div>
           <a class="youtube-follow-link" href="https://www.youtube.com/@Marekovkan%C3%A1l-l4j" target="_blank" rel="noopener noreferrer">SLEDUJ NA YOUTUBE!</a>
         </div>
@@ -72,7 +75,34 @@
         </form>
       </section>
 
-      <section class="leaderboard-card" aria-label="Rebríček najviac vstupov">
+      <section class="registration-card" aria-label="Registrácia">
+        <div class="registration-header">
+          <div>
+            <p class="eyebrow eyebrow-tight">Registrácia</p>
+            <h2>Vytvor si vlastný účet</h2>
+          </div>
+          <span class="registration-badge">Bezpečné</span>
+        </div>
+        <div class="registration-grid">
+          <div class="registration-copy">
+            <p>Registrácia ti umožní pridať si vlastnú prezývku, rýchlejšie sa prihlasovať a mať lepšiu kontrolu nad vstupom do chatu.</p>
+            <ul>
+              <li>Vlastný nick</li>
+              <li>Jednoduché prihlásenie</li>
+              <li>Bezpečný vstup do chatu</li>
+            </ul>
+          </div>
+          <form id="register-form" class="register-form">
+            <label for="register-username">Prezývka</label>
+            <input id="register-username" name="username" type="text" maxlength="20" placeholder="napr. Marek" required>
+            <label for="register-password">Heslo</label>
+            <input id="register-password" name="password" type="password" minlength="4" placeholder="Minimálne 4 znaky" required>
+            <button type="submit">Registrovať sa</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="leaderboard" class="leaderboard-card" aria-label="Rebríček najviac vstupov">
         <div class="leaderboard-header">
           <h2>Rebríček návštev</h2>
           <span>Najviac krát v chate</span>
@@ -116,12 +146,35 @@
     <script>
       const nickInput = document.getElementById('entry-nick');
       const form = document.getElementById('entry-form');
+      const registerForm = document.getElementById('register-form');
       const leaderboardBody = document.getElementById('leaderboard-body');
       const landingLogout = document.getElementById('landing-logout');
       const leaderboardKey = 'oddychLeaderboardV1';
+      const leaderboardMetaKey = `${leaderboardKey}Meta`;
+
+      function getCurrentWeekKey() {
+        const now = new Date();
+        const monday = new Date(now);
+        monday.setHours(0, 0, 0, 0);
+        const day = monday.getDay() || 7;
+        monday.setDate(monday.getDate() - day + 1);
+        const year = monday.getFullYear();
+        const week = Math.ceil((((new Date(year, 0, 1) - monday) / 86400000) + 1) / 7);
+        return `${year}-W${String(week).padStart(2, '0')}`;
+      }
 
       function getLeaderboard() {
         try {
+          const currentWeekKey = getCurrentWeekKey();
+          const metaRaw = localStorage.getItem(leaderboardMetaKey);
+          const meta = metaRaw ? JSON.parse(metaRaw) : {};
+
+          if (!meta.weekKey || meta.weekKey !== currentWeekKey) {
+            localStorage.setItem(leaderboardKey, JSON.stringify([]));
+            localStorage.setItem(leaderboardMetaKey, JSON.stringify({ weekKey: currentWeekKey }));
+            return [];
+          }
+
           const raw = localStorage.getItem(leaderboardKey);
           const parsed = raw ? JSON.parse(raw) : [];
           const filtered = Array.isArray(parsed) ? parsed.filter((entry) => String(entry && entry.name || '').trim().toLowerCase() !== 'tester1') : [];
@@ -132,7 +185,9 @@
       }
 
       function saveLeaderboard(items) {
-        localStorage.setItem(leaderboardKey, JSON.stringify(items.filter((entry) => String(entry && entry.name || '').trim().toLowerCase() !== 'tester1')));
+        const cleaned = items.filter((entry) => String(entry && entry.name || '').trim().toLowerCase() !== 'tester1');
+        localStorage.setItem(leaderboardKey, JSON.stringify(cleaned));
+        localStorage.setItem(leaderboardMetaKey, JSON.stringify({ weekKey: getCurrentWeekKey() }));
       }
 
       function updateLeaderboard(username) {
@@ -162,12 +217,15 @@
           return;
         }
 
-        leaderboardBody.innerHTML = list.map((entry, index) => `
-          <tr>
-            <td><span class="leaderboard-rank">${index + 1}.</span> ${entry.name}</td>
-            <td>${entry.count}</td>
-          </tr>
-        `).join('');
+        leaderboardBody.innerHTML = list.map((entry, index) => {
+          const displayName = String(entry && entry.name ? entry.name : 'Správca').trim() || 'Správca';
+          return `
+            <tr>
+              <td><span class="leaderboard-rank">${index + 1}.</span> ${displayName}</td>
+              <td>${entry.count}</td>
+            </tr>
+          `;
+        }).join('');
       }
 
       const savedNick = localStorage.getItem('chatUsername');
@@ -213,9 +271,41 @@
             localStorage.setItem('chatAuthToken', data.token);
           }
           updateLeaderboard(username);
-          window.location.href = '/chat.html';
+          window.location.href = '/chat';
         } catch (error) {
           alert('Vstup do chatu zlyhal. Skús to znova.');
+        }
+      });
+
+      registerForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const username = document.getElementById('register-username').value.trim();
+        const password = document.getElementById('register-password').value.trim();
+
+        if (!username || !password) {
+          alert('Vyplň prezývku a heslo.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.ok) {
+            alert(data.message || 'Registrácia zlyhala.');
+            return;
+          }
+
+          localStorage.setItem('chatUsername', username);
+          localStorage.setItem('chatRegistered', 'true');
+          updateLeaderboard(username);
+          alert('Registrácia bola úspešná. Môžeš sa prihlásiť do chatu.');
+          window.location.href = '/chat';
+        } catch (error) {
+          alert('Registrácia zlyhala. Skús to znova.');
         }
       });
     </script>

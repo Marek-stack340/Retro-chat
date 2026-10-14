@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
+    <div id="chat-loading-overlay" class="chat-loading-overlay" aria-live="polite" aria-label="Načítava sa chat">
+      <div class="chat-loading-card">
+        <div class="chat-loading-logo" aria-hidden="true">
+          <span class="chat-loading-square square-a"></span>
+          <span class="chat-loading-square square-b"></span>
+          <span class="chat-loading-square square-c"></span>
+          <span class="chat-loading-square square-d"></span>
+        </div>
+        <div class="chat-loading-text">Načítavam</div>
+      </div>
+    </div>
     <div id="help-overlay" class="help-overlay" style="display:none;">
       <div class="help-modal">
         <button id="help-close" class="help-close" aria-label="Zatvoriť">&times;</button>
@@ -57,18 +68,24 @@
     <div class="app chat-app">
       <header class="chat-header">
         <div class="topbar-left">
-          <span class="logo-icon">OC</span>
+          <span class="logo-icon chat-brand-icon" aria-label="Logo Oddych Chat">
+            <svg class="logo-gmail-mark" viewBox="0 0 64 64" aria-hidden="true">
+              <rect x="4" y="4" width="56" height="56" rx="16" fill="#d63a3a"/>
+              <text x="32" y="36.5" text-anchor="middle" dominant-baseline="middle" font-size="26" font-weight="900" fill="#ffffff" font-family="Arial, Segoe UI, sans-serif" letter-spacing="-1">OC</text>
+            </svg>
+          </span>
           <span class="logo-text">Oddych Chat</span>
         </div>
         <nav class="top-menu">
-          <a href="#" id="nav-quicklink">Odkazovač</a>
-          <a href="#" id="nav-friends">Priatelia</a>
-          <a href="#" id="nav-profile">Môj profil</a>
-          <a href="#" id="nav-ignore">Ignorovaní</a>
-          <a href="#" id="nav-settings">Nastavenia</a>
-          <a href="#" id="nav-help">Návod</a>
-          <a href="/messenger.html" id="nav-messenger">Messenger</a>
-          <a href="#" id="nav-logout">Odhlásiť</a>
+          <a href="/chat" id="nav-quicklink">Odkazovač</a>
+          <a href="/chat" id="nav-friends">Priatelia</a>
+          <a href="/chat" id="nav-profile">Môj profil</a>
+          <a href="/chat" id="nav-ignore">Ignorovaní</a>
+          <a href="/chat" id="nav-settings">Nastavenia</a>
+          <a href="/chat" id="nav-help">Návod</a>
+          <a href="/messenger" id="nav-messenger">Messenger</a>
+          <button id="commands-toggle" class="commands-toggle" type="button">Príkazy</button>
+          <a href="/" id="nav-logout">Odhlásiť</a>
         </nav>
       </header>
 
@@ -244,21 +261,23 @@
               <button id="create-room-btn" type="button" class="small-link">Vytvoriť</button>
             </div>
           </div>
-          <div class="sidebar-block compact">
+          <div id="commands-block" class="sidebar-block compact" style="display:none;">
             <h2>Príkazy</h2>
             <ul class="commands-list">
-              <li><strong>.zmaz</strong> – vymaže chat</li>
-              <li><strong>.AFK</strong> – označí ťa ako preč</li>
+              <li><strong>.prec</strong> – označí ťa ako na chvíľu preč</li>
+              <li><strong>.aktivita</strong> – zobrazí tvoju aktivitu len tebe</li>
               <li><strong>.ignoruj meno</strong> – ignorovať používateľa</li>
               <li><strong>.neignoruj meno</strong> – zrušiť ignorovanie</li>
               <li><strong>:m správa</strong> – oznam pre všetkých</li>
               <li><strong>.countdown 10</strong> – odpočet pre chat</li>
               <li><strong>.ban meno 24</strong> – admin príkaz</li>
-              <li><strong>.vyhodip meno</strong> – admin príkaz</li>
             </ul>
           </div>
           <div class="sidebar-block compact game-block">
             <h2>Hry</h2>
+            <button id="quiz-game-button" class="game-button quiz-game-button" type="button">🎯 Kvíz</button>
+            <button id="dice-game-button" class="game-button dice-game-button" type="button">🎲 Kocky</button>
+            <button id="word-game-button" class="game-button word-game-button" type="button">🔠 Hádanie slov</button>
             <button id="snake-game-button" class="snake-game-button" type="button">🎮 Hadík</button>
           </div>
         </aside>
@@ -272,6 +291,18 @@
       </div>
       <ul id="news-history-list" class="news-history-list"></ul>
     </aside>
+    <div id="game-modal" class="game-modal" style="display:none;" aria-hidden="true">
+      <div class="game-panel">
+        <div class="game-header">
+          <div>
+            <div class="game-kicker">Hry</div>
+            <h2 id="game-title">Hra</h2>
+          </div>
+          <button id="game-close" class="game-close" type="button" aria-label="Zavrieť hru">×</button>
+        </div>
+        <div id="game-body" class="game-body"></div>
+      </div>
+    </div>
     <div id="countdown-overlay" class="countdown-overlay" aria-live="assertive" aria-atomic="true" aria-hidden="true">
       <div class="countdown-card">
         <div id="countdown-label" class="countdown-label">Odpočítavanie</div>

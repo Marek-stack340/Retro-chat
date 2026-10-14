@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const { ROBOT_NAME, generateRobotReply } = require('./bot');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
@@ -67,12 +68,23 @@ function servePublicPage(pageName) {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get('/index.html', (req, res) => res.redirect(301, '/'));
 app.get('/chat', servePublicPage('chat'));
+app.get('/chat.html', (req, res) => res.redirect(301, '/chat'));
+app.get('/messenger', servePublicPage('messenger'));
+app.get('/messenger.html', (req, res) => res.redirect(301, '/messenger'));
+app.get('/register', servePublicPage('register'));
+app.get('/register.html', (req, res) => res.redirect(301, '/register'));
+app.get('/guestbook', servePublicPage('guestbook'));
+app.get('/guestbook.html', (req, res) => res.redirect(301, '/guestbook'));
+app.get('/contribute', servePublicPage('contribute'));
+app.get('/contribute.html', (req, res) => res.redirect(301, '/contribute'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 const messages = [];
 const users = new Map();
+const robotUser = { id: 'robot', username: ROBOT_NAME, role: 'bot' };
 const banList = new Map();
 const accounts = new Map();
 const authTokens = new Map();
@@ -116,8 +128,39 @@ function sanitizeProfanity(text) {
   });
 }
 
+function getVisibleUsers() {
+  const list = Array.from(users.values());
+  const hasRobot = list.some((user) => user && user.username === ROBOT_NAME);
+  if (!hasRobot) {
+    list.push(robotUser);
+  }
+  return list;
+}
+
 function broadcastUserList() {
-  io.emit('user-list', Array.from(users.values()));
+  io.emit('user-list', getVisibleUsers());
+}
+
+function maybeRobotReply(authorUsername, roomName, text) {
+  if (!text || authorUsername === ROBOT_NAME) return;
+
+  const normalized = String(text).trim();
+  const shouldReact = /(ahoj|hello|hi|dobrý deň|dobry den|zdravo|nazdar|servus|ciao|robot|ako sa|čo robíš|co robis|kde si|chceš|chces|\?)/i.test(normalized);
+  if (!shouldReact) return;
+
+  const reply = generateRobotReply(normalized);
+  if (!reply) return;
+
+  const botMessage = {
+    id: Date.now() + Math.floor(Math.random() * 10000),
+    username: ROBOT_NAME,
+    text: reply,
+    timestamp: new Date().toISOString(),
+    room: normalizeRoomName(roomName || 'Spoločná'),
+    reactions: {}
+  };
+
+  io.emit('receive-message', botMessage);
 }
 
 function cleanBans() {
@@ -132,6 +175,45 @@ function cleanBans() {
 function isBanned(username) {
   cleanBans();
   return banList.has(username.toLowerCase());
+}
+
+function getUserSocketsByName(username) {
+  const lookup = String(username || '').trim().toLowerCase();
+  if (!lookup) return [];
+
+  const matches = [];
+  for (const [socketId, user] of users.entries()) {
+    if (!user || !user.username) continue;
+    if (user.username.toLowerCase() !== lookup) continue;
+
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      matches.push({ id: socketId, socket, user });
+    }
+  }
+  return matches;
+}
+
+function applyBanForUser(username, hours, reason, initiatorName) {
+  const safeName = String(username || '').trim();
+  if (!safeName) return;
+
+  const banHours = Number.isFinite(hours) && hours > 0 ? Math.min(Math.floor(hours), 240) : 24;
+  const expires = Date.now() + banHours * 60 * 60 * 1000;
+  banList.set(safeName.toLowerCase(), expires);
+
+  const sockets = getUserSocketsByName(safeName);
+  sockets.forEach(({ socket, id }) => {
+    socket.emit('system-message', `Bol si ${reason} na ${banHours} hodín.`);
+    socket.disconnect(true);
+    users.delete(id);
+  });
+
+  if (initiatorName) {
+    io.emit('system-message', `${initiatorName} ${reason} ${safeName} na ${banHours} hodín.`);
+  }
+
+  broadcastUserList();
 }
 
 function normalizeUsername(value) {
@@ -502,7 +584,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
-  socket.emit('user-list', Array.from(users.values()));
+  socket.emit('user-list', getVisibleUsers());
   socket.emit('user-points', getOddychPointsSnapshot());
 
   const allowJoin = createSocketThrottle(4, 60 * 1000);
@@ -592,18 +674,21 @@ io.on('connection', (socket) => {
     if (data.type === 'ban') {
       const hoursValue = Number(data.hours);
       const banHours = Number.isFinite(hoursValue) && hoursValue > 0 ? Math.min(Math.floor(hoursValue), 240) : 29;
-      const expires = Date.now() + banHours * 60 * 60 * 1000;
-      banList.set(targetName.toLowerCase(), expires);
-      targetSocket.emit('system-message', `Bol si zabanovaný na ${banHours} hodín.`);
-      targetSocket.disconnect(true);
-      users.delete(targetEntry.id);
-      broadcastUserList();
-      io.emit('system-message', `${fromUser.username} zabanoval ${targetName} na ${banHours} hodín.`);
+      applyBanForUser(targetName, banHours, 'zabanoval', fromUser.username);
       return;
     }
 
-    const expires = Date.now() + 24 * 60 * 60 * 1000;
-    banList.set(targetName.toLowerCase(), expires);
+    if (data.type === 'kick') {
+      if (targetSocket) {
+        targetSocket.emit('system-message', 'Bol si vyhodený z chatu.');
+        targetSocket.disconnect(true);
+      }
+      users.delete(targetEntry.id);
+      broadcastUserList();
+      io.emit('system-message', `${fromUser.username} vyhodil ${targetName} z chatu.`);
+      return;
+    }
+
     if (targetSocket) {
       targetSocket.emit('system-message', 'Bol si vyhodený na 24 hodín.');
       targetSocket.disconnect(true);
@@ -739,6 +824,7 @@ io.on('connection', (socket) => {
     messages.push(msg);
     addOddychPoints(user.username, 2);
     io.emit('receive-message', msg);
+    maybeRobotReply(user.username, msg.room, cleanedText);
   });
 
   socket.on('admin-broadcast', (data) => {
@@ -832,6 +918,26 @@ io.on('connection', (socket) => {
     }
     if (isSuspiciousText(rawText)) {
       socket.emit('system-message', `${SECURITY_BANNER} · súkromná správa obsahuje podozrivý obsah a nebola odoslaná.`);
+      return;
+    }
+
+    const targetUsername = String(toId) === 'robot' ? ROBOT_NAME : (users.get(toId) ? users.get(toId).username : '');
+    if (String(toId) === 'robot' || targetUsername === ROBOT_NAME) {
+      const robotReply = generateRobotReply(text);
+      const robotMessage = {
+        id: Date.now(),
+        from: ROBOT_NAME,
+        to: user.username,
+        text: robotReply,
+        timestamp: new Date().toISOString(),
+        self: false
+      };
+      socket.emit('receive-private-message', {
+        ...robotMessage,
+        self: true,
+        toUsername: user.username
+      });
+      socket.emit('receive-private-message', robotMessage);
       return;
     }
 

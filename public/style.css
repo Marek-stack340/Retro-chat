@@ -110,15 +110,29 @@ body{font-family:Arial,Helvetica,sans-serif;background:#f3f2f1;margin:0;color:#2
 
 /* Chat page */
 .chat-app{width:100%;max-width:none;margin:0;min-height:100vh;background:#f3f2f1;border:none;border-radius:0;box-shadow:none;padding:0}
-.chat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;background:#ffffff;border-bottom:1px solid #e1e3e5;box-shadow:0 1px 0 rgba(0,0,0,0.02);border-radius:0}
+.chat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(15,23,42,0.03);border-radius:0}
 .topbar-left{display:flex;align-items:center;gap:12px;flex:1}
-.logo-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:0.8rem;font-weight:800;color:#ffffff;background:linear-gradient(135deg,#5b5fc7,#3b82f6);border-radius:8px;border:none;box-shadow:0 6px 16px rgba(59,130,246,0.25)}
-.logo-text{font-size:1.1rem;font-weight:700;color:#1f1f1f}
+.logo-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:12px;background:transparent;border:none;box-shadow:none}
+.logo-gmail-mark,.brand-gmail-mark{display:block;width:100%;height:100%}
+.logo-text{font-size:1.08rem;font-weight:800;letter-spacing:-0.03em;color:#111827}
+.chat-loading-overlay{position:fixed;inset:0;background:rgba(16,24,40,0.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:2000;transition:opacity 0.28s ease, visibility 0.28s ease}
+.chat-loading-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.chat-loading-card{display:flex;flex-direction:column;align-items:center;gap:16px;padding:28px 36px;border-radius:24px;background:rgba(255,255,255,0.97);border:1px solid rgba(148,163,184,0.18);box-shadow:0 30px 80px rgba(15,23,42,0.22)}
+.chat-loading-logo{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:84px;height:84px;padding:10px;border-radius:18px;background:linear-gradient(135deg,#f3f8ff,#edf5ff);border:1px solid rgba(96,165,250,0.18)}
+.chat-loading-square{display:block;border-radius:14px}
+.square-a{background:linear-gradient(135deg,#5b5fc7,#4f46e5)}
+.square-b{background:linear-gradient(135deg,#7dd3fc,#38bdf8)}
+.square-c{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+.square-d{background:linear-gradient(135deg,#4ade80,#10b981)}
+.chat-loading-text{font-size:clamp(1.5rem,2.4vw,2.2rem);font-weight:900;letter-spacing:-0.04em;color:#0f172a}
+.quiz-timer{display:inline-flex;align-items:center;justify-content:center;min-width:72px;padding:8px 12px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:900;border:1px solid #bae6fd;margin-top:10px}
 .chat-subtitle,.chat-detail{display:none}
 .top-menu{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.top-menu a{color:#3b3a39;background:#f7f9fb;border:1px solid #e5e7eb;padding:7px 12px;border-radius:8px;text-decoration:none;font-size:0.8rem;font-weight:600;line-height:1}
-.top-menu a:hover{background:#eef5ff;border-color:#cfe2ff}
-.chat-title{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;background:#eef6ff;border:1px solid #dfe9ff;border-radius:8px;font-size:0.8rem;font-weight:700;color:#1b4fb3;margin-left:8px}
+.top-menu a{color:#374151;background:#f8fafc;border:1px solid #e2e8f0;padding:8px 12px;border-radius:10px;text-decoration:none;font-size:0.77rem;font-weight:700;line-height:1;transition:all 0.18s ease}
+.top-menu a:hover{background:#eef4ff;border-color:#cfe2ff;color:#1d4ed8;box-shadow:0 8px 18px rgba(37,99,235,0.08)}
+.commands-toggle{color:#ffffff;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:10px;padding:8px 12px;font-size:0.77rem;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(37,99,235,0.18)}
+.commands-toggle:hover{filter:brightness(1.02)}
+.chat-title{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;background:linear-gradient(135deg,#edf4ff,#eaf3ff);border:1px solid #dfe9ff;border-radius:10px;font-size:0.8rem;font-weight:800;color:#1d4ed8;margin-left:8px;box-shadow:0 8px 20px rgba(37,99,235,0.06)}
 .chat-main-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;padding:18px 18px 12px;max-width:1400px;margin:0 auto}
 .chat-area{display:flex;flex-direction:column;gap:12px}
 .messages{min-height:540px;padding:18px 16px;background:#f7f8fa;border:1px solid #e4e6eb;border-radius:18px;overflow:auto;box-shadow:inset 0 1px 2px rgba(15,23,42,0.02)}
@@ -231,7 +245,36 @@ body{font-family:Arial,Helvetica,sans-serif;background:#f3f2f1;margin:0;color:#2
 .profile-secondary{background:#f1f5f9;color:#334155}
 .profile-primary{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);color:#fff;box-shadow:0 12px 24px rgba(37,99,235,0.16)}
 .game-block{display:flex;flex-direction:column;gap:8px}
+.game-button{width:100%;padding:10px 12px;border:none;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 10px 18px rgba(59,130,246,0.12)}
+.quiz-game-button{background:linear-gradient(135deg,#93c5fd 0%,#3b82f6 100%);color:#eff6ff}
+.dice-game-button{background:linear-gradient(135deg,#fcd34d 0%,#f59e0b 100%);color:#3a2203}
+.word-game-button{background:linear-gradient(135deg,#c4b5fd 0%,#8b5cf6 100%);color:#f5f3ff}
 .snake-game-button{width:100%;padding:10px 12px;border:none;border-radius:12px;background:linear-gradient(135deg,#34d399 0%,#10b981 100%);color:#052e16;font-weight:800;cursor:pointer;box-shadow:0 10px 18px rgba(16,185,129,0.18)}
+.game-modal{position:fixed;inset:0;background:rgba(15,23,42,0.62);display:flex;align-items:center;justify-content:center;z-index:680;padding:20px}
+.game-panel{position:relative;width:min(560px,100%);padding:18px;border-radius:22px;background:#ffffff;border:1px solid rgba(148,163,184,0.35);box-shadow:0 30px 70px rgba(15,23,42,0.22)}
+.game-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid #edf2f7}
+.game-kicker{font-size:0.7rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#64748b}
+.game-header h2{margin:6px 0 0;font-size:1.3rem;color:#0f172a}
+.game-close{width:38px;height:38px;border:none;border-radius:10px;background:#f1f5f9;color:#334155;font-size:1.8rem;cursor:pointer;line-height:1}
+.game-close:hover{background:#e2e8f0}
+.game-body{padding-top:14px;display:flex;flex-direction:column;gap:14px}
+.game-card{padding:16px;border-radius:16px;border:1px solid #e5e7eb;background:#f8fafc}
+.game-card h3{margin:0 0 8px;font-size:1.05rem;color:#0f172a}
+.game-card p{margin:0;color:#475569;line-height:1.6}
+.game-lobby-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.game-player-pill{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;background:#eef6ff;border:1px solid #dbeafe;color:#1d4ed8;font-weight:700;font-size:0.8rem}
+.game-join-btn,.game-action-btn,.game-secondary-btn{padding:10px 14px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
+.game-join-btn,.game-action-btn{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff;box-shadow:0 10px 18px rgba(37,99,235,0.18)}
+.game-secondary-btn{background:#e2e8f0;color:#1e293b}
+.game-status{font-size:0.82rem;font-weight:700;color:#475569}
+.game-text-input,.game-select{width:100%;padding:10px 12px;border:1px solid #dfe3e8;border-radius:12px;background:#fff;color:#0f172a}
+.game-answer-row{display:flex;gap:8px;flex-wrap:wrap}
+.game-answer-row input{flex:1 1 180px}
+.game-result{padding:12px 14px;border-radius:12px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-weight:700}
+.game-result.fail{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.game-dice-display{display:flex;align-items:center;justify-content:center;padding:18px 12px;border-radius:18px;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1px solid #fcd34d;color:#713f12;font-size:clamp(3rem,10vw,4.5rem);font-weight:900;min-height:120px}
+.game-lobby-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.game-question{font-size:1.1rem;font-weight:800;color:#111827}
 .snake-game-modal{position:fixed;inset:0;background:rgba(15,23,42,0.62);display:flex;align-items:center;justify-content:center;z-index:680;padding:20px}
 .snake-game-panel{position:relative;width:min(520px,100%);padding:18px;border-radius:22px;background:#ffffff;border:1px solid rgba(148,163,184,0.35);box-shadow:0 30px 70px rgba(15,23,42,0.22)}
 .snake-game-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid #edf2f7}
@@ -330,7 +373,9 @@ body{font-family:Arial,Helvetica,sans-serif;background:#f3f2f1;margin:0;color:#2
 .landing-shell-new{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 .site-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-radius:18px;background:rgba(255,255,255,0.72);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,0.18);box-shadow:0 12px 24px rgba(15,23,42,0.04)}
 .brand-lockup{display:flex;align-items:center;gap:12px}
-.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#f59e0b 0%,#f97316 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;box-shadow:0 10px 18px rgba(249,115,22,0.2)}
+.brand-mark{width:42px;height:42px;border-radius:12px;background:transparent;display:flex;align-items:center;justify-content:center;border:none;box-shadow:none}
+.brand-gmail-mark{display:block;width:100%;height:100%}
+.brand-copy strong{display:block;font-size:1.08rem;line-height:1.2;letter-spacing:-0.03em;color:#0f172a}
 .brand-lockup strong{display:block;font-size:1rem;letter-spacing:-0.02em}
 .brand-lockup span{display:block;font-size:0.72rem;color:#64748b}
 .top-nav{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
@@ -372,6 +417,20 @@ body{font-family:Arial,Helvetica,sans-serif;background:#f3f2f1;margin:0;color:#2
 .entry-card input{padding:12px 14px;border-radius:12px;border:1px solid rgba(148,163,184,0.35);background:#fff;color:#0f172a}
 .entry-card button{padding:12px 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 100%);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 12px 22px rgba(37,99,235,0.18)}
 .entry-note{margin:0;color:#475569;font-size:0.92rem;line-height:1.5}
+.registration-card{margin-top:22px;background:linear-gradient(180deg,#fffefc 0%,#f4f7ff 100%);border:1px solid rgba(99,102,241,0.12);border-radius:22px;padding:22px 20px;box-shadow:0 14px 28px rgba(82,88,112,0.05)}
+.registration-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+.registration-header h2{margin:0;font-size:clamp(1.7rem,3vw,2.4rem);line-height:1.1;color:#111827;letter-spacing:-0.04em}
+.eyebrow-tight{margin:0 0 8px;font-size:0.76rem;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#b4171d}
+.registration-badge{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:#ffe4e6;color:#991b1b;font-size:0.74rem;font-weight:800;border:1px solid rgba(185,28,28,0.12)}
+.registration-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:center}
+.registration-copy{padding:18px;border:1px solid rgba(99,102,241,0.08);border-radius:18px;background:rgba(255,255,255,0.65)}
+.registration-copy p{margin:0 0 12px;color:#374151;line-height:1.7}
+.registration-copy ul{margin:0;padding-left:20px;color:#374151;line-height:1.9}
+.register-form{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid rgba(99,102,241,0.08);border-radius:18px;background:rgba(255,255,255,0.8)}
+.register-form label{font-size:0.8rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;font-weight:800}
+.register-form input{width:100%;padding:12px 14px;border:1px solid rgba(184,196,212,0.8);border-radius:12px;background:#fff;color:#111827;font-size:1rem;outline:none}
+.register-form input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.12)}
+.register-form button{margin-top:8px;padding:14px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#ef4444 0%,#b4171d 100%);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 16px 28px rgba(180,23,29,0.22)}
 .leaderboard-card{background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:1px solid rgba(148,163,184,0.25);border-radius:20px;padding:20px;box-shadow:0 18px 42px rgba(15,23,42,0.05)}
 .leaderboard-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .leaderboard-header h2{margin:0;font-size:1.2rem;color:#0f172a}
@@ -403,4 +462,4 @@ body{font-family:Arial,Helvetica,sans-serif;background:#f3f2f1;margin:0;color:#2
 .admin-action-btn.ban{background:#8d5c25;color:#fff}
 .admin-action-btn:disabled{opacity:0.5;cursor:not-allowed}
 .admin-user-badge{padding:3px 7px;border-radius:999px;background:#ffe7b8;color:#7b4510;font-weight:700;font-size:0.75rem}
-@media (max-width:860px){.hero-card{grid-template-columns:1fr}.feature-grid{grid-template-columns:1fr}.cookie-content{flex-direction:column;align-items:flex-start}.cookie-actions{width:100%}.cookie-btn{flex:1;min-width:0}}
+@media (max-width:860px){.hero-card{grid-template-columns:1fr}.feature-grid{grid-template-columns:1fr}.registration-grid{grid-template-columns:1fr}.registration-header{flex-direction:column}.cookie-content{flex-direction:column;align-items:flex-start}.cookie-actions{width:100%}.cookie-btn{flex:1;min-width:0}}

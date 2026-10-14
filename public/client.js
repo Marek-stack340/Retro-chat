@@ -62,11 +62,20 @@ const snakeGameOverlay = document.getElementById('snake-game-overlay');
 const snakeGameClose = document.getElementById('snake-game-close');
 const snakeGameRetry = document.getElementById('snake-game-retry');
 const snakeGameBack = document.getElementById('snake-game-back');
+const quizGameButton = document.getElementById('quiz-game-button');
+const diceGameButton = document.getElementById('dice-game-button');
+const wordGameButton = document.getElementById('word-game-button');
+const gameModal = document.getElementById('game-modal');
+const gameTitle = document.getElementById('game-title');
+const gameBody = document.getElementById('game-body');
+const gameClose = document.getElementById('game-close');
 const topicNameInput = document.getElementById('topic-name-input');
 const createTopicBtn = document.getElementById('create-topic-btn');
 const securityBadge = document.getElementById('security-badge');
 const securityMessage = document.getElementById('security-message');
 const securityCheckBtn = document.getElementById('security-check-btn');
+const commandsToggle = document.getElementById('commands-toggle');
+const commandsBlock = document.getElementById('commands-block');
 
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
@@ -148,6 +157,32 @@ function closeProfileModal() {
 let newsHistoryEntries = loadNewsHistoryEntries();
 let lastClearTime = Number(localStorage.getItem('chatClearAt') || 0) || 0;
 let countdownState = null;
+let quizLobbyPlayers = new Set();
+let activeWordGame = null;
+let quizRoundState = null;
+const chatLoadingOverlay = document.getElementById('chat-loading-overlay');
+const quizQuestions = [
+  { category: 'Geografia', question: 'Ktoré mesto je hlavné mesto Slovenska?', answer: 'Bratislava' },
+  { category: 'Veda', question: 'Ktorá planéta je známa ako Červená planéta?', answer: 'Mars' },
+  { category: 'História', question: 'Kto bol prvým človekom na Mesiaci?', answer: 'Neil Armstrong' },
+  { category: 'Kultúra', question: 'Aký je slovenský názov pre jablko?', answer: 'Jablko' },
+  { category: 'Matematika', question: 'Koľko je 7 × 8?', answer: '56' },
+  { category: 'Zvieratá', question: 'Aké zviera je najväčšie na svete?', answer: 'Modrý veľryb' },
+  { category: 'Technológia', question: 'Čo znamená skratka CPU?', answer: 'Central Processing Unit' },
+  { category: 'Sport', question: 'V ktorom športovom odvetví sa hrajú sety a body?', answer: 'Tenis' },
+  { category: 'Astronómia', question: 'Aký je názov najbližšej planéty k Slnku?', answer: 'Merkúr' },
+  { category: 'Literatúra', question: 'Kto napísal román Hamlet?', answer: 'William Shakespeare' }
+];
+
+function hideChatLoadingOverlay() {
+  if (chatLoadingOverlay) {
+    chatLoadingOverlay.classList.add('hidden');
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(hideChatLoadingOverlay, 450);
+});
 
 const createRoomInput = document.getElementById('create-room');
 const createRoomBtn = document.getElementById('create-room-btn');
@@ -295,6 +330,27 @@ function updateSecurityPanel(payload) {
   }
 }
 
+function getActivityStatusText() {
+  const totalMs = Math.max(0, Date.now() - lastSpokenAt);
+  if (window.commandUtils && typeof window.commandUtils.getActivityStatusText === 'function') {
+    return window.commandUtils.getActivityStatusText(totalMs);
+  }
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+  return `Tvoja aktivita: ${duration} od poslednej aktivity.`;
+}
+
+function toggleCommandsPanel() {
+  if (!commandsBlock) return;
+  const isHidden = commandsBlock.style.display === 'none';
+  commandsBlock.style.display = isHidden ? 'block' : 'none';
+  if (commandsToggle) {
+    commandsToggle.textContent = isHidden ? 'Zavrieť príkazy' : 'Príkazy';
+  }
+}
+
 function openNewsHistory() {
   if (!newsHistoryPanel || !newsHistoryBackdrop) return;
   newsHistoryPanel.classList.add('open');
@@ -396,12 +452,12 @@ function startCountdown(rawValue, options = {}) {
     timer: null,
     finishTimeout: null,
     headline: options.headline || `Odpočítavam od ${total}`,
-    finishText: options.finishText || 'Štart!'
+    finishText: options.finishText || 'Štart!',
+    onFinish: typeof options.onFinish === 'function' ? options.onFinish : null
   };
 
   renderCountdownOverlay(total, total, countdownState.headline);
   enterCountdownFullscreen();
-  speakCountdownMessage(`${countdownState.headline}. Odpočítavanie začína na ${total}.`);
 
   countdownState.timer = setInterval(() => {
     if (!countdownState) return;
@@ -414,16 +470,383 @@ function startCountdown(rawValue, options = {}) {
       }
       if (countdownValueEl) countdownValueEl.textContent = countdownState.finishText;
       if (countdownLabelEl) countdownLabelEl.textContent = countdownState.headline;
-      speakCountdownMessage(countdownState.finishText || 'Hotovo.');
       countdownState.finishTimeout = setTimeout(() => {
+        if (countdownState && countdownState.onFinish) {
+          const onFinish = countdownState.onFinish;
+          countdownState = null;
+          onFinish();
+        }
         stopCountdown();
       }, 1000);
       return;
     }
 
     renderCountdownOverlay(countdownState.current, countdownState.total, countdownState.headline);
-    speakCountdownMessage(String(countdownState.current));
   }, 1000);
+}
+
+function normalizeQuizAnswer(value) {
+  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '');
+}
+
+function openGameModal(title) {
+  if (!gameModal || !gameTitle || !gameBody) return;
+  gameTitle.textContent = title;
+  gameModal.style.display = 'flex';
+  gameModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeGameModal() {
+  if (!gameModal) return;
+  gameModal.style.display = 'none';
+  gameModal.setAttribute('aria-hidden', 'true');
+}
+
+function renderQuizLobby() {
+  const users = Array.from(new Set([
+    currentUsername,
+    ...activeUsers.map((user) => user.username || user.name || user)
+  ])).filter(Boolean);
+  const joined = [...quizLobbyPlayers.size ? quizLobbyPlayers : [currentUsername]];
+  const joinable = users.filter((name) => !joined.includes(name));
+
+  openGameModal('Kvíz');
+  gameBody.innerHTML = `
+    <div class="game-card">
+      <h3>Lobby kvízu</h3>
+      <p>Pripravuje sa nová hra. Ostatní hráči sa môžu pridať počas 30 sekúnd. Ak sa nepripojí nikto, hra začne len s tebou.</p>
+      <div class="game-lobby-grid">
+        ${joined.map((name) => `<span class="game-player-pill">${name}</span>`).join('')}
+      </div>
+    </div>
+    ${joinable.length ? `
+      <div class="game-card">
+        <h3>Pridať hráča</h3>
+        <div class="game-answer-row">
+          ${joinable.map((name) => `<button class="game-join-btn" type="button" data-join-player="${name}">+ ${name}</button>`).join('')}
+        </div>
+      </div>
+    ` : ''}
+    <div class="game-lobby-actions">
+      <button class="game-secondary-btn" type="button" id="close-quiz-lobby">Zavrieť</button>
+      <button class="game-action-btn" type="button" id="start-quiz-lobby">Spustiť kvíz</button>
+    </div>
+  `;
+
+  gameBody.querySelectorAll('[data-join-player]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const name = button.getAttribute('data-join-player');
+      if (!name) return;
+      quizLobbyPlayers.add(name);
+      renderQuizLobby();
+    });
+  });
+
+  const closeQuizLobby = document.getElementById('close-quiz-lobby');
+  if (closeQuizLobby) {
+    closeQuizLobby.addEventListener('click', () => {
+      closeGameModal();
+    });
+  }
+
+  const startQuizLobby = document.getElementById('start-quiz-lobby');
+  if (startQuizLobby) {
+    startQuizLobby.addEventListener('click', () => {
+      quizLobbyPlayers = new Set(joined);
+      startCountdown(30, {
+        headline: 'Kvíz sa spúšťa',
+        finishText: 'Kvíz začal!',
+        onFinish: () => {
+          showQuizRound();
+        }
+      });
+    });
+  }
+}
+
+function showQuizRound() {
+  const quizSequence = [...quizQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
+  quizRoundState = {
+    questions: quizSequence,
+    index: 0,
+    correct: 0,
+    remaining: 10,
+    timer: null,
+    finished: false
+  };
+
+  const renderCurrentQuestion = () => {
+    const question = quizRoundState?.questions[quizRoundState.index];
+    if (!question) {
+      return;
+    }
+
+    openGameModal('Kvíz');
+    gameBody.innerHTML = `
+      <div class="game-card">
+        <h3>${question.category}</h3>
+        <p class="game-question">${question.question}</p>
+        <div id="quiz-timer" class="quiz-timer">10s</div>
+      </div>
+      <div class="game-card">
+        <div class="game-answer-row">
+          <input id="quiz-answer-input" class="game-text-input" type="text" placeholder="Zadaj odpoveď" aria-label="Odpoveď na otázku" />
+          <button id="submit-quiz-answer" class="game-action-btn" type="button">Odpovedať</button>
+        </div>
+      </div>
+      <div id="quiz-result" class="game-status">Máš 10 sekúnd na odpoveď.</div>
+    `;
+
+    const timerEl = document.getElementById('quiz-timer');
+    const resultElNode = document.getElementById('quiz-result');
+    const answerInput = document.getElementById('quiz-answer-input');
+    const submitBtn = document.getElementById('submit-quiz-answer');
+
+    function stopQuizTimer() {
+      if (quizRoundState && quizRoundState.timer) {
+        clearInterval(quizRoundState.timer);
+        quizRoundState.timer = null;
+      }
+    }
+
+    function advanceToNextQuestion(isCorrect, finalText) {
+      if (!quizRoundState || quizRoundState.finished) return;
+      if (isCorrect) {
+        quizRoundState.correct += 1;
+      }
+
+      const currentIndex = quizRoundState.index;
+      const nextIndex = currentIndex + 1;
+      const nextQuestion = quizRoundState.questions[nextIndex];
+      resultElNode.className = isCorrect ? 'game-result' : 'game-result fail';
+      resultElNode.textContent = finalText;
+      stopQuizTimer();
+
+      if (!nextQuestion) {
+        quizRoundState.finished = true;
+        const scoreText = `Kvíz skončil. Máš ${quizRoundState.correct} z ${quizRoundState.questions.length} správnych odpovedí.`;
+        setTimeout(() => {
+          resultElNode.className = 'game-result';
+          resultElNode.textContent = scoreText;
+          showToast(`Kvíz sa skončil: ${quizRoundState.correct}/${quizRoundState.questions.length}`);
+          setTimeout(() => closeGameModal(), 1600);
+        }, 900);
+        return;
+      }
+
+      setTimeout(() => {
+        if (!quizRoundState || quizRoundState.finished) return;
+        quizRoundState.index = nextIndex;
+        renderCurrentQuestion();
+      }, 1200);
+    }
+
+    const submitAnswer = () => {
+      const currentQuestion = quizRoundState?.questions[quizRoundState.index];
+      if (!currentQuestion) {
+        return;
+      }
+
+      const submission = normalizeQuizAnswer(answerInput?.value || '');
+      const expected = normalizeQuizAnswer(currentQuestion.answer);
+
+      if (!submission) {
+        resultElNode.className = 'game-result fail';
+        resultElNode.textContent = 'Najprv zadaj odpoveď.';
+        return;
+      }
+
+      if (submission === expected) {
+        advanceToNextQuestion(true, `Správne! Odpoveď bola ${currentQuestion.answer}.`);
+        return;
+      }
+
+      advanceToNextQuestion(false, `Nesprávne. Správna odpoveď bola ${currentQuestion.answer}.`);
+    };
+
+    submitBtn?.addEventListener('click', submitAnswer);
+    answerInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitAnswer();
+      }
+    });
+
+    quizRoundState.remaining = 10;
+    if (timerEl) {
+      timerEl.textContent = '10s';
+    }
+    quizRoundState.timer = setInterval(() => {
+      if (!quizRoundState || quizRoundState.finished) return;
+      quizRoundState.remaining -= 1;
+      if (timerEl) {
+        timerEl.textContent = `${Math.max(quizRoundState.remaining, 0)}s`;
+      }
+      if (quizRoundState.remaining <= 0) {
+        stopQuizTimer();
+        const currentQuestion = quizRoundState.questions[quizRoundState.index];
+        if (currentQuestion) {
+          advanceToNextQuestion(false, `Čas vypršal. Správna odpoveď bola ${currentQuestion.answer}.`);
+        }
+      }
+    }, 1000);
+  };
+
+  renderCurrentQuestion();
+}
+
+function showDiceGame() {
+  openGameModal('Kocky');
+  gameBody.innerHTML = `
+    <div class="game-card">
+      <h3>Hodenie kockou</h3>
+      <div id="dice-display" class="game-dice-display">🎲</div>
+    </div>
+    <div class="game-lobby-actions">
+      <button id="roll-dice-btn" class="game-action-btn" type="button">Hodiť kockou</button>
+    </div>
+  `;
+
+  document.getElementById('roll-dice-btn')?.addEventListener('click', () => {
+    const result = Math.floor(Math.random() * 6) + 1;
+    const displayEl = document.getElementById('dice-display');
+    if (displayEl) {
+      displayEl.textContent = String(result);
+    }
+    showToast(`Hodil si ${result}.`);
+  });
+}
+
+function showWordGame() {
+  const choices = {
+    'Bratislavské mestá': ['Bratislava', 'Pezinok', 'Senec', 'Malacky'],
+    'Slovenské mestá': ['Košice', 'Nitra', 'Žilina', 'Banská Bystrica'],
+    'Zvieratá': ['Leopard', 'Vlk', 'Slon', 'Žirafa'],
+    'Príroda': ['Dub', 'Jeseň', 'Potok', 'Sneh'],
+    'Abeceda': ['Abeceda', 'Zebra', 'Lietadlo', 'Mesto']
+  };
+  const themeNames = Object.keys(choices);
+  const theme = themeNames[Math.floor(Math.random() * themeNames.length)];
+  const wordPool = choices[theme];
+  const word = wordPool[Math.floor(Math.random() * wordPool.length)];
+  const normalizedWord = word.toUpperCase();
+  const alphabet = 'A Á B C Č D Ď E É F G H CH I Í J K L Ĺ Ľ M N Ň O Ó P Q R Ŕ S Š T Ť U Ú V W X Y Z Ž'.split(' ').filter(Boolean);
+
+  activeWordGame = {
+    theme,
+    word: normalizedWord,
+    guessedLetters: new Set(),
+    finished: false
+  };
+
+  openGameModal('Hádanie slov');
+  gameBody.innerHTML = `
+    <div class="game-card">
+      <h3>${theme}</h3>
+      <p class="game-question">Vyber písmeno z abecedy alebo uhádni celé slovo.</p>
+      <div id="word-display" class="game-word-display" style="font-size:1.7rem;font-weight:800;letter-spacing:0.28rem;text-align:center;word-break:break-word;min-height:48px;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:0.35rem;padding:8px 0;">
+        ${Array.from(normalizedWord).map((char) => (char === ' ' ? '&nbsp;' : '_')).join(' ')}
+      </div>
+    </div>
+    <div class="game-card">
+      <div id="word-result" class="game-status">Vyber písmeno z abecedy.</div>
+    </div>
+    <div class="game-card">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+        ${alphabet.map((letter) => `<button type="button" class="word-letter-btn" data-letter="${letter}" style="min-width:38px;height:38px;border-radius:10px;border:1px solid #dfe6f3;background:#f8fbff;color:#1f2a44;font-weight:700;cursor:pointer;">${letter}</button>`).join('')}
+      </div>
+    </div>
+    <div class="game-card">
+      <div class="game-answer-row">
+        <input id="word-guess-input" class="game-text-input" type="text" placeholder="Zadaj celé slovo" aria-label="Celé slovo" />
+        <button id="guess-word-btn" class="game-action-btn" type="button">Skontrolovať</button>
+      </div>
+    </div>
+  `;
+
+  const resultEl = document.getElementById('word-result');
+  const displayEl = document.getElementById('word-display');
+  const guessInput = document.getElementById('word-guess-input');
+
+  function refreshWordDisplay() {
+    const visibleParts = Array.from(normalizedWord).map((char) => {
+      if (char === ' ') return ' ';
+      return activeWordGame.guessedLetters.has(char) ? char : '_';
+    });
+    displayEl.textContent = visibleParts.join(' ');
+  }
+
+  function finishWordGame(isSuccess) {
+    if (activeWordGame.finished) return;
+    activeWordGame.finished = true;
+    const buttons = document.querySelectorAll('.word-letter-btn');
+    buttons.forEach((button) => {
+      button.disabled = true;
+      button.style.opacity = '0.7';
+    });
+
+    if (isSuccess) {
+      resultEl.className = 'game-result';
+      resultEl.textContent = `Správne! Slovo bolo ${word}.`;
+      showToast(`Hádanie slov vyriešil ${currentUsername}!`);
+      setTimeout(() => closeGameModal(), 1200);
+      return;
+    }
+
+    resultEl.className = 'game-result fail';
+    resultEl.textContent = `Nesprávne. Správna odpoveď bola ${word}.`;
+    setTimeout(() => closeGameModal(), 1400);
+  }
+
+  document.querySelectorAll('.word-letter-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (activeWordGame.finished) return;
+      const letter = button.dataset.letter;
+      if (!letter || activeWordGame.guessedLetters.has(letter)) return;
+      const normalizedLetter = letter.toUpperCase();
+      activeWordGame.guessedLetters.add(normalizedLetter);
+      button.disabled = true;
+      button.style.background = normalizedWord.includes(normalizedLetter) ? '#d8f7df' : '#ffe3e3';
+      button.style.borderColor = normalizedWord.includes(normalizedLetter) ? '#67b47a' : '#e6a9a9';
+      button.style.color = '#1f2a44';
+
+      if (normalizedWord.includes(normalizedLetter)) {
+        resultEl.className = 'game-result';
+        resultEl.textContent = `Písmeno ${normalizedLetter} je v slove.`;
+      } else {
+        resultEl.className = 'game-result fail';
+        resultEl.textContent = `Písmeno ${normalizedLetter} nie je v slove.`;
+      }
+
+      refreshWordDisplay();
+
+      const solved = Array.from(normalizedWord).every((char) => char === ' ' || activeWordGame.guessedLetters.has(char));
+      if (solved) {
+        finishWordGame(true);
+      }
+    });
+  });
+
+  document.getElementById('guess-word-btn')?.addEventListener('click', () => {
+    const guess = normalizeQuizAnswer(guessInput?.value || '');
+    const expected = normalizeQuizAnswer(word);
+
+    if (!guess) {
+      resultEl.className = 'game-result fail';
+      resultEl.textContent = 'Najprv zadaj celé slovo.';
+      return;
+    }
+
+    if (guess === expected) {
+      finishWordGame(true);
+      return;
+    }
+
+    resultEl.className = 'game-result fail';
+    resultEl.textContent = 'To nie je správne. Skús znova alebo vyber písmená.';
+  });
+
+  refreshWordDisplay();
 }
 
 function notifyIncomingMessage(fromName, previewText) {
@@ -934,17 +1357,6 @@ function updateUserList(users) {
 
       li.appendChild(friendBtn);
 
-      const callBtn = document.createElement('button');
-      callBtn.type = 'button';
-      callBtn.className = 'call-btn';
-      callBtn.textContent = '📞';
-      callBtn.title = `Zavolať ${name}`;
-      callBtn.addEventListener('click', (event) => {
-        event.stopPropagation();
-        initiateCall(user.id, user.username);
-      });
-      li.appendChild(callBtn);
-
       li.dataset.id = user.id;
       li.dataset.name = user.username;
       li.addEventListener('click', () => {
@@ -974,12 +1386,7 @@ function updateUserList(users) {
         li.className = 'call-user-item';
         const nameSpan = document.createElement('span');
         nameSpan.textContent = u.username;
-        const btn = document.createElement('button');
-        btn.className = 'call-user-call-btn';
-        btn.textContent = '📞 Zavolať';
-        btn.addEventListener('click', () => initiateCall(u.id, u.username));
         li.appendChild(nameSpan);
-        li.appendChild(btn);
         callUsersList.appendChild(li);
       });
     }
@@ -1009,6 +1416,12 @@ function notifyFriendOnlineStatus(users) {
   currentlyOnlineFriends.forEach((key) => onlineFriends.add(key));
 }
 
+function initiateCall(targetId, targetUsername) {
+  if (!targetId || !targetUsername) return;
+  const username = String(targetUsername).trim();
+  setPrivateTarget(targetId, username);
+}
+
 function setPrivateTarget(id, username) {
   privateTargetId = id;
   privateTargetName = username;
@@ -1021,7 +1434,10 @@ function setPrivateTarget(id, username) {
     privateThreadAvatar.textContent = (privateTargetName || 'U').charAt(0).toUpperCase();
     privateThreadHeader.style.display = 'flex';
   }
-  showToast(`Odkazovač aktivovaný: súkromná správa pre ${privateTargetName}`);
+  const message = privateTargetName && privateTargetName.toLowerCase() === 'robot'
+    ? 'Robot je pripravený na rozhovor. Napíš mu správu.'
+    : `Odkazovač aktivovaný: súkromná správa pre ${privateTargetName}`;
+  showToast(message);
   messageInput.focus();
 }
 
@@ -1435,10 +1851,22 @@ function sendMessage() {
     return;
   }
 
-  if (text.toLowerCase().startsWith('.afk')) {
-    const afkMsg = `${currentUsername} je AFK – na chvílu preč.`;
-    socket.emit('send-message', { text: afkMsg, username: currentUsername, timestamp: new Date().toISOString() });
-    showToast('AFK správa odoslaná. Budeš upozornený keď sa niekto ozve.');
+  if (text.toLowerCase().startsWith('.prec')) {
+    const awayMessage = window.commandUtils && typeof window.commandUtils.getPrecMessage === 'function'
+      ? window.commandUtils.getPrecMessage(currentUsername)
+      : `${currentUsername} je na chvíľu preč.`;
+    socket.emit('send-message', {
+      text: awayMessage,
+      username: currentUsername,
+      timestamp: new Date().toISOString()
+    });
+    showToast('Správa o tom, že si na chvíľu preč, bola odoslaná.');
+    messageInput.value = '';
+    return;
+  }
+
+  if (text.toLowerCase().startsWith('.aktivita')) {
+    showToast(getActivityStatusText());
     messageInput.value = '';
     return;
   }
@@ -1463,22 +1891,6 @@ function sendMessage() {
       return;
     }
     socket.emit('command', { type: 'ban', target, hours, from: currentUsername });
-    messageInput.value = '';
-    return;
-  }
-
-  if (text.startsWith('.vyhodip')) {
-    const parts = text.split(' ');
-    const target = parts.slice(1).join(' ').trim();
-    if (!target) {
-      showToast('Použi .vyhodip meno');
-      return;
-    }
-    if (target.toLowerCase() === currentUsername.toLowerCase()) {
-      showToast('Seba nevyhodíš.');
-      return;
-    }
-    socket.emit('command', { type: 'kick', target, from: currentUsername });
     messageInput.value = '';
     return;
   }
@@ -1895,6 +2307,20 @@ snakeGameRetry?.addEventListener('click', () => {
 snakeGameModal?.addEventListener('click', (event) => {
   if (event.target === snakeGameModal) closeSnakeGame();
 });
+quizGameButton?.addEventListener('click', () => {
+  quizLobbyPlayers = new Set([currentUsername]);
+  renderQuizLobby();
+});
+diceGameButton?.addEventListener('click', () => {
+  showDiceGame();
+});
+wordGameButton?.addEventListener('click', () => {
+  showWordGame();
+});
+gameClose?.addEventListener('click', () => closeGameModal());
+gameModal?.addEventListener('click', (event) => {
+  if (event.target === gameModal) closeGameModal();
+});
 window.addEventListener('keydown', (event) => {
   if (snakeGameModal && snakeGameModal.style.display === 'flex') {
     const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key);
@@ -1920,6 +2346,10 @@ navIgnore?.addEventListener('click', (event) => {
 navSettings?.addEventListener('click', (event) => {
   event.preventDefault();
   openSendSettings();
+});
+commandsToggle?.addEventListener('click', (event) => {
+  event.preventDefault();
+  toggleCommandsPanel();
 });
 navQuicklink?.addEventListener('click', (event) => {
   event.preventDefault();
@@ -1956,7 +2386,7 @@ window.addEventListener('keydown', (event) => {
 });
 navMessenger?.addEventListener('click', (event) => {
   event.preventDefault();
-  window.location.href = '/messenger.html';
+  window.location.href = '/messenger';
 });
 
 document.getElementById('nav-call-open')?.addEventListener('click', (event) => {
@@ -1975,15 +2405,7 @@ document.getElementById('nav-call-open')?.addEventListener('click', (event) => {
       const name = document.createElement('span');
       name.style.cssText = 'font-weight:700;color:#3e2513;font-size:0.95rem;';
       name.textContent = u.username;
-      const btn = document.createElement('button');
-      btn.style.cssText = 'background:#3a7f2a;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:0.9rem;';
-      btn.textContent = '📞 Zavolať';
-      btn.addEventListener('click', () => {
-        modal.style.display = 'none';
-        initiateCall(u.id, u.username);
-      });
       li.appendChild(name);
-      li.appendChild(btn);
       list.appendChild(li);
     });
   }

@@ -7,36 +7,263 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
     <style>
-      .messenger-shell{max-width:980px;margin:0 auto;padding:16px}
-      .messenger-head{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f3dfc6;border:1px solid rgba(0,0,0,.1);border-radius:16px;padding:12px 14px}
-      .messenger-nav{display:flex;gap:8px;flex-wrap:wrap}
-      .messenger-nav a{background:#3a7f2a;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;font-weight:700}
-      .messenger-layout{display:grid;grid-template-columns:1fr 260px;gap:12px;margin-top:12px}
-      .messenger-box{background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:14px;padding:12px}
-      .messenger-messages{min-height:52vh;max-height:64vh;overflow:auto}
-      .messenger-input{display:grid;grid-template-columns:1fr 120px;gap:10px;margin-top:10px}
-      .messenger-input textarea{width:100%;border:1px solid rgba(0,0,0,.14);border-radius:12px;padding:10px;min-height:76px;resize:vertical}
-      .messenger-input button{border:none;border-radius:12px;background:#3a7f2a;color:#fff;font-weight:700;cursor:pointer}
-      .messenger-users{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-      .messenger-users li{background:#fff5e8;border:1px solid rgba(148,94,43,.2);border-radius:10px;padding:8px;cursor:pointer}
-      .messenger-users li.me{opacity:.7;cursor:default}
-      .messenger-private{font-size:.92rem;color:#6a4c2f;margin-top:8px}
-      @media (max-width:800px){.messenger-layout{grid-template-columns:1fr}}
+      :root {
+        --bg: #efefee;
+        --panel: #f4efe9;
+        --card: #ffffff;
+        --card-alt: #f3f7ff;
+        --line: #d9d4ce;
+        --text: #1f2937;
+        --muted: #667085;
+        --brand: #1f63d8;
+        --brand-soft: #eef5ff;
+        --brand-2: #7fbbff;
+        --green: #2e8d54;
+        --green-dark: #247447;
+        --shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .messenger-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 18px 26px;
+      }
+
+      .messenger-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        background: linear-gradient(180deg, #f2eee6 0%, #efe5d8 100%);
+        border: 1px solid rgba(99, 91, 81, 0.12);
+        border-radius: 18px;
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .messenger-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+
+      .messenger-brand-mark {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #edf5ff;
+        box-shadow: inset 0 0 0 1px rgba(31, 99, 216, 0.08);
+      }
+
+      .messenger-brand-mark svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .messenger-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .messenger-nav a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        background: var(--green);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(47, 158, 92, 0.22);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .messenger-nav a:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 22px rgba(47, 158, 92, 0.26);
+      }
+
+      .messenger-nav a:first-child {
+        background: linear-gradient(180deg, #2d8d54 0%, #2a7a4c 100%);
+      }
+
+      .messenger-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .messenger-box {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 14px 14px 12px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+      }
+
+      .messenger-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .messenger-meta strong {
+        color: var(--text);
+      }
+
+      .messenger-private {
+        margin-bottom: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--brand-soft);
+        border: 1px solid rgba(31, 99, 216, 0.12);
+        color: var(--brand);
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+
+      .messenger-messages {
+        min-height: 48vh;
+        max-height: 60vh;
+        overflow: auto;
+        background: #fbfcfe;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .messenger-input {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 140px;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .messenger-input textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+        min-height: 74px;
+        resize: vertical;
+        font: inherit;
+        background: #fff;
+        color: var(--text);
+        outline: none;
+      }
+
+      .messenger-input textarea:focus {
+        border-color: rgba(31, 99, 216, 0.45);
+        box-shadow: 0 0 0 4px rgba(31, 99, 216, 0.08);
+      }
+
+      .messenger-input button {
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #2f9e5c 0%, #267b4c 100%);
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 12px 20px rgba(47, 158, 92, 0.16);
+      }
+
+      .messenger-users {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .messenger-users li {
+        background: #f5f8ff;
+        border: 1px solid rgba(31, 99, 216, 0.12);
+        border-radius: 12px;
+        padding: 10px 12px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+        font-weight: 600;
+      }
+
+      .messenger-users li:hover {
+        background: #ebf3ff;
+        border-color: rgba(31, 99, 216, 0.2);
+      }
+
+      .messenger-users li.me {
+        opacity: 0.8;
+        cursor: default;
+        background: #eef5f2;
+      }
+
+      .messenger-side-title {
+        margin: 0 0 12px;
+        font-size: 1.1rem;
+        font-weight: 800;
+      }
+
+      .messenger-side-note {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 800px) {
+        .messenger-layout { grid-template-columns: 1fr; }
+        .messenger-head { flex-direction: column; align-items: stretch; }
+        .messenger-nav { justify-content: stretch; }
+        .messenger-nav a { flex: 1; }
+        .messenger-input { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
     <div class="messenger-shell">
       <div class="messenger-head">
-        <strong>Oddych Messenger</strong>
+        <div class="messenger-brand">
+          <span class="messenger-brand-mark" aria-label="Oddych Messenger logo">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <rect x="4" y="4" width="56" height="56" rx="16" fill="#d63a3a"/>
+              <text x="32" y="36.5" text-anchor="middle" dominant-baseline="middle" font-size="26" font-weight="900" fill="#ffffff" font-family="Arial, Segoe UI, sans-serif" letter-spacing="-1">OC</text>
+            </svg>
+          </span>
+          <span>Oddych Messenger</span>
+        </div>
         <div class="messenger-nav">
-          <a href="/chat.html">Späť do chatu</a>
-          <a href="#" id="msgr-logout">Odhlásiť</a>
+          <a href="/chat">Späť do chatu</a>
+          <a href="/" id="msgr-logout">Odhlásiť</a>
         </div>
       </div>
 
       <div class="messenger-layout">
         <div class="messenger-box">
-          <div>Prihlásený: <strong id="msgr-current-user">-</strong></div>
+          <div class="messenger-meta">
+            <div>Prihlásený: <strong id="msgr-current-user">-</strong></div>
+          </div>
           <div class="messenger-private" id="msgr-private-status" style="display:none;">Súkromná správa pre <strong id="msgr-private-name"></strong></div>
           <div class="messages messenger-messages" id="msgr-messages"></div>
           <div class="messenger-input">
@@ -46,9 +273,9 @@
         </div>
 
         <div class="messenger-box">
-          <h3 style="margin:0 0 10px;">Používatelia</h3>
+          <h3 class="messenger-side-title">Používatelia</h3>
           <ul id="msgr-users" class="messenger-users"></ul>
-          <p style="color:#6a4c2f;font-size:.9rem;margin-top:8px;">Klikni na meno pre súkromnú správu.</p>
+          <p class="messenger-side-note">Klikni na meno pre súkromnú správu.</p>
         </div>
       </div>
     </div>
