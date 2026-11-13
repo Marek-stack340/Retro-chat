@@ -159,7 +159,7 @@ function showBanOverlay(data = {}) {
       banWarningEl.innerHTML = 'TESTOVACÍ REŽIM – NEJDE O SKUTOČNÝ TREST<br><br><strong>Toto je iba ukážka moderátorskej stránky. Tvoj účet nie je zablokovaný a tvoj prístup do chatu zostáva aktívny.</strong>';
     } else {
       banWarningEl.textContent = isKick
-        ? 'Moderátor ťa vyhodil z miestnosti.'
+        ? 'Moderátorský tím rozhodol o tvojom vykopnutí z chatu.'
         : 'Moderátorským rozhodnutím došlo k pozastaveniu tvojho účtu.';
     }
   }
@@ -241,6 +241,7 @@ const moderationState = {
 let unreadNotificationCount = 0;
 let activeModerationTab = 'overview';
 let pendingModerationAction = null;
+let selectedNotificationIds = new Set();
 
 function getCurrentRoleName() {
   const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
@@ -295,12 +296,119 @@ function renderModerationStats() {
   `;
 }
 
+function dismissModerationNotification(notificationId) {
+  if (!notificationId) return;
+
+  moderationState.notifications = (moderationState.notifications || []).filter((notification) => {
+    const currentId = notification && (notification.id || notification._id || `${notification.title || 'notification'}-${notification.timestamp || Date.now()}`);
+    return String(currentId) !== String(notificationId);
+  });
+
+  selectedNotificationIds.delete(String(notificationId));
+  unreadNotificationCount = Math.max(0, unreadNotificationCount - 1);
+  renderModerationPanel();
+}
+
+function dismissSelectedNotifications() {
+  const ids = Array.from(selectedNotificationIds);
+  if (!ids.length) return;
+
+  const confirmMessage = ids.length > 1
+    ? 'Naozaj chceš zmazať tieto notifikácie? Po potvrdení sa odstránia.'
+    : 'Naozaj chceš zmazať túto notifikáciu? Po potvrdení sa odstráni.';
+
+  const confirmed = window.confirm(confirmMessage);
+  if (!confirmed) return;
+
+  ids.forEach((notificationId) => dismissModerationNotification(notificationId));
+  selectedNotificationIds.clear();
+  renderModerationPanel();
+}
+
 function renderModerationContent() {
   if (!moderationContent) return;
   const reports = moderationState.reports || [];
   const appeals = moderationState.appeals || [];
   const history = moderationState.history || [];
   const notifications = moderationState.notifications || [];
+
+  if (activeModerationTab === 'notifications') {
+    if (!notifications.length) {
+      moderationContent.innerHTML = '<div class="moderation-empty">Žiadne notifikácie na zobrazenie.</div>';
+      return;
+    }
+
+    moderationContent.innerHTML = `
+      <div class="moderation-actions-row moderation-notification-toolbar">
+        <button class="moderation-action reject moderation-discard-selected" type="button">${selectedNotificationIds.size ? `Zahodiť notifikácie (${selectedNotificationIds.size})` : 'Zahodiť notifikácie'}</button>
+        ${selectedNotificationIds.size ? '<button class="moderation-action request moderation-clear-selection" type="button">Vymazať výber</button>' : ''}
+      </div>
+      ${notifications.map((notification) => {
+        const id = notification && (notification.id || notification._id || `${notification.title || 'notification'}-${notification.timestamp || Date.now()}`);
+        const selected = selectedNotificationIds.has(String(id));
+        return `
+          <div class="moderation-item moderation-notification-item ${selected ? 'selected' : ''}">
+            <label class="moderation-notification-select">
+              <input class="moderation-notification-checkbox" type="checkbox" data-notification-id="${String(id)}" ${selected ? 'checked' : ''}>
+              <span>Vybrať</span>
+            </label>
+            <div class="moderation-item-head"><strong>${notification.title || 'Notifikácia'}</strong><span>${notification.type || 'info'}</span></div>
+            <div class="moderation-item-row"><span>Správa:</span><strong>${notification.message || notification.body || '—'}</strong></div>
+            <div class="moderation-item-row"><span>Zdroj:</span><strong>${notification.source || notification.actor || 'Systém'}</strong></div>
+            <div class="moderation-item-row"><span>Čas:</span><strong>${formatModerationDate(notification.timestamp || notification.createdAt)}</strong></div>
+            <div class="moderation-actions-row">
+              <button class="moderation-action reject moderation-dismiss-notification" data-notification-id="${String(id)}" type="button">Zahodiť túto notifikáciu</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    moderationContent.querySelectorAll('.moderation-dismiss-notification').forEach((button) => {
+      button.addEventListener('click', () => {
+        dismissModerationNotification(button.dataset.notificationId);
+      });
+    });
+
+    moderationContent.querySelectorAll('.moderation-notification-checkbox').forEach((checkbox) => {
+      checkbox.addEventListener('change', (event) => {
+        const id = event.target.dataset.notificationId;
+        if (!id) return;
+        if (event.target.checked) {
+          selectedNotificationIds.add(String(id));
+        } else {
+          selectedNotificationIds.delete(String(id));
+        }
+        renderModerationPanel();
+      });
+    });
+
+    const discardSelectedBtn = moderationContent.querySelector('.moderation-discard-selected');
+    if (discardSelectedBtn) {
+      discardSelectedBtn.addEventListener('click', () => {
+        if (!selectedNotificationIds.size) {
+          moderationContent.querySelectorAll('.moderation-notification-checkbox').forEach((checkbox) => {
+            checkbox.checked = true;
+            selectedNotificationIds.add(String(checkbox.dataset.notificationId));
+          });
+          if (!selectedNotificationIds.size) return;
+        }
+        dismissSelectedNotifications();
+      });
+    }
+
+    const clearSelectionBtn = moderationContent.querySelector('.moderation-clear-selection');
+    if (clearSelectionBtn) {
+      clearSelectionBtn.addEventListener('click', () => {
+        selectedNotificationIds.clear();
+        moderationContent.querySelectorAll('.moderation-notification-checkbox').forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        renderModerationPanel();
+      });
+    }
+    return;
+  }
 
   if (activeModerationTab === 'users') {
     const userQuery = (document.getElementById('moderation-user-search') || {}).value || '';
@@ -506,8 +614,18 @@ if (moderationCenterBtn) {
   moderationCenterBtn.addEventListener('click', openModerationCenter);
 }
 if (moderationCenterClose) moderationCenterClose.addEventListener('click', closeModerationCenter);
-if (moderationBellBtn) moderationBellBtn.addEventListener('click', openModerationCenter);
-if (moderationBellOpen) moderationBellOpen.addEventListener('click', openModerationCenter);
+if (moderationBellBtn) moderationBellBtn.addEventListener('click', () => {
+  activeModerationTab = 'notifications';
+  moderationTabs.forEach((item) => item.classList.toggle('active', item.dataset.tab === 'notifications'));
+  renderModerationContent();
+  openModerationCenter();
+});
+if (moderationBellOpen) moderationBellOpen.addEventListener('click', () => {
+  activeModerationTab = 'notifications';
+  moderationTabs.forEach((item) => item.classList.toggle('active', item.dataset.tab === 'notifications'));
+  renderModerationContent();
+  openModerationCenter();
+});
 if (moderationActionClose) moderationActionClose.addEventListener('click', closeModerationActionModal);
 if (moderationActionCancel) moderationActionCancel.addEventListener('click', closeModerationActionModal);
 if (moderationActionConfirm) moderationActionConfirm.addEventListener('click', () => {
@@ -970,6 +1088,31 @@ function closeGameModal() {
   gameModal.setAttribute('aria-hidden', 'true');
 }
 
+function addQuizJoinInviteMessage() {
+  if (!messagesDiv) return;
+  if (messagesDiv.querySelector('.system-quiz-invite')) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'system-msg system-quiz-invite';
+
+  const label = document.createElement('span');
+  label.className = 'system-quiz-invite-label';
+  label.textContent = 'Pripojiť sa ku kvízu';
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'system-quiz-join-btn';
+  button.textContent = 'Pripojiť sa ku kvízu';
+  button.addEventListener('click', () => {
+    renderQuizLobby();
+  });
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(button);
+  messagesDiv.appendChild(wrapper);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
 function renderQuizLobby() {
   const users = Array.from(new Set([
     currentUsername,
@@ -978,6 +1121,7 @@ function renderQuizLobby() {
   const joined = [...quizLobbyPlayers.size ? quizLobbyPlayers : [currentUsername]];
   const joinable = users.filter((name) => !joined.includes(name));
 
+  addQuizJoinInviteMessage();
   openGameModal('Kvíz');
   gameBody.innerHTML = `
     <div class="game-card">
