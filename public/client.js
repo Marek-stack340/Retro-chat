@@ -1404,12 +1404,12 @@ function renderDailyQuestion() {
   if (!bannerText) return;
 
   const questions = [
-    'Aké téma by si dnes rád(a) rozoberal v chate?',
-    'Čo ťa dnes najviac pozitívne naladilo?',
-    'Akú vec by si chcel(a) vyskúšať v komunitnom chate?',
-    'Aké je tvoje najobľúbenejšie spoločenské tématické téma?',
-    'Čo by si odporučil(a) nováčikovi v Oddych Chate?',
-    'Aké si mal(a) včera najlepšie chvíle?' 
+    'Téma dňa: Aké témy by si dnes rád(a) rozoberal v chate?',
+    'Téma dňa: Čo ťa dnes najviac baví v spoločenskej komunikácii?',
+    'Téma dňa: Aký druh rozhovoru by si dnes najradšej začal?',
+    'Téma dňa: Akú zábavnú alebo užitočnú tému by si dnes otvoril?',
+    'Téma dňa: Ktorá téma v komunite ti najviac pomáha k príjemnému rozhovoru?',
+    'Téma dňa: Aký motivačný alebo zábavný rozhovor by si dnes rád(a) začal?'
   ];
 
   const today = new Date();
@@ -1703,6 +1703,14 @@ function normalizeModerationName(value) {
   return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+function refreshMyPoints() {
+  const pointsEl = document.getElementById('my-points');
+  if (pointsEl) {
+    pointsEl.textContent = '0';
+  }
+  return 0;
+}
+
 function isCurrentUserAdmin() {
   const name = normalizeModerationName(currentUsername);
   return ['admin', 'administrator', 'spravca', 'spravca', 'marek', 'marekc'].includes(name);
@@ -1783,7 +1791,9 @@ function updateUserList(users) {
   if (currentUsernameDisplay) {
     currentUsernameDisplay.textContent = currentUsername;
   }
-  refreshMyPoints();
+  if (typeof refreshMyPoints === 'function') {
+    refreshMyPoints();
+  }
   refreshIgnoreStatus();
   updateAdminPanel(users);
   if (!usersList) return;
