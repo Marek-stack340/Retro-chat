@@ -5,7 +5,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
-const { ROBOT_NAME, generateRobotReply } = require('./bot');
+const { ROBOT_NAME, generateRobotReply, generateRobotReplyFromApi } = require('./bot');
+const { buildBanScreenData, buildKickScreenData } = require('./ban-utils');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
@@ -77,8 +78,14 @@ app.get('/register', servePublicPage('register'));
 app.get('/register.html', (req, res) => res.redirect(301, '/register'));
 app.get('/guestbook', servePublicPage('guestbook'));
 app.get('/guestbook.html', (req, res) => res.redirect(301, '/guestbook'));
-app.get('/contribute', servePublicPage('contribute'));
-app.get('/contribute.html', (req, res) => res.redirect(301, '/contribute'));
+app.get('/contribute', (req, res) => res.redirect(301, '/chat'));
+app.get('/contribute.html', (req, res) => res.redirect(301, '/chat'));
+app.use((req, res, next) => {
+  if (req.path === '/contribute' || req.path === '/contribute.html') {
+    return res.redirect(301, '/chat');
+  }
+  next();
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -88,10 +95,14 @@ const robotUser = { id: 'robot', username: ROBOT_NAME, role: 'bot' };
 const banList = new Map();
 const accounts = new Map();
 const authTokens = new Map();
-const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc']);
+const moderationReports = [];
+const appeals = [];
+const moderationNotifications = [];
+const moderationHistory = [];
+const { ownerUsernames, adminUsernames, moderatorUsernames, isOwnerName, isAdminName, isModeratorName, getModeratorRole, canModerateAction } = require('./moderation');
 const testerUsernames = new Set(['kika_c123']);
-const protectedUsernames = new Set(['správca', 'spravca', 'marek', 'marekc']);
-const reservedJoinNames = new Set(['správca', 'spravca', 'marek', 'marekc']);
+const protectedUsernames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
+const reservedJoinNames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
 const resetEmailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: Number(process.env.SMTP_PORT || 587),
@@ -101,7 +112,6 @@ const resetEmailTransporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS || ''
   }
 });
-const oddychPoints = new Map();
 const antivirusStrikes = new Map();
 const usernamePattern = /^[\p{L}0-9_]{3,20}$/u;
 
@@ -128,6 +138,74 @@ function sanitizeProfanity(text) {
   });
 }
 
+let moderationSequence = 1;
+
+function createModerationId(prefix) {
+  const next = moderationSequence++;
+  return `${prefix}-${String(next).padStart(4, '0')}`;
+}
+
+function recordModerationEvent(event) {
+  moderationHistory.push({
+    id: `HIST-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    ...event
+  });
+  if (moderationHistory.length > 200) moderationHistory.shift();
+}
+
+function addModerationNotification(notification) {
+  const entry = {
+    id: notification.id || `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: new Date().toISOString(),
+    readBy: [],
+    ...notification
+  };
+  moderationNotifications.push(entry);
+  if (moderationNotifications.length > 200) moderationNotifications.shift();
+  const humanModerators = Array.from(users.values()).filter((user) => user && ['owner', 'admin', 'moderator'].includes(user.role));
+  humanModerators.forEach((user) => {
+    const socket = io.sockets.sockets.get(user.id);
+    if (socket) {
+      socket.emit('moderation-notification', entry);
+      socket.emit('moderation-sound', { type: entry.type || 'alert' });
+    }
+  });
+  return entry;
+}
+
+function getModeratorStateForRole(role) {
+  const activeReports = moderationReports.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const sortedAppeals = appeals.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const summary = {
+    totalReports: activeReports.length,
+    totalAppeals: sortedAppeals.length,
+    openAppeals: sortedAppeals.filter((item) => item.status === 'pending' || item.status === 'review').length,
+    totalActions: moderationHistory.length,
+    activeUsers: users.size
+  };
+
+  return {
+    role,
+    summary,
+    reports: activeReports,
+    appeals: sortedAppeals,
+    notifications: moderationNotifications,
+    history: moderationHistory.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
+    stats: summary
+  };
+}
+
+function broadcastModerationState() {
+  const targets = Array.from(users.values()).filter((user) => user && ['owner', 'admin', 'moderator'].includes(user.role));
+  targets.forEach((user) => {
+    const socket = io.sockets.sockets.get(user.id);
+    if (socket) {
+      socket.emit('moderation-center-state', getModeratorStateForRole(user.role));
+    }
+  });
+}
+
 function getVisibleUsers() {
   const list = Array.from(users.values());
   const hasRobot = list.some((user) => user && user.username === ROBOT_NAME);
@@ -141,14 +219,14 @@ function broadcastUserList() {
   io.emit('user-list', getVisibleUsers());
 }
 
-function maybeRobotReply(authorUsername, roomName, text) {
+async function maybeRobotReply(authorUsername, roomName, text) {
   if (!text || authorUsername === ROBOT_NAME) return;
 
   const normalized = String(text).trim();
   const shouldReact = /(ahoj|hello|hi|dobrý deň|dobry den|zdravo|nazdar|servus|ciao|robot|ako sa|čo robíš|co robis|kde si|chceš|chces|\?)/i.test(normalized);
   if (!shouldReact) return;
 
-  const reply = generateRobotReply(normalized);
+  const reply = await generateRobotReplyFromApi(normalized);
   if (!reply) return;
 
   const botMessage = {
@@ -199,14 +277,26 @@ function applyBanForUser(username, hours, reason, initiatorName) {
   if (!safeName) return;
 
   const banHours = Number.isFinite(hours) && hours > 0 ? Math.min(Math.floor(hours), 240) : 24;
-  const expires = Date.now() + banHours * 60 * 60 * 1000;
+  const startedAt = Date.now();
+  const expires = startedAt + banHours * 60 * 60 * 1000;
   banList.set(safeName.toLowerCase(), expires);
+
+  const banScreenData = buildBanScreenData({
+    username: safeName,
+    reason,
+    hours: banHours,
+    startedAt,
+    initiator: initiatorName || 'Moderátor'
+  });
 
   const sockets = getUserSocketsByName(safeName);
   sockets.forEach(({ socket, id }) => {
     socket.emit('system-message', `Bol si ${reason} na ${banHours} hodín.`);
-    socket.disconnect(true);
-    users.delete(id);
+    socket.emit('ban-screen', banScreenData);
+    setTimeout(() => {
+      socket.disconnect(true);
+      users.delete(id);
+    }, 120);
   });
 
   if (initiatorName) {
@@ -224,10 +314,6 @@ function normalizeRoomName(value) {
   return (value || '').toString().trim().replace(/\s+/g, ' ').slice(0, 40) || 'Spoločná';
 }
 
-function normalizePointsKey(username) {
-  return normalizeUsername(username).toLowerCase();
-}
-
 function formatChatTimestamp(value) {
   const date = value ? new Date(value) : new Date();
   return date.toLocaleString('sk-SK', {
@@ -238,59 +324,6 @@ function formatChatTimestamp(value) {
     minute: '2-digit',
     second: '2-digit'
   });
-}
-
-function ensureOddychPoints(username) {
-  const key = normalizePointsKey(username);
-  if (!key) return;
-  if (!oddychPoints.has(key)) {
-    oddychPoints.set(key, 0);
-  }
-}
-
-function getOddychPointsSnapshot() {
-  const snapshot = {};
-  for (const [key, value] of oddychPoints.entries()) {
-    snapshot[key] = Number(value || 0);
-  }
-  return snapshot;
-}
-
-function broadcastOddychPoints() {
-  io.emit('user-points', getOddychPointsSnapshot());
-}
-
-function emitPresenceSystemMessage(username, kind) {
-  const action = kind === 'join' ? 'vstúpil do miestnosti' : 'odišiel z chatu';
-  io.emit('system-message', `${username} ${action} (${formatChatTimestamp(new Date())})`);
-}
-
-function addOddychPoints(username, delta) {
-  const key = normalizePointsKey(username);
-  if (!key) return;
-  ensureOddychPoints(username);
-  oddychPoints.set(key, Number(oddychPoints.get(key) || 0) + Number(delta || 0));
-  broadcastOddychPoints();
-}
-
-function addOddychPointsToAllActiveUsers(delta) {
-  const amount = Math.floor(Number(delta));
-  if (!Number.isFinite(amount) || amount <= 0) return 0;
-
-  let updatedCount = 0;
-  for (const user of users.values()) {
-    const key = normalizePointsKey(user.username);
-    if (!key) continue;
-    ensureOddychPoints(user.username);
-    oddychPoints.set(key, Number(oddychPoints.get(key) || 0) + amount);
-    updatedCount += 1;
-  }
-
-  if (updatedCount > 0) {
-    broadcastOddychPoints();
-  }
-
-  return updatedCount;
 }
 
 function sanitizeChatText(text) {
@@ -503,9 +536,9 @@ async function handleEntryRequest({ username, password }) {
   const newAccount = {
     username: normalizedUsername,
     passwordHash: passwordValue ? await bcrypt.hash(passwordValue, 10) : null,
-    role: adminUsernames.has(normalizedKey)
+    role: isAdminName(normalizedKey)
       ? 'admin'
-      : (testerUsernames.has(normalizedKey) ? 'tester' : null)
+      : (isModeratorName(normalizedKey) ? 'moderator' : (testerUsernames.has(normalizedKey) ? 'tester' : null))
   };
   accounts.set(normalizedKey, newAccount);
   return {
@@ -585,7 +618,6 @@ io.on('connection', (socket) => {
   console.log('connected', socket.id);
   socket.emit('load-messages', messages);
   socket.emit('user-list', getVisibleUsers());
-  socket.emit('user-points', getOddychPointsSnapshot());
 
   const allowJoin = createSocketThrottle(4, 60 * 1000);
   const allowMessage = createSocketThrottle(20, 10 * 1000);
@@ -609,9 +641,9 @@ io.on('connection', (socket) => {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
       return;
     }
-    const isProtectedAdminName = ['správca', 'spravca', 'marek', 'marekc'].includes(normalizedUsername);
-    if ((protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) && !isProtectedAdminName) {
-      socket.emit('join-denied', 'Meno je už obsadené. Názov Správca alebo Marekc nie je možné použiť.');
+    const isProtectedModerationName = isAdminName(normalizedUsername) || isModeratorName(normalizedUsername);
+    if ((protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) && !isProtectedModerationName) {
+      socket.emit('join-denied', 'Meno je už obsadené. Názov správcu alebo moderátora nie je možné použiť.');
       return;
     }
     if (isBanned(safeUsername)) {
@@ -632,19 +664,15 @@ io.on('connection', (socket) => {
       users.delete(duplicateUser.id);
     }
 
+    const resolvedRole = getModeratorRole(normalizedUsername);
     users.set(socket.id, {
       id: socket.id,
       username: safeUsername,
-      role: adminUsernames.has(normalizedUsername)
-        ? 'admin'
-        : (testerUsernames.has(normalizedUsername) ? 'tester' : null)
+      role: resolvedRole || (testerUsernames.has(normalizedUsername) ? 'tester' : null)
     });
-    ensureOddychPoints(safeUsername);
     socket.data.joined = true;
     socket.emit('security-banner', getSecurityStatus(safeUsername));
     broadcastUserList();
-    broadcastOddychPoints();
-    emitPresenceSystemMessage(safeUsername, 'join');
   });
 
   socket.on('command', (data) => {
@@ -654,8 +682,8 @@ io.on('connection', (socket) => {
 
     const targetName = String(data.target).trim();
     if (!targetName) return;
-    if (adminUsernames.has(targetName.toLowerCase())) {
-      socket.emit('system-message', 'Administrátora nevyhodíš alebo nezakážeš.');
+    if (isAdminName(targetName) || isModeratorName(targetName)) {
+      socket.emit('system-message', 'Správcu alebo moderátora nevyhodíš alebo nezakážeš.');
       return;
     }
 
@@ -671,21 +699,53 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (!canModerateAction(fromUser.role, targetEntry.role)) {
+      socket.emit('system-message', 'Na moderovanie máš oprávnenie iba pre bežných používateľov.');
+      return;
+    }
+
     if (data.type === 'ban') {
       const hoursValue = Number(data.hours);
       const banHours = Number.isFinite(hoursValue) && hoursValue > 0 ? Math.min(Math.floor(hoursValue), 240) : 29;
       applyBanForUser(targetName, banHours, 'zabanoval', fromUser.username);
+      recordModerationEvent({
+        type: 'ban',
+        actor: fromUser.username,
+        target: targetName,
+        reason: `zabanoval ${targetName} na ${banHours} hodín`,
+        timestamp: new Date().toISOString()
+      });
+      broadcastModerationState();
       return;
     }
 
     if (data.type === 'kick') {
       if (targetSocket) {
-        targetSocket.emit('system-message', 'Bol si vyhodený z chatu.');
-        targetSocket.disconnect(true);
+        const kickScreenData = buildKickScreenData({
+          username: targetName,
+          room: normalizeRoomName(data.room || 'Spoločná'),
+          reason: 'Vyhodenie z miestnosti',
+          initiatedAt: Date.now(),
+          initiator: fromUser.username
+        });
+
+        targetSocket.emit('system-message', 'Bol si vyhodený z miestnosti.');
+        targetSocket.emit('kick-screen', kickScreenData);
+        setTimeout(() => {
+          targetSocket.disconnect(true);
+        }, 180);
       }
       users.delete(targetEntry.id);
+      recordModerationEvent({
+        type: 'kick',
+        actor: fromUser.username,
+        target: targetName,
+        reason: 'vyhodil z miestnosti',
+        timestamp: new Date().toISOString()
+      });
       broadcastUserList();
       io.emit('system-message', `${fromUser.username} vyhodil ${targetName} z chatu.`);
+      broadcastModerationState();
       return;
     }
 
@@ -700,7 +760,12 @@ io.on('connection', (socket) => {
 
   socket.on('clear-chat', () => {
     const user = users.get(socket.id);
-    if (!user) return;
+    if (!user || !canModerateAction(user.role, 'user')) {
+      if (user) {
+        socket.emit('system-message', 'Vymazať chat môže iba správca alebo moderátor.');
+      }
+      return;
+    }
 
     messages.length = 0;
     io.emit('clear-chat', {
@@ -724,15 +789,14 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const rewardedUsers = addOddychPointsToAllActiveUsers(value);
-    io.emit('system-message', `${user.username} spustil odpočet. Každý v chate dostáva ${value} bodov.`);
+    io.emit('system-message', `${user.username} spustil odpočet. Číslo ${value} je teraz zobrazené všetkým v chate.`);
 
     io.emit('countdown:start', {
       value,
       byUsername: user.username || 'Správca',
-      rewardPoints: value,
-      rewardText: `Dostávaš ${value} bodov!`,
-      rewardedUsers
+      rewardPoints: 0,
+      rewardText: 'Odpočet bez bodov.',
+      rewardedUsers: []
     });
   });
 
@@ -771,21 +835,313 @@ io.on('connection', (socket) => {
     }
 
     const safeText = sanitizeProfanity(sanitizeChatText(reportedText)).slice(0, 160);
-    const adminSockets = [...io.sockets.sockets.values()].filter((targetSocket) => {
-      const targetUser = users.get(targetSocket.id);
-      return Boolean(targetUser && targetUser.username && adminUsernames.has(targetUser.username.toLowerCase()));
+    const reportEntry = {
+      id: `REPORT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      reporter: user.username,
+      reportedUser: reportedUsername,
+      reason: safeText,
+      room: roomName,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+    moderationReports.push(reportEntry);
+    recordModerationEvent({
+      type: 'report',
+      actor: user.username,
+      target: reportedUsername,
+      reason: safeText,
+      room: roomName,
+      timestamp: new Date().toISOString()
     });
 
-    if (adminSockets.length === 0) {
-      socket.emit('system-message', 'V tejto chvíli nie je online žiadny správca. Nahlásenie bolo zaznamenané lokálne.');
-      return;
-    }
+    addModerationNotification({
+      id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: 'report',
+      title: 'Nové nahlásenie',
+      message: `${user.username} nahlásil ${reportedUsername} v miestnosti ${roomName}.`,
+      target: reportedUsername,
+      actor: user.username,
+      relatedId: reportEntry.id,
+      route: 'reports'
+    });
+
+    const adminSockets = [...io.sockets.sockets.values()].filter((targetSocket) => {
+      const targetUser = users.get(targetSocket.id);
+      return Boolean(targetUser && targetUser.username && (isAdminName(targetUser.username) || isModeratorName(targetUser.username)));
+    });
 
     const reportMessage = `⚠ Nahlásenie: ${user.username} nahlásil správu od ${reportedUsername} v miestnosti ${roomName}: "${safeText}"`;
     adminSockets.forEach((targetSocket) => targetSocket.emit('system-message', reportMessage));
+    broadcastModerationState();
+    socket.emit('system-message', 'Správa bola nahlásená moderátorom.');
   });
 
-  socket.on('send-message', (data) => {
+  socket.on('moderation-center:request', () => {
+    const user = users.get(socket.id);
+    const role = user && user.role ? user.role : null;
+    if (!role || !['owner', 'admin', 'moderator'].includes(role)) {
+      return;
+    }
+    socket.emit('moderation-center-state', getModeratorStateForRole(role));
+    socket.emit('moderation-unread-count', moderationNotifications.filter((notification) => !notification.readBy.includes(user.username)).length);
+  });
+
+  socket.on('moderation:execute', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !['owner', 'admin', 'moderator'].includes(user.role)) {
+      socket.emit('system-message', 'Iba moderátori môžu vykonávať zásahy.');
+      return;
+    }
+
+    const type = String(data && data.type ? data.type : 'ban').toLowerCase();
+    if (!['ban', 'kick'].includes(type)) {
+      socket.emit('system-message', 'Neplatný typ moderátorského zásahu.');
+      return;
+    }
+
+    const targetName = String(data && data.target ? data.target : '').trim();
+    if (!targetName) {
+      socket.emit('system-message', 'Vyber používateľa pre moderátorský zásah.');
+      return;
+    }
+
+    const targetEntry = Array.from(users.values()).find((entry) => entry.username.toLowerCase() === targetName.toLowerCase());
+    if (targetEntry && !canModerateAction(user.role, targetEntry.role)) {
+      socket.emit('system-message', 'Na tento zásah nemáš oprávnenie.');
+      return;
+    }
+
+    const reason = String(data && data.reason ? data.reason : 'Porušenie pravidiel').trim() || 'Porušenie pravidiel';
+    const room = normalizeRoomName(data && data.room ? data.room : socket.data.room || 'Spoločná');
+    const durationHours = Number(data && data.durationHours ? data.durationHours : (type === 'ban' ? 24 : 0));
+    const note = String(data && data.note ? data.note : '').trim();
+    const mode = String(data && data.mode ? data.mode : 'test').toLowerCase() === 'real' ? 'real' : 'test';
+
+    if (type === 'kick') {
+      const kickPayload = buildKickScreenData({
+        username: targetName,
+        room,
+        reason,
+        initiatedAt: Date.now(),
+        initiator: user.username
+      });
+      kickPayload.isTest = mode === 'test';
+      kickPayload.testMode = mode === 'test';
+      kickPayload.note = note;
+      kickPayload.durationHours = 0;
+
+      if (mode === 'test') {
+        const targetSocket = targetEntry ? io.sockets.sockets.get(targetEntry.id) : null;
+        if (targetSocket) {
+          targetSocket.emit('kick-screen', kickPayload);
+        }
+        recordModerationEvent({
+          type: 'kick-test',
+          actor: user.username,
+          target: targetName,
+          reason,
+          durationHours: 0,
+          room,
+          note,
+          isTest: true,
+          status: 'test',
+          timestamp: new Date().toISOString()
+        });
+        socket.emit('system-message', 'Testovací režim kicku bol vytvorený iba ako ukážka. Skutočný kick nebol vykonaný.');
+        broadcastModerationState();
+        return;
+      }
+
+      if (!targetEntry) {
+        socket.emit('system-message', `Používateľ ${targetName} nie je aktuálne pripojený.`);
+        return;
+      }
+
+      const targetSocket = io.sockets.sockets.get(targetEntry.id);
+      if (targetSocket) {
+        targetSocket.emit('kick-screen', { ...kickPayload, isTest: false, testMode: false });
+        setTimeout(() => {
+          targetSocket.disconnect(true);
+          users.delete(targetEntry.id);
+        }, 200);
+      }
+      recordModerationEvent({
+        type: 'kick',
+        actor: user.username,
+        target: targetName,
+        reason,
+        durationHours: 0,
+        room,
+        note,
+        isTest: false,
+        status: 'active',
+        timestamp: new Date().toISOString()
+      });
+      broadcastUserList();
+      io.emit('system-message', `${user.username} kickol ${targetName} z miestnosti ${room}.`);
+      broadcastModerationState();
+      return;
+    }
+
+    const safeBanHours = Number.isFinite(durationHours) && durationHours > 0 ? Math.min(Math.floor(durationHours), 240) : 24;
+    const banPayload = buildBanScreenData({
+      username: targetName,
+      reason,
+      hours: safeBanHours,
+      startedAt: Date.now(),
+      initiator: user.username
+    });
+    banPayload.isTest = mode === 'test';
+    banPayload.testMode = mode === 'test';
+    banPayload.note = note;
+    banPayload.room = room;
+
+    if (mode === 'test') {
+      const targetSocket = targetEntry ? io.sockets.sockets.get(targetEntry.id) : null;
+      if (targetSocket) {
+        targetSocket.emit('ban-screen', banPayload);
+      }
+      recordModerationEvent({
+        type: 'ban-test',
+        actor: user.username,
+        target: targetName,
+        reason,
+        durationHours: safeBanHours,
+        room,
+        note,
+        isTest: true,
+        status: 'test',
+        timestamp: new Date().toISOString()
+      });
+      socket.emit('system-message', 'Testovací režim banu bol aktivovaný iba ako ukážka. Skutočný ban nebol uložený.');
+      broadcastModerationState();
+      return;
+    }
+
+    applyBanForUser(targetName, safeBanHours, reason, user.username);
+    recordModerationEvent({
+      type: 'ban',
+      actor: user.username,
+      target: targetName,
+      reason,
+      durationHours: safeBanHours,
+      room,
+      note,
+      isTest: false,
+      status: 'active',
+      timestamp: new Date().toISOString()
+    });
+    socket.emit('system-message', `Používateľ ${targetName} bol banovaný na ${safeBanHours} hodín.`);
+    broadcastModerationState();
+  });
+
+  socket.on('notifications:mark-read', (notificationIds = []) => {
+    const user = users.get(socket.id);
+    if (!user) return;
+    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+    moderationNotifications.forEach((notification) => {
+      if (ids.includes(notification.id) && !notification.readBy.includes(user.username)) {
+        notification.readBy.push(user.username);
+      }
+    });
+    socket.emit('moderation-unread-count', moderationNotifications.filter((notification) => !notification.readBy.includes(user.username)).length);
+    broadcastModerationState();
+  });
+
+  socket.on('submit-appeal', (data) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('system-message', 'Najprv sa prihlás do chatu.');
+      return;
+    }
+
+    const type = String(data && data.type ? data.type : 'BAN').toUpperCase();
+    const reason = String(data && data.reason ? data.reason : 'Neznámy dôvod').trim();
+    const text = String(data && data.text ? data.text : '').trim();
+    if (!text) {
+      socket.emit('system-message', 'Odvolanie musí obsahovať popis prečo si myslíš, že ide o omyl.');
+      return;
+    }
+
+    const appeal = {
+      id: createModerationId('APPEAL'),
+      username: user.username,
+      type,
+      reason,
+      text,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      room: normalizeRoomName(data && data.room ? data.room : 'Spoločná')
+    };
+    appeals.push(appeal);
+    recordModerationEvent({
+      type: 'appeal',
+      actor: user.username,
+      target: user.username,
+      reason: `${type}: ${reason}`,
+      timestamp: new Date().toISOString()
+    });
+    const notification = addModerationNotification({
+      id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: 'appeal',
+      title: 'Nové odvolanie',
+      message: `${user.username} odoslal odvolanie (${type}).`,
+      target: user.username,
+      actor: user.username,
+      relatedId: appeal.id,
+      route: 'appeals'
+    });
+    socket.emit('appeal-submitted', { appeal, notification });
+    socket.emit('system-message', `Odvolanie bolo odoslané. Vaše ID: ${appeal.id}`);
+    broadcastModerationState();
+  });
+
+  socket.on('appeal:decide', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !['owner', 'admin', 'moderator'].includes(user.role)) {
+      return;
+    }
+
+    const appealId = String(data && data.id ? data.id : '').trim();
+    const decision = String(data && data.decision ? data.decision : 'rejected').toLowerCase();
+    const appealIndex = appeals.findIndex((item) => item.id === appealId);
+    if (appealIndex === -1) {
+      return;
+    }
+
+    const appeal = appeals[appealIndex];
+    appeal.status = decision === 'approved' ? 'approved' : (decision === 'review' ? 'review' : 'rejected');
+    appeal.reviewedBy = user.username;
+    appeal.reviewedAt = new Date().toISOString();
+
+    if (decision === 'approved' && appeal.type === 'BAN') {
+      banList.delete(appeal.username.toLowerCase());
+    }
+
+    recordModerationEvent({
+      type: 'appeal-decision',
+      actor: user.username,
+      target: appeal.username,
+      reason: `${decision} odvolanie ${appeal.id}`,
+      timestamp: new Date().toISOString()
+    });
+
+    addModerationNotification({
+      id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: 'appeal-decision',
+      title: 'Výsledok odvolania',
+      message: `Odvolanie ${appeal.id} bolo ${appeal.status}.`,
+      target: appeal.username,
+      actor: user.username,
+      relatedId: appeal.id,
+      route: 'appeals'
+    });
+
+    io.emit('system-message', `${user.username} ${appeal.status === 'approved' ? 'schválil' : 'zamietol'} odvolanie ${appeal.id} používateľa ${appeal.username}.`);
+    broadcastModerationState();
+  });
+
+  socket.on('send-message', async (data) => {
     if (!allowMessage()) {
       socket.emit('system-message', 'Spomaľ trochu, posielaš správy príliš rýchlo.');
       return;
@@ -822,9 +1178,8 @@ io.on('connection', (socket) => {
       reactions: {}
     };
     messages.push(msg);
-    addOddychPoints(user.username, 2);
     io.emit('receive-message', msg);
-    maybeRobotReply(user.username, msg.room, cleanedText);
+    await maybeRobotReply(user.username, msg.room, cleanedText);
   });
 
   socket.on('admin-broadcast', (data) => {
@@ -886,7 +1241,6 @@ io.on('connection', (socket) => {
       reactedUsers.splice(existingIndex, 1);
     } else {
       reactedUsers.push(user.username);
-      addOddychPoints(user.username, 1);
     }
 
     if (reactedUsers.length > 0) {
@@ -950,8 +1304,6 @@ io.on('connection', (socket) => {
       self: false
     };
 
-    addOddychPoints(user.username, 1);
-
     const targetSocket = io.sockets.sockets.get(toId);
     if (targetSocket) {
       targetSocket.emit('receive-private-message', payload);
@@ -969,9 +1321,6 @@ io.on('connection', (socket) => {
     console.log('disconnected', socket.id);
     const leavingUser = users.get(socket.id);
     users.delete(socket.id);
-    if (leavingUser && leavingUser.username && socket.data && socket.data.joined) {
-      emitPresenceSystemMessage(leavingUser.username, 'leave');
-    }
     broadcastUserList();
   });
 });

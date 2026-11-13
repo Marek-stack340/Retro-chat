@@ -5,7 +5,6 @@ const messageInput = document.getElementById('message-input');
 const activeUsersCount = document.getElementById('active-users-count');
 const usersList = document.getElementById('users-list');
 const currentUsernameDisplay = document.getElementById('current-username-display');
-const myPointsDisplay = document.getElementById('my-points-display');
 const navLogout = document.getElementById('nav-logout');
 const navHelp = document.getElementById('nav-help');
 const navProfile = document.getElementById('nav-profile');
@@ -76,6 +75,454 @@ const securityMessage = document.getElementById('security-message');
 const securityCheckBtn = document.getElementById('security-check-btn');
 const commandsToggle = document.getElementById('commands-toggle');
 const commandsBlock = document.getElementById('commands-block');
+const moderationCenterBtn = document.getElementById('moderation-center-btn');
+const moderationBellBtn = document.getElementById('moderation-bell-btn');
+const moderationNotificationBadge = document.getElementById('moderation-notification-badge');
+const moderationCenterModal = document.getElementById('moderation-center-modal');
+const moderationCenterClose = document.getElementById('moderation-center-close');
+const moderationBellOpen = document.getElementById('moderation-bell-open');
+const moderationStats = document.getElementById('moderation-stats');
+const moderationContent = document.getElementById('moderation-content');
+const moderationRolePill = document.getElementById('moderation-pill-role');
+const moderationTabs = document.querySelectorAll('.moderation-tab');
+const moderationActionModal = document.getElementById('moderation-action-modal');
+const moderationActionClose = document.getElementById('moderation-action-close');
+const moderationActionCancel = document.getElementById('moderation-action-cancel');
+const moderationActionConfirm = document.getElementById('moderation-action-confirm');
+const moderationActionTarget = document.getElementById('moderation-action-target');
+const moderationActionRoom = document.getElementById('moderation-action-room');
+const moderationActionReason = document.getElementById('moderation-action-reason');
+const moderationActionDuration = document.getElementById('moderation-action-duration');
+const moderationActionNote = document.getElementById('moderation-action-note');
+const appealModal = document.getElementById('appeal-modal');
+const appealUsernameInput = document.getElementById('appeal-username');
+const appealTypeInput = document.getElementById('appeal-type');
+const appealReasonInput = document.getElementById('appeal-reason');
+const appealTextInput = document.getElementById('appeal-text');
+const appealSubmitBtn = document.getElementById('appeal-submit-btn');
+const appealModalClose = document.getElementById('appeal-modal-close');
+const banOverlay = document.getElementById('ban-overlay');
+const banTitleEl = document.getElementById('ban-title');
+const banSubtitleEl = document.getElementById('ban-subtitle');
+const banWarningEl = document.getElementById('ban-warning');
+const banReasonEl = document.getElementById('ban-reason');
+const banHoursEl = document.getElementById('ban-hours');
+const banStartEl = document.getElementById('ban-start');
+const banEndEl = document.getElementById('ban-end');
+const banRetryBtn = document.getElementById('ban-retry-btn');
+const banLogoutBtn = document.getElementById('ban-logout-btn');
+const banCloseBtn = document.getElementById('ban-close-btn');
+const banAppealBtn = document.getElementById('ban-appeal-btn');
+
+if (chatApp) {
+  chatApp.setAttribute('data-theme', 'light');
+}
+
+function openModerationActionModal({ type = 'ban', target = '', room = currentRoom || 'Spoločná', reason = 'Porušenie pravidiel', durationHours = 24, note = '' } = {}) {
+  if (!moderationActionModal || !moderationActionTarget || !moderationActionRoom || !moderationActionReason || !moderationActionDuration || !moderationActionNote) return;
+  pendingModerationAction = { type, target, room, reason, durationHours, note };
+  moderationActionTarget.value = target;
+  moderationActionRoom.value = room;
+  moderationActionReason.value = reason;
+  moderationActionDuration.value = String(durationHours || 0);
+  moderationActionNote.value = note;
+  moderationActionModal.style.display = 'flex';
+}
+
+function closeModerationActionModal() {
+  if (moderationActionModal) moderationActionModal.style.display = 'none';
+  pendingModerationAction = null;
+}
+
+function showBanOverlay(data = {}) {
+  if (!banOverlay) return;
+
+  const isTest = Boolean(data.isTest || data.testMode);
+  const isKick = data.mode === 'kick' || /vyhoden|kick/i.test(String(data.reason || ''));
+  const reason = data.reason || (isKick ? 'Vyhodenie z miestnosti' : 'Porušenie pravidiel');
+  const hours = Number(data.hours || 0);
+  const startDate = data.startedAt ? new Date(data.startedAt) : new Date();
+  const endDate = data.endsAt ? new Date(data.endsAt) : new Date(startDate.getTime() + Math.max(hours, 0) * 60 * 60 * 1000);
+  const hoursLabel = data.durationLabel || (isKick ? 'Dočasne' : `${hours || 24} hodín`);
+
+  if (banTitleEl) {
+    banTitleEl.textContent = isKick ? 'Bol si kicknutý z chatu' : 'Účet zablokovaný';
+  }
+  if (banSubtitleEl) {
+    banSubtitleEl.textContent = isKick
+      ? 'Prístup do Oddych Chatu je dočasne obmedzený.'
+      : 'Prístup do Oddych Chatu je dočasne odobraný';
+  }
+  if (banWarningEl) {
+    if (isTest) {
+      banWarningEl.innerHTML = 'TESTOVACÍ REŽIM – NEJDE O SKUTOČNÝ TREST<br><br><strong>Toto je iba ukážka moderátorskej stránky. Tvoj účet nie je zablokovaný a tvoj prístup do chatu zostáva aktívny.</strong>';
+    } else {
+      banWarningEl.textContent = isKick
+        ? 'Moderátor ťa vyhodil z miestnosti.'
+        : 'Moderátorským rozhodnutím došlo k pozastaveniu tvojho účtu.';
+    }
+  }
+  if (banReasonEl) banReasonEl.textContent = reason;
+  if (banHoursEl) banHoursEl.textContent = hoursLabel;
+  if (banStartEl) banStartEl.textContent = new Intl.DateTimeFormat('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(startDate);
+  if (banEndEl) banEndEl.textContent = new Intl.DateTimeFormat('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(endDate);
+
+  banOverlay.style.display = 'flex';
+  if (isTest) {
+    if (chatApp) chatApp.style.display = 'block';
+    banOverlay.dataset.testMode = 'true';
+    banOverlay.classList.add('test-mode');
+  } else {
+    if (chatApp) chatApp.style.display = 'none';
+    banOverlay.classList.remove('test-mode');
+    delete banOverlay.dataset.testMode;
+  }
+  document.body.classList.add('ban-screen-active');
+}
+
+function hideBanOverlay() {
+  if (banOverlay) banOverlay.style.display = 'none';
+  if (chatApp) chatApp.style.display = 'block';
+  document.body.classList.remove('ban-screen-active');
+  banOverlay && banOverlay.classList.remove('test-mode');
+  delete banOverlay?.dataset.testMode;
+}
+
+if (banRetryBtn) {
+  banRetryBtn.addEventListener('click', () => {
+    if (banOverlay && banOverlay.dataset.testMode === 'true') {
+      hideBanOverlay();
+      return;
+    }
+    window.location.reload();
+  });
+}
+
+if (banLogoutBtn) {
+  banLogoutBtn.addEventListener('click', () => {
+    if (banOverlay && banOverlay.dataset.testMode === 'true') {
+      hideBanOverlay();
+      return;
+    }
+    localStorage.clear();
+    window.location.href = '/';
+  });
+}
+
+if (banCloseBtn) {
+  banCloseBtn.addEventListener('click', () => {
+    if (banOverlay && banOverlay.dataset.testMode === 'true') {
+      hideBanOverlay();
+      return;
+    }
+    hideBanOverlay();
+    window.location.href = '/';
+  });
+}
+
+if (banAppealBtn) {
+  banAppealBtn.addEventListener('click', () => {
+    showAppealForm({
+      type: 'BAN',
+      reason: (banReasonEl && banReasonEl.textContent) || 'Porušenie pravidiel',
+      user: currentUsername || localStorage.getItem('chatUsername') || 'Používateľ'
+    });
+  });
+}
+
+const moderationState = {
+  summary: { totalReports: 0, totalAppeals: 0, openAppeals: 0, totalActions: 0, activeUsers: 0 },
+  reports: [],
+  appeals: [],
+  notifications: [],
+  history: []
+};
+let unreadNotificationCount = 0;
+let activeModerationTab = 'overview';
+let pendingModerationAction = null;
+
+function getCurrentRoleName() {
+  const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
+  if (!name) return 'user';
+  if (['owner', 'admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name)) return 'owner';
+  if (['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name)) return 'admin';
+  if (name.includes('moderator') || name.includes('mod')) return 'moderator';
+  return 'user';
+}
+
+function updateModerationAccess() {
+  const allowed = ['owner', 'admin', 'moderator'].includes(getCurrentRoleName());
+  if (moderationCenterBtn) moderationCenterBtn.style.display = allowed ? 'inline-flex' : 'none';
+  if (moderationBellBtn) moderationBellBtn.style.display = allowed ? 'inline-flex' : 'none';
+  if (moderationRolePill) {
+    const role = getCurrentRoleName();
+    moderationRolePill.textContent = role === 'owner' ? 'Owner' : (role === 'admin' ? 'Admin' : (role === 'moderator' ? 'Moderator' : 'User'));
+  }
+}
+
+function formatModerationDate(value) {
+  if (!value) return '—';
+  try {
+    return new Intl.DateTimeFormat('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  } catch (error) {
+    return '—';
+  }
+}
+
+function renderModerationStats() {
+  if (!moderationStats) return;
+  const stats = moderationState.summary || {};
+  moderationStats.innerHTML = `
+    <div class="metric-card"><span>Hlášeni</span><strong>${stats.totalReports || 0}</strong></div>
+    <div class="metric-card"><span>Odvolania</span><strong>${stats.totalAppeals || 0}</strong></div>
+    <div class="metric-card"><span>Otvorené</span><strong>${stats.openAppeals || 0}</strong></div>
+    <div class="metric-card"><span>Akcie</span><strong>${stats.totalActions || 0}</strong></div>
+  `;
+}
+
+function renderModerationContent() {
+  if (!moderationContent) return;
+  const reports = moderationState.reports || [];
+  const appeals = moderationState.appeals || [];
+  const history = moderationState.history || [];
+  const notifications = moderationState.notifications || [];
+
+  if (activeModerationTab === 'users') {
+    const userQuery = (document.getElementById('moderation-user-search') || {}).value || '';
+    const targetName = String(userQuery || '').trim().toLowerCase();
+    const usersToShow = Array.isArray(activeUsers)
+      ? activeUsers.filter((user) => !targetName || user.username.toLowerCase().includes(targetName))
+      : [];
+
+    moderationContent.innerHTML = `
+      <div class="moderation-user-controls">
+        <input id="moderation-user-search" class="moderation-user-search" type="text" value="${String(userQuery || '').replace(/"/g, '&quot;')}" placeholder="Vyhľadaj používateľa podľa prezývky...">
+      </div>
+      ${!usersToShow.length ? '<div class="moderation-empty">Nenašli sa žiadni používatelia.</div>' : ''}
+      ${usersToShow.map((user) => {
+        const punishments = history.filter((entry) => (entry.target || '').toLowerCase() === user.username.toLowerCase());
+        const recent = punishments.slice(0, 3).map((entry) => `<li>${entry.type || 'Akcia'} · ${entry.reason || '—'} · ${formatModerationDate(entry.timestamp)}</li>`).join('');
+        return `
+          <div class="moderation-item moderation-user-card">
+            <div class="moderation-item-head">
+              <strong>${user.username}</strong>
+              <span>${user.role || 'user'}</span>
+            </div>
+            <div class="moderation-item-row"><span>Stav:</span><strong>${user.role === 'admin' ? 'Správca' : (user.role === 'moderator' ? 'Moderátor' : (user.role === 'tester' ? 'Tester' : 'Aktívny'))}</strong></div>
+            <div class="moderation-item-row"><span>Miesto:</span><strong>${currentRoom || 'Spoločná'}</strong></div>
+            <div class="moderation-item-row"><span>História trestov:</span><strong>${punishments.length ? 'Nie' : 'Žiadne'}</strong></div>
+            <ul class="moderation-user-history">${recent || '<li>Žiadne záznamy.</li>'}</ul>
+            <div class="moderation-actions-row">
+              <button class="moderation-action request moderation-user-action" data-action="kick" data-target="${user.username}" type="button">Kick</button>
+              <button class="moderation-action reject moderation-user-action" data-action="ban" data-target="${user.username}" type="button">Ban</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    moderationContent.querySelectorAll('.moderation-user-action').forEach((button) => {
+      button.addEventListener('click', () => {
+        const { action, target } = button.dataset;
+        openModerationActionModal({
+          type: action === 'ban' ? 'ban' : 'kick',
+          target,
+          room: currentRoom || 'Spoločná',
+          reason: action === 'ban' ? 'Porušenie pravidiel' : 'Vyhodenie z miestnosti',
+          durationHours: action === 'ban' ? 24 : 0
+        });
+      });
+    });
+
+    const userSearchInput = document.getElementById('moderation-user-search');
+    if (userSearchInput) {
+      userSearchInput.addEventListener('input', (event) => {
+        const value = String(event.target.value || '');
+        const searchField = document.getElementById('moderation-user-search');
+        if (searchField) searchField.value = value;
+        renderModerationContent();
+      });
+    }
+    return;
+  }
+
+  if (activeModerationTab === 'reports') {
+    if (!reports.length) {
+      moderationContent.innerHTML = '<div class="moderation-empty">Žiadne nové nahlásenia.</div>';
+      return;
+    }
+    moderationContent.innerHTML = reports.map((item) => `
+      <div class="moderation-item">
+        <div class="moderation-item-head"><strong>${item.reportedUser || 'Používateľ'}</strong><span>${item.status || 'pending'}</span></div>
+        <div class="moderation-item-row"><span>Reportér:</span><strong>${item.reporter || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Miesto:</span><strong>${item.room || 'Spoločná'}</strong></div>
+        <div class="moderation-item-row"><span>Dôvod:</span><strong>${item.reason || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Čas:</span><strong>${formatModerationDate(item.createdAt)}</strong></div>
+      </div>
+    `).join('');
+    return;
+  }
+
+  if (activeModerationTab === 'appeals') {
+    if (!appeals.length) {
+      moderationContent.innerHTML = '<div class="moderation-empty">Žiadne odvolania čakajúce na spracovanie.</div>';
+      return;
+    }
+    moderationContent.innerHTML = appeals.map((item) => `
+      <div class="moderation-item">
+        <div class="moderation-item-head"><strong>${item.id}</strong><span>${item.status || 'pending'}</span></div>
+        <div class="moderation-item-row"><span>Používateľ:</span><strong>${item.username || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Typ:</span><strong>${item.type || 'BAN'}</strong></div>
+        <div class="moderation-item-row"><span>Dôvod:</span><strong>${item.reason || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Text:</span><strong>${item.text || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Čas:</span><strong>${formatModerationDate(item.createdAt)}</strong></div>
+        <div class="moderation-actions-row">
+          <button class="moderation-action approve" data-appeal-id="${item.id}" data-action="approved">Schváliť</button>
+          <button class="moderation-action reject" data-appeal-id="${item.id}" data-action="rejected">Zamietnuť</button>
+          <button class="moderation-action request" data-appeal-id="${item.id}" data-action="review">Ďalšie info</button>
+        </div>
+      </div>
+    `).join('');
+    moderationContent.querySelectorAll('.moderation-action').forEach((button) => {
+      button.addEventListener('click', () => {
+        const { appealId, action } = button.dataset;
+        socket.emit('appeal:decide', { id: appealId, decision: action });
+      });
+    });
+    return;
+  }
+
+  if (activeModerationTab === 'history') {
+    if (!history.length) {
+      moderationContent.innerHTML = '<div class="moderation-empty">História moderátorských akcií je prázdna.</div>';
+      return;
+    }
+    moderationContent.innerHTML = history.slice(0, 12).map((item) => `
+      <div class="moderation-item">
+        <div class="moderation-item-head"><strong>${item.type || 'Akcia'}</strong><span>${item.isTest ? 'TEST' : 'SKUTOČNÉ'}</span></div>
+        <div class="moderation-item-row"><span>Actor:</span><strong>${item.actor || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Target:</span><strong>${item.target || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Dôvod:</span><strong>${item.reason || '—'}</strong></div>
+        <div class="moderation-item-row"><span>Dĺžka:</span><strong>${item.durationHours ? `${item.durationHours} h` : '—'}</strong></div>
+        <div class="moderation-item-row"><span>Čas:</span><strong>${formatModerationDate(item.timestamp || item.createdAt)}</strong></div>
+      </div>
+    `).join('');
+    return;
+  }
+
+  moderationContent.innerHTML = `
+    <div class="moderation-overview-box">
+      <h3>Prehľad</h3>
+      <p>Aktívne nahlásenia: <strong>${reports.length}</strong></p>
+      <p>Odvolania: <strong>${appeals.length}</strong></p>
+      <p>Upozornenia: <strong>${notifications.length}</strong></p>
+      <p>Aktívni používatelia: <strong>${moderationState.summary.activeUsers || 0}</strong></p>
+    </div>
+  `;
+}
+
+function renderModerationPanel() {
+  renderModerationStats();
+  renderModerationContent();
+  if (moderationNotificationBadge) {
+    moderationNotificationBadge.textContent = String(unreadNotificationCount || 0);
+    moderationNotificationBadge.style.display = unreadNotificationCount > 0 ? 'inline-flex' : 'none';
+  }
+  if (moderationBellOpen) {
+    moderationBellOpen.textContent = `🔔 Notifikácie (${unreadNotificationCount || 0})`;
+  }
+}
+
+function openModerationCenter() {
+  if (!moderationCenterModal) return;
+  moderationCenterModal.style.display = 'flex';
+  socket.emit('moderation-center:request');
+}
+
+function closeModerationCenter() {
+  if (moderationCenterModal) moderationCenterModal.style.display = 'none';
+}
+
+function showAppealForm({ type = 'BAN', reason = 'Porušenie pravidiel', user = currentUsername || localStorage.getItem('chatUsername') || 'Používateľ' } = {}) {
+  if (!appealModal || !appealUsernameInput || !appealTypeInput || !appealReasonInput) return;
+  appealUsernameInput.value = user;
+  appealTypeInput.value = type;
+  appealReasonInput.value = reason;
+  appealTextInput.value = '';
+  appealModal.style.display = 'flex';
+}
+
+function closeAppealForm() {
+  if (appealModal) appealModal.style.display = 'none';
+}
+
+function playCinkTone() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const audioContext = new AudioCtx();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = 1200;
+    gainNode.gain.value = 0.09;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    setTimeout(() => { oscillator.stop(); audioContext.close(); }, 130);
+  } catch (error) {
+    // browser sound fallback
+  }
+}
+
+if (moderationCenterBtn) {
+  moderationCenterBtn.addEventListener('click', openModerationCenter);
+}
+if (moderationCenterClose) moderationCenterClose.addEventListener('click', closeModerationCenter);
+if (moderationBellBtn) moderationBellBtn.addEventListener('click', openModerationCenter);
+if (moderationBellOpen) moderationBellOpen.addEventListener('click', openModerationCenter);
+if (moderationActionClose) moderationActionClose.addEventListener('click', closeModerationActionModal);
+if (moderationActionCancel) moderationActionCancel.addEventListener('click', closeModerationActionModal);
+if (moderationActionConfirm) moderationActionConfirm.addEventListener('click', () => {
+  if (!pendingModerationAction) return;
+  const selectedMode = document.querySelector('input[name="moderation-mode"]:checked')?.value || 'test';
+  const payload = {
+    ...pendingModerationAction,
+    mode: selectedMode,
+    reason: moderationActionReason && moderationActionReason.value ? moderationActionReason.value : pendingModerationAction.reason,
+    room: moderationActionRoom && moderationActionRoom.value ? moderationActionRoom.value : pendingModerationAction.room,
+    durationHours: Number(moderationActionDuration && moderationActionDuration.value ? moderationActionDuration.value : pendingModerationAction.durationHours || 0),
+    note: moderationActionNote && moderationActionNote.value ? moderationActionNote.value : pendingModerationAction.note || '',
+    actor: currentUsername || localStorage.getItem('chatUsername') || 'Správca'
+  };
+  socket.emit('moderation:execute', payload);
+  closeModerationActionModal();
+});
+if (appealModalClose) appealModalClose.addEventListener('click', closeAppealForm);
+if (appealSubmitBtn) {
+  appealSubmitBtn.addEventListener('click', () => {
+    const text = (appealTextInput && appealTextInput.value || '').trim();
+    if (!text) {
+      showToast('Napíš dôvod, prečo si myslíš, že ide o omyl.');
+      return;
+    }
+    socket.emit('submit-appeal', {
+      type: appealTypeInput ? appealTypeInput.value : 'BAN',
+      reason: appealReasonInput ? appealReasonInput.value : 'Porušenie pravidiel',
+      text,
+      room: currentRoom || 'Spoločná',
+      user: currentUsername || localStorage.getItem('chatUsername') || 'Používateľ'
+    });
+    closeAppealForm();
+  });
+}
+moderationTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    activeModerationTab = tab.dataset.tab;
+    moderationTabs.forEach((item) => item.classList.toggle('active', item === tab));
+    renderModerationContent();
+  });
+});
 
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
@@ -86,19 +533,14 @@ function loadNewsHistoryEntries() {
     if (!stored) {
       return [
         {
-          title: 'Oddych body',
-          body: 'Pridané Oddych body za aktivitu v chate, reakcie a súkromné správy.',
-          createdAt: '2026-07-26T00:00:00.000Z'
+          title: 'Otázka dňa',
+          body: 'V chate sa teraz každý deň zobrazuje nová otázka dňa, aby bol priestor pre zábavné a príjemné rozhovory.',
+          createdAt: '2026-11-13T00:00:00.000Z'
         },
         {
-          title: '.countdown odmena',
-          body: 'Pri príkaze .countdown číslo dostanú všetci pripojení používatelia rovnaký počet bodov a na displeji sa zobrazí hláška o odmene.',
-          createdAt: '2026-07-26T00:00:00.000Z'
-        },
-        {
-          title: 'Globálny .countdown',
-          body: 'Pridaný globálny príkaz .countdown číslo, ktorý admin zobrazí všetkým na celej obrazovke aj s hlasným odpočtom.',
-          createdAt: '2026-07-26T00:00:00.000Z'
+          title: 'Modernizácia chatu',
+          body: 'Chat bol upravený tak, aby bol čistejší, jednoduchší a lepšie prispôsobený každodenným rozhovorom.',
+          createdAt: '2026-11-13T00:00:00.000Z'
         },
         {
           title: 'Filter nadávok',
@@ -205,7 +647,6 @@ let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
 let privateTargetId = null;
 let privateTargetName = null;
 let activeUsers = [];
-let oddychPoints = {};
 const ignoreList = new Set(JSON.parse(localStorage.getItem('chatIgnoreList') || '[]'));
 const friendList = new Set(JSON.parse(localStorage.getItem('chatFriendList') || '[]'));
 const onlineFriends = new Set();
@@ -958,15 +1399,26 @@ function normalizeName(value) {
   return (value || '').toString().trim().toLowerCase();
 }
 
-function getOddychPoints(username) {
-  const key = normalizeName(username);
-  return Number(oddychPoints[key] || 0);
+function renderDailyQuestion() {
+  const bannerText = document.getElementById('daily-question-text');
+  if (!bannerText) return;
+
+  const questions = [
+    'Aké téma by si dnes rád(a) rozoberal v chate?',
+    'Čo ťa dnes najviac pozitívne naladilo?',
+    'Akú vec by si chcel(a) vyskúšať v komunitnom chate?',
+    'Aké je tvoje najobľúbenejšie spoločenské tématické téma?',
+    'Čo by si odporučil(a) nováčikovi v Oddych Chate?',
+    'Aké si mal(a) včera najlepšie chvíle?' 
+  ];
+
+  const today = new Date();
+  const dateKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const index = Array.from(dateKey).reduce((seed, char) => seed + char.charCodeAt(0), 0) % questions.length;
+  bannerText.textContent = questions[index];
 }
 
-function refreshMyPoints() {
-  if (!myPointsDisplay) return;
-  myPointsDisplay.textContent = String(getOddychPoints(currentUsername));
-}
+renderDailyQuestion();
 
 function refreshIgnoreStatus() {
   const pill = document.getElementById('ignore-status-pill');
@@ -1247,9 +1699,20 @@ function updateReactionRow(messageId, reactions) {
   container.replaceWith(newRow);
 }
 
+function normalizeModerationName(value) {
+  return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function isCurrentUserAdmin() {
-  const name = (currentUsername || '').trim().toLowerCase();
-  return ['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name);
+  const name = normalizeModerationName(currentUsername);
+  return ['admin', 'administrator', 'spravca', 'spravca', 'marek', 'marekc'].includes(name);
+}
+
+function isCurrentUserModerator() {
+  const name = normalizeModerationName(currentUsername);
+  return ['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk'].includes(name)
+    || name.includes('moderator')
+    || name.includes('mod');
 }
 
 function updateAdminPanel(users) {
@@ -1257,13 +1720,17 @@ function updateAdminPanel(users) {
   const list = document.getElementById('admin-portal-list');
   const count = document.getElementById('admin-portal-count');
   const title = document.getElementById('admin-portal-title');
-  if (!panel || !list || !count || !title) return;
+  const badge = document.getElementById('admin-portal-role');
+  if (!panel || !list || !count || !title || !badge) return;
 
   const currentIsAdmin = isCurrentUserAdmin();
-  panel.style.display = currentIsAdmin ? 'block' : 'none';
-  if (!currentIsAdmin) return;
+  const currentIsModerator = isCurrentUserModerator();
+  const canModerate = currentIsAdmin || currentIsModerator;
+  panel.style.display = canModerate ? 'block' : 'none';
+  if (!canModerate) return;
 
-  title.textContent = 'Owner panel';
+  title.textContent = currentIsAdmin ? 'Owner panel' : 'Moderácia';
+  badge.textContent = currentIsAdmin ? 'owner' : 'mod';
   count.textContent = String(Array.isArray(users) ? users.length : 0);
   list.innerHTML = '';
 
@@ -1275,9 +1742,9 @@ function updateAdminPanel(users) {
     name.className = 'admin-portal-user-name';
     name.textContent = user.username;
 
-    const badge = document.createElement('span');
-    badge.className = 'admin-user-badge';
-    badge.textContent = user.role === 'admin' ? 'owner' : 'user';
+    const badgeItem = document.createElement('span');
+    badgeItem.className = 'admin-user-badge';
+    badgeItem.textContent = user.role === 'admin' ? 'owner' : (user.role === 'moderator' ? 'mod' : 'user');
 
     const actions = document.createElement('div');
     actions.className = 'admin-portal-actions';
@@ -1286,7 +1753,7 @@ function updateAdminPanel(users) {
     kickBtn.type = 'button';
     kickBtn.className = 'admin-action-btn kick';
     kickBtn.textContent = 'Kick';
-    kickBtn.disabled = user.username === currentUsername || user.role === 'admin';
+    kickBtn.disabled = user.username === currentUsername || user.role === 'admin' || (currentIsModerator && user.role === 'moderator');
     kickBtn.addEventListener('click', () => {
       socket.emit('command', { type: 'kick', target: user.username, from: currentUsername });
     });
@@ -1295,7 +1762,7 @@ function updateAdminPanel(users) {
     banBtn.type = 'button';
     banBtn.className = 'admin-action-btn ban';
     banBtn.textContent = 'Ban 24h';
-    banBtn.disabled = user.username === currentUsername || user.role === 'admin';
+    banBtn.disabled = user.username === currentUsername || user.role === 'admin' || (currentIsModerator && user.role === 'moderator');
     banBtn.addEventListener('click', () => {
       socket.emit('command', { type: 'ban', target: user.username, hours: 24, from: currentUsername });
     });
@@ -1303,7 +1770,7 @@ function updateAdminPanel(users) {
     actions.appendChild(kickBtn);
     actions.appendChild(banBtn);
     row.appendChild(name);
-    row.appendChild(badge);
+    row.appendChild(badgeItem);
     row.appendChild(actions);
     list.appendChild(row);
   });
@@ -1324,11 +1791,11 @@ function updateUserList(users) {
   users.forEach((user) => {
     const li = document.createElement('li');
     const name = user.username;
-    const points = getOddychPoints(name);
+    const roleSuffix = user.role === 'admin'
+      ? ' [admin]'
+      : (user.role === 'moderator' ? ' [moderator]' : (user.role === 'tester' ? ' [tester]' : ''));
     const nameSpan = document.createElement('span');
-    nameSpan.textContent = user.role === 'admin'
-      ? `${name} [admin] · ${points} OB`
-      : (user.role === 'tester' ? `${name} [tester] · ${points} OB` : `${name} · ${points} OB`);
+    nameSpan.textContent = `${name}${roleSuffix}`;
     li.appendChild(nameSpan);
 
     if (user.username === currentUsername) {
@@ -1629,7 +2096,9 @@ function sendJoin() {
     currentUsernameDisplay.textContent = currentUsername;
   }
   updateCreateRoomControl();
+  updateModerationAccess();
   socket.emit('join', { username: currentUsername, room: currentRoom });
+  socket.emit('moderation-center:request');
 }
 
 function showRandomConversationTopic() {
@@ -1711,6 +2180,44 @@ socket.on('system-message', (msg) => {
   addMessage({ system: true, text: displayText, timestamp: new Date().toISOString() });
 });
 
+socket.on('ban-screen', (data) => {
+  showBanOverlay({ ...(data || {}), mode: 'ban' });
+});
+
+socket.on('kick-screen', (data) => {
+  showBanOverlay({ ...(data || {}), mode: 'kick' });
+});
+
+socket.on('moderation-center-state', (payload) => {
+  Object.assign(moderationState, payload || {});
+  renderModerationPanel();
+});
+
+socket.on('moderation-unread-count', (count) => {
+  unreadNotificationCount = Number(count) || 0;
+  renderModerationPanel();
+});
+
+socket.on('moderation-notification', (notification) => {
+  if (!notification) return;
+  unreadNotificationCount += 1;
+  moderationState.notifications = Array.isArray(moderationState.notifications)
+    ? [notification, ...moderationState.notifications]
+    : [notification];
+  renderModerationPanel();
+  playCinkTone();
+  showToast(notification.title || 'Nové upozornenie');
+});
+
+socket.on('moderation-sound', () => {
+  playCinkTone();
+});
+
+socket.on('appeal-submitted', (payload) => {
+  if (payload && payload.appeal) {
+    showToast(`Odvolanie bolo odoslané. ID: ${payload.appeal.id}`);
+  }
+});
 
 socket.on('join-denied', (message) => {
   addMessage({ system: true, text: `⚠ ${message || 'Toto meno je už obsadené. Zvoľ si iné.'}`, timestamp: new Date().toISOString() });
@@ -1722,14 +2229,7 @@ socket.on('user-list', (users) => {
   updateAdminPanel(users);
   notifyFriendOnlineStatus(users);
   refreshPrivateStatus();
-});
-
-socket.on('user-points', (pointsSnapshot) => {
-  oddychPoints = pointsSnapshot && typeof pointsSnapshot === 'object' ? pointsSnapshot : {};
-  refreshMyPoints();
-  if (Array.isArray(activeUsers) && activeUsers.length) {
-    updateUserList(activeUsers);
-  }
+  updateModerationAccess();
 });
 
 socket.on('security-banner', updateSecurityPanel);
@@ -2036,18 +2536,20 @@ document.getElementById('help-suggestions-btn')?.addEventListener('click', () =>
 });
 document.getElementById('suggestion-submit')?.addEventListener('click', () => {
   const input = document.getElementById('suggestion-input');
+  const checkedType = document.querySelector('input[name="feedback-type"]:checked');
+  const category = checkedType ? checkedType.value : 'Návrh čo pridať';
   const text = input?.value.trim();
   if (!text) {
-    showToast('Napíš najprv svoj návrh.');
+    showToast('Napíš najprv svoju pripomienku.');
     return;
   }
   socket.emit('send-message', {
-    text: `💡 Návrh od ${currentUsername}: ${text}`,
+    text: `💬 ${category} od ${currentUsername}: ${text}`,
     username: currentUsername,
     timestamp: new Date().toISOString()
   });
   if (input) input.value = '';
-  showToast('Návrh odoslaný do chatu.');
+  showToast('Pripomienka odoslaná do chatu.');
 });
 document.getElementById('help-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';

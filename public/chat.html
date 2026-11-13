@@ -23,25 +23,56 @@
         <div class="chat-loading-text">Načítavam</div>
       </div>
     </div>
+    <div id="ban-overlay" class="ban-overlay" style="display:none;" aria-live="assertive" aria-modal="true" role="dialog">
+      <div class="ban-card">
+        <div class="ban-icons" aria-hidden="true">
+          <span class="ban-icon">⚠</span>
+          <span class="ban-lock">🔒</span>
+          <span class="ban-icon">⚠</span>
+        </div>
+        <h1 id="ban-title">Účet zablokovaný</h1>
+        <h2 id="ban-subtitle">Prístup do Oddych Chatu dočasne odobraný</h2>
+        <p id="ban-warning" class="ban-warning">Moderátorským rozhodnutím došlo k pozastaveniu tvojho účtu.</p>
+        <div class="ban-info-box">
+          <div class="ban-info-title">Informácie o pozastavení</div>
+          <div class="ban-info-grid">
+            <div class="ban-row"><span class="ban-label">Dôvod:</span><span id="ban-reason">Porušenie pravidiel</span></div>
+            <div class="ban-row"><span class="ban-label">Dĺžka:</span><span id="ban-hours">24 hodín</span></div>
+            <div class="ban-row"><span class="ban-label">Začiatok:</span><span id="ban-start">—</span></div>
+            <div class="ban-row"><span class="ban-label">Koniec:</span><span id="ban-end">—</span></div>
+          </div>
+        </div>
+        <div class="ban-actions">
+          <button id="ban-retry-btn" class="ban-btn primary" type="button">Skúsiť znova</button>
+          <button id="ban-logout-btn" class="ban-btn secondary" type="button">Odhlásiť sa</button>
+          <button id="ban-close-btn" class="ban-btn tertiary" type="button">Zavrieť</button>
+          <button id="ban-appeal-btn" class="ban-btn appeal" type="button">Požiadať o preskúmanie</button>
+        </div>
+      </div>
+    </div>
     <div id="help-overlay" class="help-overlay" style="display:none;">
       <div class="help-modal">
         <button id="help-close" class="help-close" aria-label="Zatvoriť">&times;</button>
         <div class="help-header-bar">
           <span>? Návod</span>
-          <button id="help-suggestions-btn" class="help-icon-btn" type="button">💡 Návrhy na vylepšenie chatu</button>
+          <button id="help-suggestions-btn" class="help-icon-btn" type="button">� Pripomienky</button>
         </div>
         <p class="help-intro">Toto je jednoduchý návod pre nováčikov: napíš správu do okna, môžeš kliknúť na meno pre adresovanie alebo súkromné šepkanie, a ak chceš, skúšaj aj miestnosti a jednoduché príkazy.<br><strong>Administrátorom</strong> je vo svojej miestnosti každý, kto si ju vytvoril.</p>
         <div id="help-suggestions" class="help-suggestions" style="display:none;">
-          <div class="help-suggestions-title">Návrhy</div>
+          <div class="help-suggestions-title">Pripomienky</div>
+          <div class="feedback-type-row">
+            <label class="feedback-option"><input type="radio" name="feedback-type" value="Návrh čo pridať" checked> Návrh čo pridať</label>
+            <label class="feedback-option"><input type="radio" name="feedback-type" value="Niečo nefunguje"> Niečo nefunguje</label>
+          </div>
           <ul class="help-suggestions-list">
             <li>Pridať tmavý režim pre chat</li>
             <li>Vlastné emotikony pre miestnosti</li>
             <li>Rýchle tlačidlo pre zdieľanie miestnosti</li>
             <li>Hlasové upozornenia pre nové správy</li>
           </ul>
-          <label class="help-suggestions-label" for="suggestion-input">Tvoj vlastný návrh:</label>
-          <textarea id="suggestion-input" class="help-suggestions-input" rows="3" placeholder="Napíš svoj nápad..."></textarea>
-          <button id="suggestion-submit" class="help-suggestions-submit" type="button">Odoslať návrh</button>
+          <label class="help-suggestions-label" for="suggestion-input">Popis pripomienky:</label>
+          <textarea id="suggestion-input" class="help-suggestions-input" rows="3" placeholder="Napíš svoj návrh alebo popis problému..."></textarea>
+          <button id="suggestion-submit" class="help-suggestions-submit" type="button">Odoslať pripomienku</button>
         </div>
 
         <div class="help-section-title">Šepkanie, adresovanie, ignorovanie</div>
@@ -83,8 +114,12 @@
           <a href="/chat" id="nav-ignore">Ignorovaní</a>
           <a href="/chat" id="nav-settings">Nastavenia</a>
           <a href="/chat" id="nav-help">Návod</a>
-          <a href="/messenger" id="nav-messenger">Messenger</a>
           <button id="commands-toggle" class="commands-toggle" type="button">Príkazy</button>
+          <button id="moderation-center-btn" class="moderation-btn" type="button" style="display:none;">Moderation Center</button>
+          <button id="moderation-bell-btn" class="moderation-bell" type="button" aria-label="Notifikácie">
+            🔔
+            <span id="moderation-notification-badge" class="moderation-badge">0</span>
+          </button>
           <a href="/" id="nav-logout">Odhlásiť</a>
         </nav>
       </header>
@@ -92,11 +127,9 @@
       <div class="chat-title">Spoločná</div>
       <div class="chat-subtitle">Retro miestnosť pre reálne rozhovory, adresovanie a súkromné šepkanie.</div>
       <div class="chat-detail">V chate vidíš aktuálnych ľudí, môžeš ich osloviť menom alebo poslať súkromnú správu.</div>
-      <div class="status-row profile-status-row">
-        <span class="profile-pill">👤 <strong id="current-username-display">Anon</strong></span>
-        <span>Aktívni: <strong id="active-users-count">0</strong></span>
-        <span>Oddych body: <strong id="my-points-display">0</strong></span>
-        <span id="ignore-status-pill" class="profile-pill muted">Ignorovaní: 0</span>
+      <div id="daily-question-banner" class="daily-question-banner" aria-live="polite">
+        <div class="daily-question-kicker">Otázka dňa</div>
+        <div id="daily-question-text" class="daily-question-text">Načítavam otázku dňa...</div>
       </div>
       <div id="quicklink-overlay" class="quicklink-overlay" style="display:none;">
         <div class="quicklink-modal" role="dialog" aria-modal="true" aria-labelledby="quicklink-title">
@@ -261,6 +294,16 @@
               <button id="create-room-btn" type="button" class="small-link">Vytvoriť</button>
             </div>
           </div>
+          <div id="admin-portal" class="admin-portal" style="display:none;">
+            <div class="admin-portal-header">
+              <span id="admin-portal-title">Moderácia</span>
+              <span id="admin-portal-role" class="admin-portal-role">mod</span>
+            </div>
+            <div class="admin-portal-body">
+              <div class="admin-portal-summary">Počet členov: <strong id="admin-portal-count">0</strong></div>
+              <div id="admin-portal-list" class="admin-portal-list"></div>
+            </div>
+          </div>
           <div id="commands-block" class="sidebar-block compact" style="display:none;">
             <h2>Príkazy</h2>
             <ul class="commands-list">
@@ -282,6 +325,95 @@
           </div>
         </aside>
       </main>
+    </div>
+    <div id="moderation-center-modal" class="moderation-center-modal" style="display:none;" aria-modal="true" role="dialog">
+      <div class="moderation-center-panel">
+        <div class="moderation-center-header">
+          <div>
+            <div class="moderation-kicker">Moderation Center</div>
+            <h2>Oddych Moderation</h2>
+          </div>
+          <button id="moderation-center-close" class="moderation-close" type="button" aria-label="Zavrieť moderáciu">×</button>
+        </div>
+        <div class="moderation-center-meta">
+          <div class="moderation-pill" id="moderation-pill-role">Moderator</div>
+          <button id="moderation-bell-open" class="moderation-bell-inline" type="button">🔔 Notifikácie</button>
+        </div>
+        <div id="moderation-stats" class="moderation-stats"></div>
+        <div class="moderation-tabs">
+          <button class="moderation-tab active" type="button" data-tab="overview">Prehľad</button>
+          <button class="moderation-tab" type="button" data-tab="users">Používatelia</button>
+          <button class="moderation-tab" type="button" data-tab="reports">Nahlásenia</button>
+          <button class="moderation-tab" type="button" data-tab="appeals">Odvolania</button>
+          <button class="moderation-tab" type="button" data-tab="history">História</button>
+        </div>
+        <div id="moderation-content" class="moderation-content"></div>
+      </div>
+    </div>
+    <div id="moderation-action-modal" class="moderation-action-modal" style="display:none;" aria-modal="true" role="dialog">
+      <div class="moderation-action-panel">
+        <div class="moderation-action-header">
+          <div>
+            <div class="moderation-kicker">Moderátorský zásah</div>
+            <h3>Vyberte typ vykonania moderátorského zásahu:</h3>
+          </div>
+          <button id="moderation-action-close" class="moderation-close" type="button" aria-label="Zavrieť potvrdenie">×</button>
+        </div>
+        <div class="moderation-action-form">
+          <label class="moderation-choice"><input type="radio" name="moderation-mode" value="test" checked> Testovací režim – test banu/kicku</label>
+          <label class="moderation-choice"><input type="radio" name="moderation-mode" value="real"> Reálny režim – skutočný ban/kick</label>
+          <div class="moderation-action-grid">
+            <label>
+              <span>Používateľ</span>
+              <input id="moderation-action-target" type="text" readonly>
+            </label>
+            <label>
+              <span>Chat / miestnosť</span>
+              <input id="moderation-action-room" type="text" value="Spoločná">
+            </label>
+            <label>
+              <span>Dôvod zásahu</span>
+              <input id="moderation-action-reason" type="text" value="Porušenie pravidiel">
+            </label>
+            <label>
+              <span>Dĺžka (hodiny)</span>
+              <input id="moderation-action-duration" type="number" min="0" max="240" value="24">
+            </label>
+            <label class="moderation-action-note-field">
+              <span>Interná poznámka</span>
+              <textarea id="moderation-action-note" rows="3" placeholder="Poznámka pre moderátorov..."></textarea>
+            </label>
+          </div>
+        </div>
+        <div class="moderation-confirmation-actions">
+          <button id="moderation-action-cancel" class="moderation-cancel-btn" type="button">Zrušiť</button>
+          <button id="moderation-action-confirm" class="moderation-confirm-btn" type="button">Potvrdiť zásah</button>
+        </div>
+      </div>
+    </div>
+    <div id="appeal-modal" class="appeal-modal" style="display:none;" aria-modal="true" role="dialog">
+      <div class="appeal-panel">
+        <div class="appeal-header">
+          <div>
+            <div class="moderation-kicker">Odvolanie</div>
+            <h3>Požiadať o preskúmanie</h3>
+          </div>
+          <button id="appeal-modal-close" class="moderation-close" type="button" aria-label="Zavrieť odvolanie">×</button>
+        </div>
+        <div class="appeal-form">
+          <label for="appeal-username">Používateľské meno</label>
+          <input id="appeal-username" type="text" readonly>
+          <label for="appeal-type">Typ sankcie</label>
+          <input id="appeal-type" type="text" readonly>
+          <label for="appeal-reason">Dôvod sankcie</label>
+          <input id="appeal-reason" type="text" readonly>
+          <label for="appeal-text">Prečo si myslíš, že ide o omyl?</label>
+          <textarea id="appeal-text" rows="5" placeholder="Napíš dôvod, prečo si myslíš, že ide o omyl..."></textarea>
+          <div class="appeal-actions">
+            <button id="appeal-submit-btn" class="appeal-submit" type="button">Odoslať odvolanie</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="news-history-backdrop" class="news-history-backdrop" aria-hidden="true"></div>
     <aside id="news-history-panel" class="news-history-panel" aria-hidden="true">
