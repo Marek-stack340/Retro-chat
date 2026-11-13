@@ -163,7 +163,7 @@ function addModerationNotification(notification) {
   };
   moderationNotifications.push(entry);
   if (moderationNotifications.length > 200) moderationNotifications.shift();
-  const humanModerators = Array.from(users.values()).filter((user) => user && ['owner', 'admin', 'moderator'].includes(user.role));
+  const humanModerators = Array.from(users.values()).filter((user) => user && ['owner', 'moderator'].includes(user.role));
   humanModerators.forEach((user) => {
     const socket = io.sockets.sockets.get(user.id);
     if (socket) {
@@ -197,7 +197,7 @@ function getModeratorStateForRole(role) {
 }
 
 function broadcastModerationState() {
-  const targets = Array.from(users.values()).filter((user) => user && ['owner', 'admin', 'moderator'].includes(user.role));
+  const targets = Array.from(users.values()).filter((user) => user && ['owner', 'moderator'].includes(user.role));
   targets.forEach((user) => {
     const socket = io.sockets.sockets.get(user.id);
     if (socket) {
@@ -879,17 +879,49 @@ io.on('connection', (socket) => {
   socket.on('moderation-center:request', () => {
     const user = users.get(socket.id);
     const role = user && user.role ? user.role : null;
-    if (!role || !['owner', 'admin', 'moderator'].includes(role)) {
+    if (!role || !['owner', 'moderator'].includes(role)) {
       return;
     }
     socket.emit('moderation-center-state', getModeratorStateForRole(role));
     socket.emit('moderation-unread-count', moderationNotifications.filter((notification) => !notification.readBy.includes(user.username)).length);
   });
 
+  socket.on('moderation:assign-role', (data) => {
+    const actor = users.get(socket.id);
+    if (!actor || !['owner', 'moderator'].includes(actor.role)) {
+      socket.emit('system-message', 'Iba správca a moderátori môžu meniť role používateľov.');
+      return;
+    }
+
+    const targetName = String(data && data.target ? data.target : '').trim();
+    const nextRole = String(data && data.role ? data.role : '').trim().toLowerCase();
+    if (!targetName || !['moderator', 'user'].includes(nextRole)) {
+      socket.emit('system-message', 'Neplatná úloha pre priradenie role.');
+      return;
+    }
+
+    const targetUser = Array.from(users.values()).find((entry) => entry.username.toLowerCase() === targetName.toLowerCase());
+    if (!targetUser) {
+      socket.emit('system-message', `Používateľ ${targetName} nie je momentálne pripojený.`);
+      return;
+    }
+
+    if (targetUser.role === 'owner') {
+      socket.emit('system-message', 'Správcu nie je možné zmeniť.');
+      return;
+    }
+
+    const resolvedRole = nextRole === 'moderator' ? 'moderator' : null;
+    targetUser.role = resolvedRole;
+    broadcastUserList();
+    broadcastModerationState();
+    socket.emit('system-message', nextRole === 'moderator' ? `${targetUser.username} dostal rolu Moderátor.` : `${targetUser.username} stratil rolu Moderátor.`);
+  });
+
   socket.on('moderation:execute', (data) => {
     const user = users.get(socket.id);
-    if (!user || !['owner', 'admin', 'moderator'].includes(user.role)) {
-      socket.emit('system-message', 'Iba moderátori môžu vykonávať zásahy.');
+    if (!user || !['owner', 'moderator'].includes(user.role)) {
+      socket.emit('system-message', 'Iba správca a moderátori môžu vykonávať zásahy.');
       return;
     }
 
@@ -1098,7 +1130,7 @@ io.on('connection', (socket) => {
 
   socket.on('appeal:decide', (data) => {
     const user = users.get(socket.id);
-    if (!user || !['owner', 'admin', 'moderator'].includes(user.role)) {
+    if (!user || !['owner', 'moderator'].includes(user.role)) {
       return;
     }
 

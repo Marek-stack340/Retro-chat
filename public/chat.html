@@ -127,9 +127,6 @@
       <div class="chat-title">Spoločná</div>
       <div class="chat-subtitle">Retro miestnosť pre reálne rozhovory, adresovanie a súkromné šepkanie.</div>
       <div class="chat-detail">V chate vidíš aktuálnych ľudí, môžeš ich osloviť menom alebo poslať súkromnú správu.</div>
-      <div id="daily-question-banner" class="daily-question-banner" aria-live="polite">
-        <div id="daily-question-text" class="daily-question-text">Načítavam tému dňa...</div>
-      </div>
       <div id="quicklink-overlay" class="quicklink-overlay" style="display:none;">
         <div class="quicklink-modal" role="dialog" aria-modal="true" aria-labelledby="quicklink-title">
           <div class="quicklink-header">
@@ -293,16 +290,6 @@
               <button id="create-room-btn" type="button" class="small-link">Vytvoriť</button>
             </div>
           </div>
-          <div id="admin-portal" class="admin-portal" style="display:none;">
-            <div class="admin-portal-header">
-              <span id="admin-portal-title">Moderácia</span>
-              <span id="admin-portal-role" class="admin-portal-role">mod</span>
-            </div>
-            <div class="admin-portal-body">
-              <div class="admin-portal-summary">Počet členov: <strong id="admin-portal-count">0</strong></div>
-              <div id="admin-portal-list" class="admin-portal-list"></div>
-            </div>
-          </div>
           <div id="commands-block" class="sidebar-block compact" style="display:none;">
             <h2>Príkazy</h2>
             <ul class="commands-list">
@@ -335,7 +322,10 @@
           <button id="moderation-center-close" class="moderation-close" type="button" aria-label="Zavrieť moderáciu">×</button>
         </div>
         <div class="moderation-center-meta">
-          <div class="moderation-pill" id="moderation-pill-role">Moderator</div>
+          <div class="moderation-role-stack">
+            <div class="moderation-pill" id="moderation-pill-role">Správca</div>
+            <div class="moderation-role-subtitle" id="moderation-role-subtitle">Admin chatu</div>
+          </div>
           <button id="moderation-bell-open" class="moderation-bell-inline" type="button">🔔 Notifikácie</button>
         </div>
         <div id="moderation-stats" class="moderation-stats"></div>

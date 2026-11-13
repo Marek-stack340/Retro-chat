@@ -157,8 +157,6 @@ body.ban-screen-active{overflow:hidden}
 .commands-toggle{color:#ffffff;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:10px;padding:8px 12px;font-size:0.77rem;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(37,99,235,0.22)}
 .commands-toggle:hover{filter:brightness(1.04)}
 .chat-title{display:inline-flex;align-items:center;justify-content:center;padding:0;background:transparent;border:none;border-radius:0;font-size:1rem;font-weight:800;color:#1f2937;margin-left:8px;box-shadow:none}
-.daily-question-banner{display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:#eaf5ff;border:1px solid rgba(148,163,184,0.25);box-shadow:0 8px 18px rgba(15,23,42,0.03);margin:14px 0 10px;min-height:58px}
-.daily-question-text{font-size:clamp(0.96rem,1.05vw,1.28rem);font-weight:800;color:#0f172a;line-height:1.35;letter-spacing:-0.02em;text-align:center}
 .chat-main-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;padding:18px 18px 12px;max-width:1400px;margin:0 auto}
 .chat-area{display:flex;flex-direction:column;gap:12px}
 .messages{min-height:540px;padding:18px 16px;background:var(--chat-panel-bg);border:1px solid var(--chat-panel-border);border-radius:24px;overflow:auto;box-shadow:inset 0 1px 2px rgba(15,23,42,0.02), 0 16px 32px rgba(2,6,23,0.18)}
@@ -528,7 +526,9 @@ body.ban-screen-active{overflow:hidden}
 .moderation-close{width:38px;height:38px;border:none;border-radius:10px;background:#f1f5f9;color:#334155;font-size:1.8rem;cursor:pointer}
 .moderation-close:hover{background:#e2e8f0}
 .moderation-center-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px 0}
+.moderation-role-stack{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .moderation-pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:0.74rem;font-weight:800}
+.moderation-role-subtitle{font-size:0.68rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#475569}
 .moderation-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:18px 20px 0}
 .metric-card{padding:14px;border-radius:14px;background:linear-gradient(180deg,#f8fbff 0%,#eff6ff 100%);border:1px solid rgba(96,165,250,0.16);display:flex;flex-direction:column;gap:8px}
 .metric-card span{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:#64748b;font-weight:800}
@@ -540,6 +540,10 @@ body.ban-screen-active{overflow:hidden}
 .moderation-item{padding:14px;border:1px solid rgba(148,163,184,0.16);border-radius:12px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,0.04)}
 .moderation-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .moderation-item-head strong{color:#0f172a;font-size:1rem}
+.moderation-role-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size:0.7rem;font-weight:800}
+.moderation-role-badge.moderator{background:#dbeafe;color:#1d4ed8}
+.moderation-role-badge.owner{background:#fef3c7;color:#92400e}
+.moderation-role-badge.user{background:#e2e8f0;color:#475569}
 .moderation-item-head span,.moderation-item-row span{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:800}
 .moderation-item-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;color:#334155;font-size:0.82rem}
 .moderation-item-row strong{color:#0f172a;text-align:right;max-width:60%}

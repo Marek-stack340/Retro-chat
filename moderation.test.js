@@ -11,6 +11,8 @@ test('admin names are recognized', () => {
 test('moderator names are recognized', () => {
   assert.equal(isModeratorName('moderator'), true);
   assert.equal(isModeratorName('mod'), true);
+  assert.equal(isModeratorName('marek'), true);
+  assert.equal(isAdminName('marek'), false);
 });
 
 test('moderators can act on regular users but not on admins or other moderators', () => {

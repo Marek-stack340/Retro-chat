@@ -84,6 +84,7 @@ const moderationBellOpen = document.getElementById('moderation-bell-open');
 const moderationStats = document.getElementById('moderation-stats');
 const moderationContent = document.getElementById('moderation-content');
 const moderationRolePill = document.getElementById('moderation-pill-role');
+const moderationRoleSubtitle = document.getElementById('moderation-role-subtitle');
 const moderationTabs = document.querySelectorAll('.moderation-tab');
 const moderationActionModal = document.getElementById('moderation-action-modal');
 const moderationActionClose = document.getElementById('moderation-action-close');
@@ -244,19 +245,22 @@ let pendingModerationAction = null;
 function getCurrentRoleName() {
   const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
   if (!name) return 'user';
-  if (['owner', 'admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name)) return 'owner';
-  if (['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc'].includes(name)) return 'admin';
-  if (name.includes('moderator') || name.includes('mod')) return 'moderator';
+  if (['owner', 'administrator', 'spravca', 'správca'].includes(name)) return 'owner';
+  if (name === 'marek' || name === 'marekc' || name.includes('moderator') || name.includes('mod')) return 'moderator';
   return 'user';
 }
 
 function updateModerationAccess() {
-  const allowed = ['owner', 'admin', 'moderator'].includes(getCurrentRoleName());
+  const allowed = ['owner', 'moderator'].includes(getCurrentRoleName());
   if (moderationCenterBtn) moderationCenterBtn.style.display = allowed ? 'inline-flex' : 'none';
   if (moderationBellBtn) moderationBellBtn.style.display = allowed ? 'inline-flex' : 'none';
   if (moderationRolePill) {
     const role = getCurrentRoleName();
-    moderationRolePill.textContent = role === 'owner' ? 'Owner' : (role === 'admin' ? 'Admin' : (role === 'moderator' ? 'Moderator' : 'User'));
+    moderationRolePill.textContent = role === 'owner' ? 'Správca' : (role === 'moderator' ? 'Moderátor' : 'Používateľ');
+  }
+  if (moderationRoleSubtitle) {
+    const role = getCurrentRoleName();
+    moderationRoleSubtitle.textContent = role === 'owner' ? 'Admin chatu' : (role === 'moderator' ? 'Moderátor chatu' : 'Používateľ');
   }
 }
 
@@ -267,6 +271,17 @@ function formatModerationDate(value) {
   } catch (error) {
     return '—';
   }
+}
+
+function getRoleBadgeMarkup(role) {
+  const normalizedRole = String(role || '').toLowerCase();
+  if (normalizedRole === 'moderator') {
+    return '<span class="moderation-role-badge moderator" title="Moderátor">🛡 Moderátor</span>';
+  }
+  if (normalizedRole === 'owner') {
+    return '<span class="moderation-role-badge owner" title="Správca">👑 Správca</span>';
+  }
+  return '<span class="moderation-role-badge user" title="Používateľ">Užívateľ</span>';
 }
 
 function renderModerationStats() {
@@ -302,19 +317,22 @@ function renderModerationContent() {
       ${usersToShow.map((user) => {
         const punishments = history.filter((entry) => (entry.target || '').toLowerCase() === user.username.toLowerCase());
         const recent = punishments.slice(0, 3).map((entry) => `<li>${entry.type || 'Akcia'} · ${entry.reason || '—'} · ${formatModerationDate(entry.timestamp)}</li>`).join('');
+        const roleBadge = getRoleBadgeMarkup(user.role);
+        const canManageModeratorRole = ['owner', 'moderator'].includes(getCurrentRoleName()) && user.role !== 'owner';
         return `
           <div class="moderation-item moderation-user-card">
             <div class="moderation-item-head">
               <strong>${user.username}</strong>
-              <span>${user.role || 'user'}</span>
+              ${roleBadge}
             </div>
-            <div class="moderation-item-row"><span>Stav:</span><strong>${user.role === 'admin' ? 'Správca' : (user.role === 'moderator' ? 'Moderátor' : (user.role === 'tester' ? 'Tester' : 'Aktívny'))}</strong></div>
+            <div class="moderation-item-row"><span>Stav:</span><strong>${user.role === 'owner' ? 'Správca' : (user.role === 'moderator' ? 'Moderátor' : (user.role === 'tester' ? 'Tester' : 'Aktívny'))}</strong></div>
             <div class="moderation-item-row"><span>Miesto:</span><strong>${currentRoom || 'Spoločná'}</strong></div>
             <div class="moderation-item-row"><span>História trestov:</span><strong>${punishments.length ? 'Nie' : 'Žiadne'}</strong></div>
             <ul class="moderation-user-history">${recent || '<li>Žiadne záznamy.</li>'}</ul>
             <div class="moderation-actions-row">
               <button class="moderation-action request moderation-user-action" data-action="kick" data-target="${user.username}" type="button">Kick</button>
               <button class="moderation-action reject moderation-user-action" data-action="ban" data-target="${user.username}" type="button">Ban</button>
+              ${canManageModeratorRole ? `<button class="moderation-action ${user.role === 'moderator' ? 'approve' : 'request'} moderation-role-toggle" data-target="${user.username}" data-role="${user.role === 'moderator' ? 'user' : 'moderator'}" type="button">${user.role === 'moderator' ? 'Odobrať rolu' : 'Priradiť rolu: Moderátor'}</button>` : ''}
             </div>
           </div>
         `;
@@ -331,6 +349,15 @@ function renderModerationContent() {
           reason: action === 'ban' ? 'Porušenie pravidiel' : 'Vyhodenie z miestnosti',
           durationHours: action === 'ban' ? 24 : 0
         });
+      });
+    });
+
+    moderationContent.querySelectorAll('.moderation-role-toggle').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.target;
+        const nextRole = button.dataset.role === 'moderator' ? 'moderator' : 'user';
+        if (!target) return;
+        socket.emit('moderation:assign-role', { target, role: nextRole });
       });
     });
 
@@ -1399,27 +1426,6 @@ function normalizeName(value) {
   return (value || '').toString().trim().toLowerCase();
 }
 
-function renderDailyQuestion() {
-  const bannerText = document.getElementById('daily-question-text');
-  if (!bannerText) return;
-
-  const questions = [
-    'Téma dňa: Aké témy by si dnes rád(a) rozoberal v chate?',
-    'Téma dňa: Čo ťa dnes najviac baví v spoločenskej komunikácii?',
-    'Téma dňa: Aký druh rozhovoru by si dnes najradšej začal?',
-    'Téma dňa: Akú zábavnú alebo užitočnú tému by si dnes otvoril?',
-    'Téma dňa: Ktorá téma v komunite ti najviac pomáha k príjemnému rozhovoru?',
-    'Téma dňa: Aký motivačný alebo zábavný rozhovor by si dnes rád(a) začal?'
-  ];
-
-  const today = new Date();
-  const dateKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-  const index = Array.from(dateKey).reduce((seed, char) => seed + char.charCodeAt(0), 0) % questions.length;
-  bannerText.textContent = questions[index];
-}
-
-renderDailyQuestion();
-
 function refreshIgnoreStatus() {
   const pill = document.getElementById('ignore-status-pill');
   if (!pill) return;
@@ -1737,8 +1743,8 @@ function updateAdminPanel(users) {
   panel.style.display = canModerate ? 'block' : 'none';
   if (!canModerate) return;
 
-  title.textContent = currentIsAdmin ? 'Owner panel' : 'Moderácia';
-  badge.textContent = currentIsAdmin ? 'owner' : 'mod';
+  title.textContent = 'Moderácia';
+  badge.textContent = currentIsAdmin ? 'správca' : 'moderátor';
   count.textContent = String(Array.isArray(users) ? users.length : 0);
   list.innerHTML = '';
 
@@ -1752,7 +1758,7 @@ function updateAdminPanel(users) {
 
     const badgeItem = document.createElement('span');
     badgeItem.className = 'admin-user-badge';
-    badgeItem.textContent = user.role === 'admin' ? 'owner' : (user.role === 'moderator' ? 'mod' : 'user');
+    badgeItem.textContent = user.role === 'admin' ? 'správca' : (user.role === 'moderator' ? 'moderátor' : 'user');
 
     const actions = document.createElement('div');
     actions.className = 'admin-portal-actions';
@@ -1801,9 +1807,9 @@ function updateUserList(users) {
   users.forEach((user) => {
     const li = document.createElement('li');
     const name = user.username;
-    const roleSuffix = user.role === 'admin'
-      ? ' [admin]'
-      : (user.role === 'moderator' ? ' [moderator]' : (user.role === 'tester' ? ' [tester]' : ''));
+    const roleSuffix = user.role === 'owner'
+      ? ' [správca]'
+      : (user.role === 'moderator' ? ' [moderator 🛡]' : (user.role === 'tester' ? ' [tester]' : ''));
     const nameSpan = document.createElement('span');
     nameSpan.textContent = `${name}${roleSuffix}`;
     li.appendChild(nameSpan);

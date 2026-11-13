@@ -1,6 +1,6 @@
-const ownerUsernames = new Set(['owner', 'správca', 'spravca', 'administrator', 'admin', 'marek', 'marekc']);
-const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca', 'marek', 'marekc', 'owner']);
-const moderatorUsernames = new Set(['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk']);
+const ownerUsernames = new Set(['owner', 'správca', 'spravca', 'administrator']);
+const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
+const moderatorUsernames = new Set(['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk', 'marek', 'marekc']);
 
 function normalizeModerationName(value) {
   return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
