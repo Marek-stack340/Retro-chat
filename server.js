@@ -918,6 +918,59 @@ io.on('connection', (socket) => {
     socket.emit('system-message', 'Správa bola nahlásená moderátorom.');
   });
 
+  socket.on('moderation:discard-report', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !['owner', 'moderator'].includes(user.role)) {
+      socket.emit('system-message', 'Iba správca a moderátori môžu zahadzovať reporty.');
+      return;
+    }
+
+    const rawIds = Array.isArray(data && data.ids) ? data.ids : (data && data.id ? [data.id] : []);
+    const nextIds = rawIds.map((item) => String(item || '').trim()).filter(Boolean);
+    if (!nextIds.length) {
+      socket.emit('system-message', 'Nezvolil si žiadny report na zmazanie.');
+      return;
+    }
+
+    const removed = [];
+    for (let index = moderationReports.length - 1; index >= 0; index -= 1) {
+      const report = moderationReports[index];
+      if (nextIds.includes(String(report.id))) {
+        removed.push(report);
+        moderationReports.splice(index, 1);
+      }
+    }
+
+    if (!removed.length) {
+      socket.emit('system-message', 'Vybraný report neexistuje.');
+      return;
+    }
+
+    recordModerationEvent({
+      type: 'report-discarded',
+      actor: user.username,
+      target: removed.map((item) => item.reportedUser || 'Používateľ').join(', '),
+      reason: 'Report bol zahodený moderátorom.',
+      room: removed[0].room || 'Spoločná',
+      durationHours: 0,
+      isTest: false,
+      status: 'discarded',
+      timestamp: new Date().toISOString()
+    });
+
+    addModerationNotification({
+      id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: 'report-discarded',
+      title: 'Report bol zmazaný',
+      message: `${user.username} zahodil report(y) pre ${removed.map((item) => item.reportedUser || 'Používateľ').join(', ')}.`,
+      actor: user.username,
+      route: 'reports'
+    });
+
+    broadcastModerationState();
+    socket.emit('system-message', `${removed.length} report${removed.length > 1 ? 'y' : ''} bol${removed.length > 1 ? 'i' : ''} zmazan${removed.length > 1 ? 'é' : 'ý'}.`);
+  });
+
   socket.on('moderation-center:request', () => {
     const user = users.get(socket.id);
     const role = user && user.role ? user.role : null;

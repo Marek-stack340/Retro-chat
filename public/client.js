@@ -83,6 +83,7 @@ const moderationBellBtn = document.getElementById('moderation-bell-btn');
 const moderationNotificationBadge = document.getElementById('moderation-notification-badge');
 const moderationCenterModal = document.getElementById('moderation-center-modal');
 const moderationCenterClose = document.getElementById('moderation-center-close');
+const moderationDiscardReportBtn = document.getElementById('moderation-discard-report-btn');
 const moderationBellOpen = document.getElementById('moderation-bell-open');
 const moderationStats = document.getElementById('moderation-stats');
 const moderationContent = document.getElementById('moderation-content');
@@ -265,7 +266,7 @@ function updateModerationAccess() {
   }
   if (moderationRoleSubtitle) {
     const role = getCurrentRoleName();
-    moderationRoleSubtitle.textContent = role === 'owner' ? 'Admin chatu' : (role === 'moderator' ? 'Moderátor chatu' : 'Používateľ');
+    moderationRoleSubtitle.textContent = role === 'owner' ? '[Admin chatu]' : (role === 'moderator' ? '[Moderátor chatu]' : '[Používateľ]');
   }
 }
 
@@ -327,6 +328,76 @@ function dismissSelectedNotifications() {
   ids.forEach((notificationId) => dismissModerationNotification(notificationId));
   selectedNotificationIds.clear();
   renderModerationPanel();
+}
+
+function parseReportSelection(input, reports) {
+  if (!Array.isArray(reports) || !reports.length) return [];
+  const normalized = String(input || '').trim();
+  if (!normalized) return [];
+  if (normalized.toLowerCase() === 'všetky') return reports.map((item) => String(item.id));
+
+  const asNumber = Number(normalized);
+  if (Number.isInteger(asNumber) && asNumber > 0) {
+    const entry = reports[asNumber - 1];
+    return entry ? [String(entry.id)] : [];
+  }
+
+  const exact = reports.find((entry) => String(entry.id).toLowerCase() === normalized.toLowerCase());
+  return exact ? [String(exact.id)] : [];
+}
+
+function showDiscardReportConfirm(reportIds) {
+  const ids = Array.isArray(reportIds) ? reportIds.filter(Boolean) : [];
+  if (!ids.length) return;
+
+  const existing = document.getElementById('moderation-discard-report-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'moderation-discard-report-modal';
+  modal.className = 'moderation-custom-confirm';
+  modal.innerHTML = `
+    <div class="moderation-custom-confirm-box">
+      <div class="moderation-custom-confirm-title">Naozaj chceš aby report bol zmazaný?</div>
+      <div class="moderation-custom-confirm-actions">
+        <button type="button" class="moderation-action approve moderation-confirm-yes">Áno</button>
+        <button type="button" class="moderation-action reject moderation-confirm-no">Nie</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('.moderation-confirm-yes')?.addEventListener('click', () => {
+    socket.emit('moderation:discard-report', { ids });
+    modal.remove();
+  });
+
+  modal.querySelector('.moderation-confirm-no')?.addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
+function discardSelectedReports() {
+  const reports = moderationState.reports || [];
+  if (!reports.length) {
+    if (moderationContent) {
+      moderationContent.innerHTML = '<div class="moderation-empty">Žiadne reporty na zmazanie.</div>';
+    }
+    return;
+  }
+
+  const optionsText = reports.map((item, index) => `${index + 1}. ${item.reportedUser || 'Používateľ'} · ${String(item.reason || '—').slice(0, 50)}`).join('\n');
+  const answer = window.prompt(`Ktorý report chceš zahodiť?\n\n${optionsText}\n\nNapíš číslo reportu alebo "všetky":`, '');
+  if (answer === null) return;
+
+  const selectedIds = parseReportSelection(answer, reports);
+  if (!selectedIds.length) {
+    showToast('Neplatný výber reportu.');
+    return;
+  }
+
+  showDiscardReportConfirm(selectedIds);
 }
 
 function renderModerationContent() {
@@ -616,6 +687,9 @@ function playCinkTone() {
 
 if (moderationCenterBtn) {
   moderationCenterBtn.addEventListener('click', openModerationCenter);
+}
+if (moderationDiscardReportBtn) {
+  moderationDiscardReportBtn.addEventListener('click', discardSelectedReports);
 }
 if (moderationCenterClose) moderationCenterClose.addEventListener('click', closeModerationCenter);
 if (moderationBellBtn) moderationBellBtn.addEventListener('click', () => {
