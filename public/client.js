@@ -495,6 +495,10 @@ function renderModerationContent() {
     moderationContent.innerHTML = `
       <div class="moderation-user-controls">
         <input id="moderation-user-search" class="moderation-user-search" type="text" value="${String(userQuery || '').replace(/"/g, '&quot;')}" placeholder="Vyhľadaj používateľa podľa prezývky...">
+        <div class="moderation-actions-row">
+          <input id="moderation-role-target" class="moderation-user-search" type="text" placeholder="Napíš meno používateľa a priraď moderátora" value="">
+          <button class="moderation-action approve moderation-role-assign-manual" type="button">Priradiť moderátora</button>
+        </div>
       </div>
       ${!usersToShow.length ? '<div class="moderation-empty">Nenašli sa žiadni používatelia.</div>' : ''}
       ${usersToShow.map((user) => {
@@ -543,6 +547,19 @@ function renderModerationContent() {
         socket.emit('moderation:assign-role', { target, role: nextRole });
       });
     });
+
+    const manualAssignBtn = moderationContent.querySelector('.moderation-role-assign-manual');
+    if (manualAssignBtn) {
+      manualAssignBtn.addEventListener('click', () => {
+        const input = document.getElementById('moderation-role-target');
+        const target = String(input && input.value ? input.value : '').trim();
+        if (!target) {
+          showToast('Napíš meno používateľa, ktorému chceš priradiť rolu Moderátor.');
+          return;
+        }
+        socket.emit('moderation:assign-role', { target, role: 'moderator' });
+      });
+    }
 
     const userSearchInput = document.getElementById('moderation-user-search');
     if (userSearchInput) {
@@ -965,13 +982,20 @@ function runDailyQuizScheduler() {
     const now = new Date();
     const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const scheduled = localStorage.getItem(DAILY_QUIZ_SCHEDULE_KEY);
+    const beforeQuizTime = now.getHours() < 20 || (now.getHours() === 20 && now.getMinutes() < 0);
 
-    if (now.getHours() === 20 && now.getMinutes() === 0 && now.getSeconds() < 10 && scheduled !== todayKey) {
+    if ((now.getHours() === 19 && now.getMinutes() === 55 && now.getSeconds() < 10 || now.getHours() === 19 && now.getMinutes() === 56 && now.getSeconds() < 10 || now.getHours() === 19 && now.getMinutes() === 57 && now.getSeconds() < 10 || now.getHours() === 19 && now.getMinutes() === 58 && now.getSeconds() < 10 || now.getHours() === 19 && now.getMinutes() === 59 && now.getSeconds() < 10) && scheduled !== todayKey) {
       localStorage.setItem(DAILY_QUIZ_SCHEDULE_KEY, todayKey);
       addQuizJoinInviteMessage();
       addMessage({
+        username: 'Chat',
+        text: 'Dneska o 20:00 kvíz dňa.',
+        room: currentRoom || 'Spoločná',
+        timestamp: new Date().toISOString()
+      });
+      addMessage({
         system: true,
-        text: '🔔 Dnes o 20:00 je večerný kvíz dňa. Klikni na tlačidlo Pripojiť sa ku kvízu.',
+        text: '🔔 Dneska o 20:00 kvíz dňa.',
         timestamp: new Date().toISOString()
       });
     }
@@ -3300,7 +3324,8 @@ const snakeGameState = {
   nextDirection: { x: 1, y: 0 },
   score: 0,
   timer: null,
-  over: false
+  over: false,
+  tickMs: 180
 };
 const snakeGameCells = [];
 
@@ -3454,7 +3479,7 @@ function openSnakeGame() {
   if (snakeGameState.timer) {
     clearInterval(snakeGameState.timer);
   }
-  snakeGameState.timer = setInterval(stepSnakeGame, 320);
+  snakeGameState.timer = setInterval(stepSnakeGame, snakeGameState.tickMs);
 }
 
 function closeSnakeGame() {

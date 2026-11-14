@@ -26,6 +26,13 @@ function getModeratorRole(name) {
   return null;
 }
 
+function getEffectiveModeratorRole(name, storedRole) {
+  if (storedRole && ['owner', 'admin', 'moderator', 'tester', 'user'].includes(storedRole)) {
+    return storedRole;
+  }
+  return getModeratorRole(name);
+}
+
 function canModerateAction(actorRole, targetRole) {
   if (!actorRole) return false;
   if (actorRole === 'owner') return targetRole !== 'owner';
@@ -42,5 +49,6 @@ module.exports = {
   isAdminName,
   isModeratorName,
   getModeratorRole,
+  getEffectiveModeratorRole,
   canModerateAction
 };

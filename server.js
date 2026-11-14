@@ -107,7 +107,7 @@ const moderationReports = [];
 const appeals = [];
 const moderationNotifications = [];
 const moderationHistory = [];
-const { ownerUsernames, adminUsernames, moderatorUsernames, isOwnerName, isAdminName, isModeratorName, getModeratorRole, canModerateAction } = require('./moderation');
+const { ownerUsernames, adminUsernames, moderatorUsernames, isOwnerName, isAdminName, isModeratorName, getModeratorRole, getEffectiveModeratorRole, canModerateAction } = require('./moderation');
 const testerUsernames = new Set(['kika_c123']);
 const protectedUsernames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
 const reservedJoinNames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
@@ -706,11 +706,12 @@ io.on('connection', (socket) => {
       users.delete(duplicateUser.id);
     }
 
-    const resolvedRole = getModeratorRole(normalizedUsername);
+    const storedRole = accounts.get(normalizedUsername)?.role || null;
+    const resolvedRole = getEffectiveModeratorRole(normalizedUsername, storedRole) || (testerUsernames.has(normalizedUsername) ? 'tester' : null);
     users.set(socket.id, {
       id: socket.id,
       username: safeUsername,
-      role: resolvedRole || (testerUsernames.has(normalizedUsername) ? 'tester' : null)
+      role: resolvedRole || null
     });
     socket.data.joined = true;
     socket.emit('security-banner', getSecurityStatus(safeUsername));
@@ -995,22 +996,33 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const targetUser = Array.from(users.values()).find((entry) => entry.username.toLowerCase() === targetName.toLowerCase());
-    if (!targetUser) {
-      socket.emit('system-message', `Používateľ ${targetName} nie je momentálne pripojený.`);
+    const normalizedKey = normalizeUsername(targetName).toLowerCase();
+    const targetUser = Array.from(users.values()).find((entry) => entry.username.toLowerCase() === normalizedKey);
+    const account = accounts.get(normalizedKey);
+
+    if (!targetUser && !account) {
+      socket.emit('system-message', `Používateľ ${targetName} nie je zaregistrovaný alebo momentálne pripojený.`);
       return;
     }
 
-    if (targetUser.role === 'owner') {
+    if (targetUser && targetUser.role === 'owner') {
       socket.emit('system-message', 'Správcu nie je možné zmeniť.');
       return;
     }
 
     const resolvedRole = nextRole === 'moderator' ? 'moderator' : null;
-    targetUser.role = resolvedRole;
+
+    if (account) {
+      account.role = resolvedRole;
+    }
+
+    if (targetUser) {
+      targetUser.role = resolvedRole;
+    }
+
     broadcastUserList();
     broadcastModerationState();
-    socket.emit('system-message', nextRole === 'moderator' ? `${targetUser.username} dostal rolu Moderátor.` : `${targetUser.username} stratil rolu Moderátor.`);
+    socket.emit('system-message', nextRole === 'moderator' ? `${targetName} dostal rolu Moderátor.` : `${targetName} stratil rolu Moderátor.`);
   });
 
   socket.on('moderation:execute', (data) => {

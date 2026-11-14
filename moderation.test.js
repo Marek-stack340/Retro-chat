@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { isAdminName, isModeratorName, canModerateAction } = require('./moderation');
+const { isAdminName, isModeratorName, canModerateAction, getEffectiveModeratorRole } = require('./moderation');
 
 test('admin names are recognized', () => {
   assert.equal(isAdminName('admin'), true);
@@ -21,4 +21,9 @@ test('moderators can act on regular users but not on admins or other moderators'
   assert.equal(canModerateAction('moderator', 'admin'), false);
   assert.equal(canModerateAction('admin', 'user'), true);
   assert.equal(canModerateAction('admin', 'admin'), false);
+});
+
+test('stored account role is used when a registered user is promoted to moderator', () => {
+  assert.equal(getEffectiveModeratorRole('alice', 'moderator'), 'moderator');
+  assert.equal(getEffectiveModeratorRole('ale1', null), null);
 });
