@@ -128,7 +128,7 @@ const curseWordsSet = new Set(curseWords);
 const MAX_MESSAGE_LENGTH = 280;
 const MAX_ROOM_LENGTH = 40;
 const MAX_USERNAME_LENGTH = 20;
-const SUSPICIOUS_PATTERN = /(?:https?:\/\/|www\.|mailto:|javascript:|data:|<script|on\w+\s*=)/i;
+const SUSPICIOUS_PATTERN = /(?:javascript:|vbscript:|data:|<script|on\w+\s*=)/i;
 const SECURITY_BANNER = '🛡 Bezpečnostná ochrana';
 const SECURITY_PROTECTIONS = ['rate limiting', 'helmet headers', 'súborové filtry', 'zabanovanie podozrivých používateľov', 'blokovanie škodlivých skriptov', 'kontrola vstupov'];
 const ANTIVIRUS_DANGEROUS_PATTERN = /(?:<script\b|<iframe\b|<svg\b|javascript:|data:text\/html|onerror\s*=|onload\s*=|document\.(cookie|location)|window\.(location|open)|localStorage|sessionStorage|eval\(|fromcharcode\(|atob\(|\b(?:cmd|powershell|bash|sh)\b|\b(?:wget|curl|nc|python|perl)\b|\b(?:mshta|rundll32)\b|\.(?:exe|bat|ps1|cmd)\b|__proto__|constructor\.constructor)/i;
@@ -396,7 +396,8 @@ function containsSuspiciousPayload(value) {
 function isSuspiciousText(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed) return false;
-  return SUSPICIOUS_PATTERN.test(trimmed) || trimmed.length > MAX_MESSAGE_LENGTH;
+  if (trimmed.length > MAX_MESSAGE_LENGTH) return true;
+  return SUSPICIOUS_PATTERN.test(trimmed);
 }
 
 function detectDangerousContent(text) {

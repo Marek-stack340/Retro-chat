@@ -564,10 +564,28 @@ function renderModerationContent() {
     const userSearchInput = document.getElementById('moderation-user-search');
     if (userSearchInput) {
       userSearchInput.addEventListener('input', (event) => {
-        const value = String(event.target.value || '');
-        const searchField = document.getElementById('moderation-user-search');
-        if (searchField) searchField.value = value;
-        renderModerationContent();
+        const query = String(event.target.value || '').trim().toLowerCase();
+        const cards = moderationContent.querySelectorAll('.moderation-user-card');
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+          const username = (card.querySelector('.moderation-item-head strong')?.textContent || '').trim().toLowerCase();
+          const matches = !query || username.includes(query);
+          card.style.display = matches ? '' : 'none';
+          if (matches) visibleCount += 1;
+        });
+
+        let emptyState = moderationContent.querySelector('.moderation-empty-filtered');
+        if (!emptyState && !visibleCount) {
+          emptyState = document.createElement('div');
+          emptyState.className = 'moderation-empty moderation-empty-filtered';
+          emptyState.textContent = 'Nenašli sa žiadni používatelia.';
+          moderationContent.appendChild(emptyState);
+        }
+
+        if (emptyState) {
+          emptyState.style.display = visibleCount ? 'none' : 'block';
+        }
       });
     }
     return;
@@ -1955,6 +1973,35 @@ function playPrivateMessageSound() {
   }
 }
 
+function playIncomingChatSound() {
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+
+    const context = window.__oddychIncomingChatAudioContext || new AudioCtor();
+    window.__oddychIncomingChatAudioContext = context;
+
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const now = context.currentTime;
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(260, now);
+    oscillator.frequency.exponentialRampToValueAtTime(340, now + 0.12);
+
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.008, now + 0.012);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.2);
+  } catch (error) {
+    console.warn('Incoming chat sound unavailable:', error);
+  }
+}
+
 function playBanAlarm() {
   try {
     const AudioCtor = window.AudioContext || window.webkitAudioContext;
@@ -2800,6 +2847,9 @@ socket.on('receive-message', (m) => {
   const visibleRoom = normalizeRoomName(m && m.room ? m.room : 'Spoločná');
   const isVisible = !m || m.private || m.system || visibleRoom === currentRoom;
   if (isVisible) {
+    if (m && !m.private && !m.system && String(m.username || '').trim() !== String(currentUsername || '').trim()) {
+      playIncomingChatSound();
+    }
     addMessage(m);
   }
 });
