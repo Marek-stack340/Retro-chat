@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Oddych Chat</title>
+  <desc id="desc">Oddych Chat community social preview</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef6ff"/>
+      <stop offset="100%" stop-color="#dfeeff"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6ea8fe"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="80" y="90" width="1040" height="450" rx="32" fill="#ffffff" opacity="0.92"/>
+  <rect x="130" y="150" width="180" height="180" rx="42" fill="url(#panel)"/>
+  <text x="220" y="256" text-anchor="middle" font-size="82" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="#ffffff">OC</text>
+  <text x="360" y="235" font-size="64" font-weight="800" font-family="Arial, Helvetica, sans-serif" fill="#0f172a">Oddych Chat</text>
+  <text x="360" y="305" font-size="34" font-family="Arial, Helvetica, sans-serif" fill="#475569">Slovenská online chatovacia komunita</text>
+  <rect x="360" y="350" width="220" height="72" rx="16" fill="#e0f2fe"/>
+  <text x="470" y="394" text-anchor="middle" font-size="30" font-weight="700" font-family="Arial, Helvetica, sans-serif" fill="#0f172a">💬 Chat</text>
+  <rect x="610" y="350" width="220" height="72" rx="16" fill="#ede9fe"/>
+  <text x="720" y="394" text-anchor="middle" font-size="30" font-weight="700" font-family="Arial, Helvetica, sans-serif" fill="#0f172a">🎯 Komunita</text>
+  <rect x="860" y="350" width="210" height="72" rx="16" fill="#dcfce7"/>
+  <text x="965" y="394" text-anchor="middle" font-size="30" font-weight="700" font-family="Arial, Helvetica, sans-serif" fill="#0f172a">⚡ Online</text>
+</svg>

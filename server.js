@@ -72,18 +72,38 @@ app.get('/', (req, res) => {
 app.get('/home', (req, res) => res.redirect(301, '/'));
 app.get('/index', (req, res) => res.redirect(301, '/'));
 app.get('/index.html', (req, res) => res.redirect(301, '/'));
-app.get('/chat', servePublicPage('chat'));
+app.get('/chat', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  servePublicPage('chat')(req, res);
+});
 app.get('/chat/', (req, res) => res.redirect(301, '/chat'));
 app.get('/chat.html', (req, res) => res.redirect(301, '/chat'));
-app.get('/messenger', servePublicPage('messenger'));
+app.get('/messenger', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  servePublicPage('messenger')(req, res);
+});
 app.get('/messenger/', (req, res) => res.redirect(301, '/messenger'));
 app.get('/messenger.html', (req, res) => res.redirect(301, '/messenger'));
-app.get('/register', servePublicPage('register'));
+app.get('/register', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  servePublicPage('register')(req, res);
+});
 app.get('/register/', (req, res) => res.redirect(301, '/register'));
 app.get('/register.html', (req, res) => res.redirect(301, '/register'));
-app.get('/guestbook', servePublicPage('guestbook'));
+app.get('/guestbook', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  servePublicPage('guestbook')(req, res);
+});
 app.get('/guestbook/', (req, res) => res.redirect(301, '/guestbook'));
 app.get('/guestbook.html', (req, res) => res.redirect(301, '/guestbook'));
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(__dirname, 'robots.txt'));
+});
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.sendFile(path.join(__dirname, 'sitemap.xml'));
+});
 app.get('/contribute', (req, res) => res.redirect(301, '/chat'));
 app.get('/contribute/', (req, res) => res.redirect(301, '/chat'));
 app.get('/contribute.html', (req, res) => res.redirect(301, '/chat'));
