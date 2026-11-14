@@ -1,4 +1,4 @@
-const ROBOT_NAME = 'Robot';
+const ROBOT_NAME = 'Chat';
 const ROBOT_API_KEY = process.env.ROBOT_API_KEY || process.env.OPENAI_API_KEY || 'key_tylu72F18zm4t4ee';
 const ROBOT_API_BASE = (process.env.ROBOT_API_BASE || 'https://api.openai.com/v1').replace(/\/$/, '');
 const ROBOT_MODEL = process.env.ROBOT_MODEL || 'gpt-4o-mini';
@@ -17,11 +17,11 @@ function generateRobotReply(input) {
   const text = normalizeRobotText(input);
 
   if (!text) {
-    return 'Ahoj! Som Robot a som pripravený sa s tebou rozprávať. O čom chceš hovoriť?';
+    return 'Ahoj! Som Chat a som pripravený sa s tebou rozprávať. O čom chceš hovoriť?';
   }
 
   if (/(ahoj|hello|hi|zdravo|nazdar|servus|ciao|dobry den|dobrý deň)/.test(text)) {
-    return 'Ahoj! Som Robot a rád sa s tebou rozprávam. O čom chceš dnes diskutovať?';
+    return 'Ahoj! Som Chat a rád sa s tebou rozprávam. O čom chceš dnes diskutovať?';
   }
 
   if (/(ako sa mas|ako sa máš|how are you|kako sa mas|je to v poriadku)/.test(text)) {
@@ -29,7 +29,7 @@ function generateRobotReply(input) {
   }
 
   if (/(co robis|čo robíš|co delas|čím sa zaoberáš|cim sa zaoberas|kde si)/.test(text)) {
-    return 'Som Robot a pomáham s jednoduchou komunikáciou. Môžeme si pokecať, rozprávať alebo riešiť otázky.';
+    return 'Som Chat a pomáham s jednoduchou komunikáciou. Môžeme si pokecať, rozprávať alebo riešiť otázky.';
   }
 
   if (/(dovidenia|zbohom|na skore|nashledanou|uz|bye)/.test(text)) {

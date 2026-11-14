@@ -69,19 +69,26 @@ function servePublicPage(pageName) {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get('/home', (req, res) => res.redirect(301, '/'));
+app.get('/index', (req, res) => res.redirect(301, '/'));
 app.get('/index.html', (req, res) => res.redirect(301, '/'));
 app.get('/chat', servePublicPage('chat'));
+app.get('/chat/', (req, res) => res.redirect(301, '/chat'));
 app.get('/chat.html', (req, res) => res.redirect(301, '/chat'));
 app.get('/messenger', servePublicPage('messenger'));
+app.get('/messenger/', (req, res) => res.redirect(301, '/messenger'));
 app.get('/messenger.html', (req, res) => res.redirect(301, '/messenger'));
 app.get('/register', servePublicPage('register'));
+app.get('/register/', (req, res) => res.redirect(301, '/register'));
 app.get('/register.html', (req, res) => res.redirect(301, '/register'));
 app.get('/guestbook', servePublicPage('guestbook'));
+app.get('/guestbook/', (req, res) => res.redirect(301, '/guestbook'));
 app.get('/guestbook.html', (req, res) => res.redirect(301, '/guestbook'));
 app.get('/contribute', (req, res) => res.redirect(301, '/chat'));
+app.get('/contribute/', (req, res) => res.redirect(301, '/chat'));
 app.get('/contribute.html', (req, res) => res.redirect(301, '/chat'));
 app.use((req, res, next) => {
-  if (req.path === '/contribute' || req.path === '/contribute.html') {
+  if (req.path === '/contribute' || req.path === '/contribute.html' || req.path === '/contribute/') {
     return res.redirect(301, '/chat');
   }
   next();
@@ -92,6 +99,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const messages = [];
 const users = new Map();
 const robotUser = { id: 'robot', username: ROBOT_NAME, role: 'bot' };
+const quizReminderCache = new Set();
 const banList = new Map();
 const accounts = new Map();
 const authTokens = new Map();
@@ -214,6 +222,40 @@ function getVisibleUsers() {
   }
   return list;
 }
+
+function sendDailyQuizInvitation(targetUser) {
+  const targetSocket = io.sockets.sockets.get(targetUser.id);
+  if (!targetSocket) return;
+
+  const inviteText = `Ahoj ${targetUser.username}! Dnes je večerný kvíz o 20:00. Napíš ANO a dám ti vedieť do kalendára. Keď napíšeš NIE, zruším to.`;
+  const payload = {
+    id: Date.now() + Math.random(),
+    from: ROBOT_NAME,
+    to: targetUser.username,
+    text: inviteText,
+    timestamp: new Date().toISOString(),
+    self: false
+  };
+  targetSocket.emit('receive-private-message', payload);
+}
+
+function maybeSendDailyQuizInvitations() {
+  const now = new Date();
+  if (now.getHours() !== 20 || now.getMinutes() !== 0) return;
+
+  const dayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (quizReminderCache.has(dayKey)) return;
+
+  quizReminderCache.add(dayKey);
+  Array.from(users.values()).forEach((targetUser) => {
+    if (!targetUser || !targetUser.username) return;
+    sendDailyQuizInvitation(targetUser);
+  });
+}
+
+setInterval(() => {
+  maybeSendDailyQuizInvitations();
+}, 30000);
 
 function broadcastUserList() {
   io.emit('user-list', getVisibleUsers());
@@ -1211,7 +1253,6 @@ io.on('connection', (socket) => {
     };
     messages.push(msg);
     io.emit('receive-message', msg);
-    await maybeRobotReply(user.username, msg.room, cleanedText);
   });
 
   socket.on('admin-broadcast', (data) => {
@@ -1309,6 +1350,11 @@ io.on('connection', (socket) => {
 
     const targetUsername = String(toId) === 'robot' ? ROBOT_NAME : (users.get(toId) ? users.get(toId).username : '');
     if (String(toId) === 'robot' || targetUsername === ROBOT_NAME) {
+      const robotActivated = data && data.robotActivated === true;
+      if (!robotActivated) {
+        socket.emit('system-message', 'Najprv klikni na tlačidlo Osloviť pri Roboto a potom môžeš začať rozhovor.');
+        return;
+      }
       const robotReply = generateRobotReply(text);
       const robotMessage = {
         id: Date.now(),

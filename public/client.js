@@ -1,6 +1,7 @@
 const socket = io();
 const messagesDiv = document.getElementById('messages');
 const sendBtn = document.getElementById('send-btn');
+const quickQuizBtn = document.getElementById('quick-quiz-btn');
 const messageInput = document.getElementById('message-input');
 const activeUsersCount = document.getElementById('active-users-count');
 const usersList = document.getElementById('users-list');
@@ -64,6 +65,8 @@ const snakeGameBack = document.getElementById('snake-game-back');
 const quizGameButton = document.getElementById('quiz-game-button');
 const diceGameButton = document.getElementById('dice-game-button');
 const wordGameButton = document.getElementById('word-game-button');
+const sudokuGameButton = document.getElementById('sudoku-game-button');
+const gameLauncherButton = document.getElementById('game-launch-button');
 const gameModal = document.getElementById('game-modal');
 const gameTitle = document.getElementById('game-title');
 const gameBody = document.getElementById('game-body');
@@ -242,6 +245,7 @@ let unreadNotificationCount = 0;
 let activeModerationTab = 'overview';
 let pendingModerationAction = null;
 let selectedNotificationIds = new Set();
+let robotConversationEnabled = false;
 
 function getCurrentRoleName() {
   const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
@@ -758,8 +762,151 @@ const quizQuestions = [
   { category: 'Technológia', question: 'Čo znamená skratka CPU?', answer: 'Central Processing Unit' },
   { category: 'Sport', question: 'V ktorom športovom odvetví sa hrajú sety a body?', answer: 'Tenis' },
   { category: 'Astronómia', question: 'Aký je názov najbližšej planéty k Slnku?', answer: 'Merkúr' },
-  { category: 'Literatúra', question: 'Kto napísal román Hamlet?', answer: 'William Shakespeare' }
+  { category: 'Literatúra', question: 'Kto napísal román Hamlet?', answer: 'William Shakespeare' },
+  { category: 'Geografia', question: 'Ako sa volá hlavné mesto Turecka?', answer: 'Ankara' },
+  { category: 'Veda', question: 'Aký chemický prvok má značku O?', answer: 'Kyslík' },
+  { category: 'História', question: 'Ktorý český kráľ bol známy ako svätý?', answer: 'Václav IV' },
+  { category: 'Sport', question: 'V akom športe sa hrá na ihrisku s 11 hráčmi?', answer: 'Futbal' },
+  { category: 'Astronómia', question: 'Ktorá planéta má najviac prstencov?', answer: 'Saturn' },
+  { category: 'Technológia', question: 'Čo znamená skratka Wi‑Fi?', answer: 'Wireless Fidelity' },
+  { category: 'Zvieratá', question: 'Ako sa volá najrýchlejšie zviera na svete?', answer: 'Gepard' },
+  { category: 'Matematika', question: 'Koľko je 9 × 9?', answer: '81' },
+  { category: 'Kultúra', question: 'Ako sa volá najvyšší vrch Slovenska?', answer: 'Gerlachovský štít' },
+  { category: 'Literatúra', question: 'Kto napísal román Malý princ?', answer: 'Antoine de Saint-Exupéry' }
 ];
+const DAILY_QUIZ_CALENDAR_KEY = 'chatDailyQuizCalendarV1';
+const DAILY_QUIZ_SCHEDULE_KEY = 'chatDailyQuizScheduleV1';
+
+function loadCalendarEntries() {
+  try {
+    const raw = localStorage.getItem(DAILY_QUIZ_CALENDAR_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function formatGoogleCalendarDate(dateValue) {
+  const date = new Date(`${dateValue}T20:00:00`);
+  const end = new Date(date.getTime() + 60 * 60 * 1000);
+  const format = (value) => value.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  return { start: format(date), end: format(end) };
+}
+
+function openGoogleCalendarQuiz(dateValue = new Date().toISOString().slice(0, 10)) {
+  const { start, end } = formatGoogleCalendarDate(dateValue);
+  const url = new URL('https://calendar.google.com/calendar/render');
+  url.searchParams.set('action', 'TEMPLATE');
+  url.searchParams.set('text', 'Večerný kvíz');
+  url.searchParams.set('dates', `${start}/${end}`);
+  url.searchParams.set('details', 'Večerný kvíz dňa v komunitnom chate.');
+  url.searchParams.set('location', 'Chat');
+  const finalUrl = url.toString();
+  window.open(finalUrl, '_blank', 'noopener,noreferrer');
+  return finalUrl;
+}
+
+function saveCalendarEntries(entries) {
+  localStorage.setItem(DAILY_QUIZ_CALENDAR_KEY, JSON.stringify(entries));
+}
+
+function addCalendarEntryForUser(username, event) {
+  const safeName = String(username || '').trim();
+  if (!safeName) return;
+  const entries = loadCalendarEntries();
+  const next = entries.filter((item) => !(String(item.username || '').toLowerCase() === safeName.toLowerCase() && item.type === 'daily-quiz'));
+  next.push({
+    id: `${safeName.toLowerCase()}-daily-quiz-${Date.now()}`,
+    username: safeName,
+    type: 'daily-quiz',
+    title: 'Večerný kvíz',
+    time: '20:00',
+    date: event && event.date ? event.date : new Date().toISOString().slice(0, 10),
+    status: 'confirmed',
+    createdAt: new Date().toISOString()
+  });
+  saveCalendarEntries(next);
+  renderDailyQuizCalendar();
+}
+
+function removeCalendarEntryForUser(username) {
+  const safeName = String(username || '').trim();
+  if (!safeName) return;
+  const entries = loadCalendarEntries().filter((item) => !(String(item.username || '').toLowerCase() === safeName.toLowerCase() && item.type === 'daily-quiz'));
+  saveCalendarEntries(entries);
+  renderDailyQuizCalendar();
+}
+
+function renderDailyQuizCalendar() {
+  const target = document.getElementById('daily-quiz-calendar');
+  if (!target) return;
+  const entries = loadCalendarEntries().filter((item) => String(item.username || '').toLowerCase() === String(currentUsername || '').toLowerCase() && item.type === 'daily-quiz');
+  target.innerHTML = entries.length
+    ? entries.map((entry) => `
+        <div class="calendar-item">
+          <div class="calendar-title">${entry.title || 'Večerný kvíz'}</div>
+          <div class="calendar-meta">${entry.date || new Date().toISOString().slice(0, 10)} • ${entry.time || '20:00'}</div>
+        </div>
+      `).join('')
+    : '<div class="calendar-empty">Žiadny plánovaný kvíz.</div>';
+}
+
+function createDailyQuizCalendarBlock() {
+  return;
+}
+
+function handleDailyQuizReply(username, text) {
+  const normalized = String(text || '').trim().toLowerCase();
+  const safeName = String(username || currentUsername || '').trim();
+  if (!safeName || !normalized) return;
+  if (normalized === 'ano' || normalized === 'áno') {
+    const dateKey = new Date().toISOString().slice(0, 10);
+    addCalendarEntryForUser(safeName, { date: dateKey });
+    openGoogleCalendarQuiz(dateKey);
+    addMessage({
+      username: 'Chat',
+      text: 'Zapísal som ťa do Google Kalendára na večerný kvíz o 20:00. Keď napíšeš NIE, zruším to.',
+      private: true,
+      timestamp: new Date().toISOString(),
+      self: false
+    });
+    return;
+  }
+  if (normalized === 'nie') {
+    removeCalendarEntryForUser(safeName);
+    addMessage({
+      username: 'Chat',
+      text: 'Zrušil som ti pripomienku na večerný kvíz. Keď budeš chcieť, môžeš sa pripojiť znova.',
+      private: true,
+      timestamp: new Date().toISOString(),
+      self: false
+    });
+  }
+}
+
+function runDailyQuizScheduler() {
+  if (window.__dailyQuizSchedulerActive) return;
+  window.__dailyQuizSchedulerActive = true;
+  setInterval(() => {
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const scheduled = localStorage.getItem(DAILY_QUIZ_SCHEDULE_KEY);
+
+    if (now.getHours() === 20 && now.getMinutes() === 0 && now.getSeconds() < 10 && scheduled !== todayKey) {
+      localStorage.setItem(DAILY_QUIZ_SCHEDULE_KEY, todayKey);
+      addQuizJoinInviteMessage();
+      addMessage({
+        system: true,
+        text: '🔔 Dnes o 20:00 je večerný kvíz dňa. Klikni na tlačidlo Pripojiť sa ku kvízu.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (now.getHours() === 20 && now.getMinutes() === 0 && now.getSeconds() < 5 && !scheduled) {
+      localStorage.setItem(DAILY_QUIZ_SCHEDULE_KEY, todayKey);
+    }
+  }, 3000);
+}
 
 function hideChatLoadingOverlay() {
   if (chatLoadingOverlay) {
@@ -1088,6 +1235,45 @@ function closeGameModal() {
   gameModal.setAttribute('aria-hidden', 'true');
 }
 
+function renderGameLauncher() {
+  openGameModal('Hry/kvízy');
+  gameBody.innerHTML = `
+    <div class="game-card">
+      <h3>Vyber hru</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="game-action-btn" type="button" data-game-choice="quiz">Spustiť kvíz</button>
+        <button class="game-button quiz-game-button" type="button" data-game-choice="quiz-lobby">🎯 Kvíz</button>
+        <button class="game-button dice-game-button" type="button" data-game-choice="dice">🎲 Kocky</button>
+        <button class="game-button word-game-button" type="button" data-game-choice="word">🔠 Hádanie slov</button>
+        <button class="game-button sudoku-game-button" type="button" data-game-choice="sudoku">🧩 Sudoku</button>
+        <button class="snake-game-button" type="button" data-game-choice="snake">🎮 Hadík</button>
+      </div>
+    </div>
+  `;
+
+  gameBody.querySelectorAll('[data-game-choice]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const choice = button.getAttribute('data-game-choice');
+      if (choice === 'quiz' || choice === 'quiz-lobby') {
+        quizLobbyPlayers = new Set([currentUsername]);
+        renderQuizLobby();
+      }
+      if (choice === 'dice') {
+        showDiceGame();
+      }
+      if (choice === 'word') {
+        showWordGame();
+      }
+      if (choice === 'sudoku') {
+        showSudokuGame();
+      }
+      if (choice === 'snake') {
+        openSnakeGame();
+      }
+    });
+  });
+}
+
 function addQuizJoinInviteMessage() {
   if (!messagesDiv) return;
   if (messagesDiv.querySelector('.system-quiz-invite')) return;
@@ -1327,6 +1513,169 @@ function showDiceGame() {
     }
     showToast(`Hodil si ${result}.`);
   });
+}
+
+function showSudokuGame() {
+  const initialBoard = [
+    [5, 3, 0, 0, 7, 0, 0, 0, 0],
+    [6, 0, 0, 1, 9, 5, 0, 0, 0],
+    [0, 9, 8, 0, 0, 0, 0, 6, 0],
+    [8, 0, 0, 0, 6, 0, 0, 0, 3],
+    [4, 0, 0, 8, 0, 3, 0, 0, 1],
+    [7, 0, 0, 0, 2, 0, 0, 0, 6],
+    [0, 6, 0, 0, 0, 0, 2, 8, 0],
+    [0, 0, 0, 4, 1, 9, 0, 0, 5],
+    [0, 0, 0, 0, 8, 0, 0, 7, 9]
+  ];
+
+  const startBoard = initialBoard.map((row) => [...row]);
+  const fixedCells = new Set();
+  startBoard.forEach((row, rowIndex) => {
+    row.forEach((cell, colIndex) => {
+      if (cell !== 0) fixedCells.add(`${rowIndex}:${colIndex}`);
+    });
+  });
+
+  const activeGame = {
+    board: startBoard.map((row) => [...row]),
+    fixedCells,
+    selectedCell: null
+  };
+
+  const isValidPlacement = (board, row, col, value) => {
+    for (let i = 0; i < 9; i += 1) {
+      if (i !== col && board[row][i] === value) return false;
+      if (i !== row && board[i][col] === value) return false;
+    }
+
+    const startRow = Math.floor(row / 3) * 3;
+    const startCol = Math.floor(col / 3) * 3;
+    for (let r = startRow; r < startRow + 3; r += 1) {
+      for (let c = startCol; c < startCol + 3; c += 1) {
+        if ((r !== row || c !== col) && board[r][c] === value) return false;
+      }
+    }
+
+    return true;
+  };
+
+  const renderSudokuBoard = () => {
+    const boardEl = document.getElementById('sudoku-board');
+    if (!boardEl) return;
+
+    boardEl.innerHTML = '';
+    activeGame.board.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'sudoku-cell';
+        button.dataset.row = String(rowIndex);
+        button.dataset.col = String(colIndex);
+        if (activeGame.fixedCells.has(`${rowIndex}:${colIndex}`)) {
+          button.classList.add('fixed');
+        }
+        if (activeGame.selectedCell && activeGame.selectedCell.row === rowIndex && activeGame.selectedCell.col === colIndex) {
+          button.classList.add('selected');
+        }
+        if (cell !== 0) {
+          button.textContent = String(cell);
+        } else {
+          button.textContent = '';
+        }
+        if (cell !== 0 && !isValidPlacement(activeGame.board, rowIndex, colIndex, cell)) {
+          button.classList.add('invalid');
+        }
+        button.addEventListener('click', () => {
+          activeGame.selectedCell = { row: rowIndex, col: colIndex };
+          renderSudokuBoard();
+        });
+        boardEl.appendChild(button);
+      });
+    });
+  };
+
+  const setSelectedCellValue = (value) => {
+    if (!activeGame.selectedCell) {
+      showToast('Vyber najprv bunku v sudoku.');
+      return;
+    }
+
+    const { row, col } = activeGame.selectedCell;
+    const key = `${row}:${col}`;
+    if (activeGame.fixedCells.has(key)) {
+      showToast('Túto bunku nemôžeš upravovať.');
+      return;
+    }
+
+    activeGame.board[row][col] = value;
+    renderSudokuBoard();
+  };
+
+  const checkSudokuBoard = () => {
+    const isSolved = activeGame.board.every((row, rowIndex) => row.every((cell, colIndex) => {
+      if (!cell) return false;
+      return cell === initialBoard[rowIndex][colIndex] || isValidPlacement(activeGame.board, rowIndex, colIndex, cell);
+    }));
+
+    if (isSolved) {
+      showToast('Vyhral si! Sudoku je hotové.');
+      setTimeout(() => closeGameModal(), 1200);
+      return;
+    }
+
+    const allFilled = activeGame.board.every((row) => row.every((cell) => cell !== 0));
+    if (allFilled) {
+      showToast('Nie je to správne. Skús to ešte raz.');
+      return;
+    }
+
+    showToast('Ešte nie je hotové, skús pokračovať.');
+  };
+
+  openGameModal('Sudoku');
+  gameBody.innerHTML = `
+    <div class="game-card">
+      <h3>Vyplň mriežku</h3>
+      <div id="sudoku-board" class="sudoku-board" aria-label="Sudoku hracia doska"></div>
+    </div>
+    <div class="game-card">
+      <h3>Čísla</h3>
+      <div class="sudoku-keypad">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => `
+          <button class="sudoku-key" type="button" data-sudoku-value="${value}">${value}</button>
+        `).join('')}
+        <button class="sudoku-key empty" type="button" data-sudoku-clear="true">Vymazať</button>
+      </div>
+    </div>
+    <div class="game-lobby-actions">
+      <button class="game-secondary-btn" type="button" id="reset-sudoku-btn">Reset</button>
+      <button class="game-action-btn" type="button" id="check-sudoku-btn">Skontrolovať</button>
+    </div>
+  `;
+
+  renderSudokuBoard();
+
+  document.querySelectorAll('[data-sudoku-value]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = Number(button.getAttribute('data-sudoku-value'));
+      setSelectedCellValue(value);
+    });
+  });
+
+  document.querySelectorAll('[data-sudoku-clear]').forEach((button) => {
+    button.addEventListener('click', () => {
+      setSelectedCellValue(0);
+    });
+  });
+
+  document.getElementById('reset-sudoku-btn')?.addEventListener('click', () => {
+    activeGame.board = initialBoard.map((row) => [...row]);
+    activeGame.selectedCell = null;
+    renderSudokuBoard();
+    showToast('Sudoku bol resetovaný.');
+  });
+
+  document.getElementById('check-sudoku-btn')?.addEventListener('click', checkSudokuBoard);
 }
 
 function showWordGame() {
@@ -1746,6 +2095,23 @@ function reportMessageToAdmin(message) {
   });
 }
 
+function reportUserToAdmin(username) {
+  const target = String(username || '').trim();
+  if (!target || target === currentUsername || !socket) {
+    return;
+  }
+
+  socket.emit('report-message', {
+    username: target,
+    text: `Používateľ ${currentUsername} nahlásil používateľa ${target} z užívateľského zoznamu.`,
+    room: currentRoom || 'Spoločná',
+    reporter: currentUsername || 'Anon',
+    messageId: null,
+    timestamp: new Date().toISOString()
+  });
+  showToast(`Nahlásenie pre ${target} bolo odoslané správcovi.`);
+}
+
 function addMessage(m) {
   if (!m.system) {
     try {
@@ -1792,22 +2158,6 @@ function addMessage(m) {
   `;
 
   if (!m.private) {
-    const actions = document.createElement('div');
-    actions.className = 'bubble-actions';
-
-    const reportBtn = document.createElement('button');
-    reportBtn.type = 'button';
-    reportBtn.className = 'report-btn';
-    reportBtn.textContent = 'Nahlásiť správcovi';
-    reportBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      reportMessageToAdmin(m);
-    });
-
-    actions.appendChild(reportBtn);
-    bubble.appendChild(actions);
-
     const reactionRow = buildReactionRow(m.id, m.reactions || {});
     bubble.appendChild(reactionRow);
   }
@@ -1984,14 +2334,43 @@ function updateUserList(users) {
 
       li.appendChild(friendBtn);
 
+      const reportUserBtn = document.createElement('button');
+      reportUserBtn.type = 'button';
+      reportUserBtn.className = 'report-user-btn';
+      reportUserBtn.title = `Nahlásiť správcovi ${name}`;
+      reportUserBtn.textContent = 'Nahlásiť správcovi';
+      reportUserBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        reportUserToAdmin(name);
+      });
+      li.appendChild(reportUserBtn);
+
+      if (name === 'Chat') {
+        const robotBtn = document.createElement('button');
+        robotBtn.type = 'button';
+        robotBtn.className = 'friend-envelope robot-call-btn';
+        robotBtn.title = 'Osloviť Chat';
+        robotBtn.textContent = 'Osloviť';
+        robotBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          activateRobotConversation(user);
+        });
+        li.appendChild(robotBtn);
+      }
+
       li.dataset.id = user.id;
       li.dataset.name = user.username;
       li.addEventListener('click', () => {
+        if (name === 'Chat') return;
         messageInput.value = `@${user.username} `;
         messageInput.focus();
         showToast(`Adresuješ: ${user.username}`);
       });
       li.addEventListener('dblclick', () => {
+        if (name === 'Chat') {
+          activateRobotConversation(user);
+          return;
+        }
         setPrivateTarget(user.id, user.username);
       });
     }
@@ -2049,7 +2428,18 @@ function initiateCall(targetId, targetUsername) {
   setPrivateTarget(targetId, username);
 }
 
-function setPrivateTarget(id, username) {
+function setPrivateTarget(id, username, allowRobotActivation = false) {
+  const isRobotTarget = String(username || '').trim() === 'Chat';
+  if (isRobotTarget) {
+    robotConversationEnabled = allowRobotActivation;
+    if (!allowRobotActivation) {
+      showToast('Klikni na tlačidlo Osloviť pri Chate a potom môžeš začať rozhovor.');
+      return;
+    }
+  } else {
+    robotConversationEnabled = false;
+  }
+
   privateTargetId = id;
   privateTargetName = username;
   if (privateStatus && privateTargetNameDisplay) {
@@ -2061,16 +2451,22 @@ function setPrivateTarget(id, username) {
     privateThreadAvatar.textContent = (privateTargetName || 'U').charAt(0).toUpperCase();
     privateThreadHeader.style.display = 'flex';
   }
-  const message = privateTargetName && privateTargetName.toLowerCase() === 'robot'
-    ? 'Robot je pripravený na rozhovor. Napíš mu správu.'
+  const message = privateTargetName && privateTargetName.toLowerCase() === 'chat'
+    ? 'Chat je pripravený na rozhovor. Napíš mu správu.'
     : `Odkazovač aktivovaný: súkromná správa pre ${privateTargetName}`;
   showToast(message);
   messageInput.focus();
 }
 
+function activateRobotConversation(user) {
+  if (!user || !user.id || user.username !== 'Chat') return;
+  setPrivateTarget(user.id, user.username, true);
+}
+
 function clearPrivateTarget() {
   privateTargetId = null;
   privateTargetName = null;
+  robotConversationEnabled = false;
   refreshPrivateStatus();
 }
 
@@ -2283,6 +2679,7 @@ socket.on('connect', () => {
   if (currentRoom !== 'Spoločná' && !Array.from(roomsList?.querySelectorAll('.room-item') || []).some((roomEl) => normalizeRoomName(roomEl.dataset.roomName || roomEl.textContent.replace('✕', '')) === currentRoom)) {
     addRoomToList(currentRoom, { persist: false });
   }
+  runDailyQuizScheduler();
   updateRoomHighlight();
   const joinPrompt = 'Ak chceš vedieť, kto tu kedy prišiel, napíš do okna ANO. Ak nechceš, napíš NIE.';
   addMessage({ system: true, text: joinPrompt, timestamp: new Date().toISOString() });
@@ -2576,11 +2973,48 @@ function sendMessage() {
   }
 
   if (privateTargetId) {
+    if (privateTargetName === 'Chat') {
+      const normalized = text.trim().toLowerCase();
+      if (normalized === 'ano' || normalized === 'áno') {
+        const dateKey = new Date().toISOString().slice(0, 10);
+        addCalendarEntryForUser(currentUsername, { date: dateKey });
+        openGoogleCalendarQuiz(dateKey);
+        addMessage({
+          username: 'Chat',
+          text: 'Zapísal som ťa do Google Kalendára na večerný kvíz o 20:00. Keď napíšeš NIE, zruším to.',
+          private: true,
+          timestamp: new Date().toISOString(),
+          self: false
+        });
+        messageInput.value = '';
+        clearPrivateTarget();
+        return;
+      }
+      if (normalized === 'nie') {
+        removeCalendarEntryForUser(currentUsername);
+        addMessage({
+          username: 'Chat',
+          text: 'Zrušil som ti pripomienku na večerný kvíz. Keď budeš chcieť, môžeš sa pripojiť znova.',
+          private: true,
+          timestamp: new Date().toISOString(),
+          self: false
+        });
+        messageInput.value = '';
+        clearPrivateTarget();
+        return;
+      }
+    }
+    if (privateTargetName === 'Chat' && !robotConversationEnabled) {
+      showToast('Najprv klikni na tlačidlo Osloviť pri Chate.');
+      messageInput.value = '';
+      return;
+    }
     markSpokenActivity();
     updateActivityStats(currentUsername, { messages: 1 });
     socket.emit('send-private-message', {
       to: privateTargetId,
-      text
+      text,
+      robotActivated: privateTargetName === 'Chat' ? robotConversationEnabled : undefined
     });
     messageInput.value = '';
     clearPrivateTarget();
@@ -2618,6 +3052,13 @@ socket.on('receive-private-message', (m) => {
   if (!m.self) {
     playPrivateMessageSound();
     notifyIncomingMessage(m.from, m.text);
+  }
+
+  if (m && m.from === 'Chat' && typeof m.text === 'string') {
+    const replyText = m.text.toLowerCase();
+    if (replyText.includes('napíš ano')) {
+      // Kalendár sa otvára až po potvrdení ANO používateľom.
+    }
   }
 
   addMessage({
@@ -2969,6 +3410,9 @@ snakeGameRetry?.addEventListener('click', () => {
 snakeGameModal?.addEventListener('click', (event) => {
   if (event.target === snakeGameModal) closeSnakeGame();
 });
+gameLauncherButton?.addEventListener('click', () => {
+  renderGameLauncher();
+});
 quizGameButton?.addEventListener('click', () => {
   quizLobbyPlayers = new Set([currentUsername]);
   renderQuizLobby();
@@ -2978,6 +3422,9 @@ diceGameButton?.addEventListener('click', () => {
 });
 wordGameButton?.addEventListener('click', () => {
   showWordGame();
+});
+sudokuGameButton?.addEventListener('click', () => {
+  showSudokuGame();
 });
 gameClose?.addEventListener('click', () => closeGameModal());
 gameModal?.addEventListener('click', (event) => {
@@ -3101,6 +3548,11 @@ createRoomBtn?.addEventListener('click', () => {
     createRoomInput.value = '';
   }
   showToast('Miestnosť vytvorená a otvorená.');
+});
+
+quickQuizBtn?.addEventListener('click', () => {
+  quizLobbyPlayers = new Set([currentUsername]);
+  renderQuizLobby();
 });
 
 sendBtn?.addEventListener('click', sendMessage);

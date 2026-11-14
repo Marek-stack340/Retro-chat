@@ -26,15 +26,22 @@
     <div id="ban-overlay" class="ban-overlay" style="display:none;" aria-live="assertive" aria-modal="true" role="dialog">
       <div class="ban-card">
         <div class="ban-icons" aria-hidden="true">
-          <span class="ban-icon">⚠</span>
-          <span class="ban-lock">🔒</span>
-          <span class="ban-icon">⚠</span>
+          <span class="ban-icon ban-icon-left">!</span>
+          <div class="ban-shield-wrap">
+            <span class="ban-shield">🧍</span>
+          </div>
+          <span class="ban-icon ban-icon-right">!</span>
         </div>
-        <h1 id="ban-title">Účet zablokovaný</h1>
-        <h2 id="ban-subtitle">Prístup do Oddych Chatu dočasne odobraný</h2>
-        <p id="ban-warning" class="ban-warning">Moderátorským rozhodnutím došlo k pozastaveniu tvojho účtu.</p>
+
+        <h1 id="ban-title">Bol si kicknutý z chatu</h1>
+        <div class="ban-status-slab">Prístup do Oddych Chatu je dočasne obmedzený.</div>
+        <p id="ban-warning" class="ban-warning">Moderátorský tím rozhodol o tvojom vykopnutí z chatu.</p>
+
         <div class="ban-info-box">
-          <div class="ban-info-title">Informácie o pozastavení</div>
+          <div class="ban-info-header">
+            <span class="ban-info-icon">i</span>
+            <h3>Informácie o vykopnutí</h3>
+          </div>
           <div class="ban-info-grid">
             <div class="ban-row"><span class="ban-label">Dôvod:</span><span id="ban-reason">Porušenie pravidiel</span></div>
             <div class="ban-row"><span class="ban-label">Dĺžka:</span><span id="ban-hours">24 hodín</span></div>
@@ -42,12 +49,19 @@
             <div class="ban-row"><span class="ban-label">Koniec:</span><span id="ban-end">—</span></div>
           </div>
         </div>
-        <div class="ban-actions">
-          <button id="ban-retry-btn" class="ban-btn primary" type="button">Skúsiť znova</button>
-          <button id="ban-logout-btn" class="ban-btn secondary" type="button">Odhlásiť sa</button>
-          <button id="ban-close-btn" class="ban-btn tertiary" type="button">Zavrieť</button>
-          <button id="ban-appeal-btn" class="ban-btn appeal" type="button">Požiadať o preskúmanie</button>
+
+        <div class="ban-appeal-panel">
+          <div class="ban-appeal-icon">?</div>
+          <div class="ban-appeal-copy">
+            <h3>Myslíš si, že ide o omyl?</h3>
+            <p>Môžeš požiadať moderátorský tím o preskúmanie rozhodnutia.</p>
+          </div>
         </div>
+
+        <button id="ban-appeal-btn" class="ban-appeal-submit" type="button">
+          <span class="ban-mail-icon">✉</span>
+          Požiadať o preskúmanie
+        </button>
       </div>
     </div>
     <div id="help-overlay" class="help-overlay" style="display:none;">
@@ -115,7 +129,7 @@
           <a href="/chat" id="nav-settings">Nastavenia</a>
           <a href="/chat" id="nav-help">Návod</a>
           <button id="commands-toggle" class="commands-toggle" type="button">Príkazy</button>
-          <button id="moderation-center-btn" class="moderation-btn" type="button" style="display:none;">Moderation Center</button>
+          <button id="moderation-center-btn" class="moderation-btn" type="button" style="display:none;">Centrum moderácie</button>
           <button id="moderation-bell-btn" class="moderation-bell" type="button" aria-label="Notifikácie">
             🔔
             <span id="moderation-notification-badge" class="moderation-badge">0</span>
@@ -263,10 +277,17 @@
               </div>
             </div>
             <div class="emoji-line" id="emoji-line" aria-label="Emotikony"></div>
+            <div class="quick-game-panel">
+              <div class="quick-game-kicker">HRY/KVÍZY</div>
+              <button id="game-launch-button" class="game-button game-launch-button" type="button">🧠 Spustiť si hru</button>
+              <button id="quick-quiz-btn" class="quick-quiz-btn" type="button">🧠 Spustiť kvíz</button>
+            </div>
             <div class="message-input-row">
               <label for="message-input">Správa</label>
               <textarea id="message-input" placeholder="Napíš správu..." rows="2"></textarea>
-              <button id="send-btn" type="button">Odoslať</button>
+              <div class="quick-action-row">
+                <button id="send-btn" type="button" aria-label="Odoslať správu">→</button>
+              </div>
             </div>
           </div>
         </section>
@@ -302,13 +323,6 @@
               <li><strong>.ban meno 24</strong> – admin príkaz</li>
             </ul>
           </div>
-          <div class="sidebar-block compact game-block">
-            <h2>Hry</h2>
-            <button id="quiz-game-button" class="game-button quiz-game-button" type="button">🎯 Kvíz</button>
-            <button id="dice-game-button" class="game-button dice-game-button" type="button">🎲 Kocky</button>
-            <button id="word-game-button" class="game-button word-game-button" type="button">🔠 Hádanie slov</button>
-            <button id="snake-game-button" class="snake-game-button" type="button">🎮 Hadík</button>
-          </div>
         </aside>
       </main>
     </div>
@@ -316,8 +330,8 @@
       <div class="moderation-center-panel">
         <div class="moderation-center-header">
           <div>
-            <div class="moderation-kicker">Moderation Center</div>
-            <h2>Oddych Moderation</h2>
+            <div class="moderation-kicker">Centrum moderácie</div>
+            <h2>Oddych moderácia</h2>
           </div>
           <button id="moderation-center-close" class="moderation-close" type="button" aria-label="Zavrieť moderáciu">×</button>
         </div>
@@ -331,6 +345,7 @@
         <div id="moderation-stats" class="moderation-stats"></div>
         <div class="moderation-tabs">
           <button class="moderation-tab active" type="button" data-tab="overview">Prehľad</button>
+          <button class="moderation-tab" type="button" data-tab="notifications">Notifikácie</button>
           <button class="moderation-tab" type="button" data-tab="users">Používatelia</button>
           <button class="moderation-tab" type="button" data-tab="reports">Nahlásenia</button>
           <button class="moderation-tab" type="button" data-tab="appeals">Odvolania</button>
