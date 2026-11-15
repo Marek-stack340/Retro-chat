@@ -280,7 +280,202 @@
       </div>
     </div>
 
+    <footer class="site-footer">
+      <button id="cookie-settings-trigger" type="button">Nastavenia cookies</button>
+    </footer>
+
+    <div id="cookie-banner" class="cookie-banner" hidden>
+      <div class="cookie-content">
+        <div class="cookie-copy">
+          <div class="cookie-copy-header">
+            <span aria-hidden="true">🍪</span>
+            <h3>Používame cookies</h3>
+          </div>
+          <p>Cookies nám pomáhajú zabezpečiť správne fungovanie Oddych Chatu a zapamätať si tvoje nastavenia. Nepovinné cookies používame iba s tvojím súhlasom.</p>
+        </div>
+        <div class="cookie-actions">
+          <button type="button" class="cookie-btn accept" id="cookie-accept-all">Prijať všetky</button>
+          <button type="button" class="cookie-btn reject" id="cookie-reject-optional">Odmietnuť nepovinné</button>
+          <button type="button" class="cookie-btn settings" id="cookie-open-settings">Nastavenia cookies</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="cookie-settings-modal" class="cookie-modal-backdrop" hidden>
+      <div class="cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-settings-title">
+        <div class="cookie-modal-header">
+          <h3 id="cookie-settings-title">Nastavenia cookies</h3>
+          <button id="cookie-close-modal" class="cookie-modal-close" type="button" aria-label="Zatvoriť nastavenia cookies">×</button>
+        </div>
+        <div class="cookie-modal-body">
+          <label class="cookie-category required">
+            <input type="checkbox" checked disabled>
+            <div class="cookie-category-text">
+              <div class="cookie-category-title"><strong>Nevyhnutné cookies</strong><span>Vždy aktívne</span></div>
+              <p>Udržujú základné funkcie webu, prihlásenie a bezpečné fungovanie chatovacieho prostredia.</p>
+            </div>
+          </label>
+          <label class="cookie-category">
+            <input id="cookie-functional" type="checkbox">
+            <div class="cookie-category-text">
+              <div class="cookie-category-title"><strong>Funkčné cookies</strong><span>Voliteľné</span></div>
+              <p>Pamätajú si nastavenia rozhrania, jazyk, preferencie a ďalšie funkcie pre lepšiu používateľskú skúsenosť.</p>
+            </div>
+          </label>
+          <label class="cookie-category">
+            <input id="cookie-analytics" type="checkbox">
+            <div class="cookie-category-text">
+              <div class="cookie-category-title"><strong>Analytické cookies</strong><span>Voliteľné</span></div>
+              <p>Pomáhajú zisťovať, ako používatelia používajú službu a kde sa vylepšuje používateľský zážitok.</p>
+            </div>
+          </label>
+          <label class="cookie-category">
+            <input id="cookie-marketing" type="checkbox">
+            <div class="cookie-category-text">
+              <div class="cookie-category-title"><strong>Marketingové cookies</strong><span>Voliteľné</span></div>
+              <p>Sú určené pre personalizáciu obsahu a marketingových aktivít. Nepoužívame ich bez vášho súhlasu.</p>
+            </div>
+          </label>
+        </div>
+        <div class="cookie-modal-footer">
+          <button type="button" class="secondary" id="cookie-cancel-settings">Zavrieť</button>
+          <button type="button" class="primary" id="cookie-save-settings">Uložiť výber</button>
+        </div>
+      </div>
+    </div>
+
     <script>
+      const COOKIE_CONSENT_KEY = 'oddychCookieConsent';
+      const COOKIE_CONSENT_VERSION = '2026-11-15';
+      const cookieBanner = document.getElementById('cookie-banner');
+      const cookieSettingsModal = document.getElementById('cookie-settings-modal');
+      const cookieSettingsTrigger = document.getElementById('cookie-settings-trigger');
+      const cookieAcceptAllButton = document.getElementById('cookie-accept-all');
+      const cookieRejectOptionalButton = document.getElementById('cookie-reject-optional');
+      const cookieOpenSettingsButton = document.getElementById('cookie-open-settings');
+      const cookieCloseModalButton = document.getElementById('cookie-close-modal');
+      const cookieCancelSettingsButton = document.getElementById('cookie-cancel-settings');
+      const cookieSaveSettingsButton = document.getElementById('cookie-save-settings');
+
+      function getDefaultCookieConsent() {
+        return {
+          version: COOKIE_CONSENT_VERSION,
+          timestamp: '',
+          status: 'unset',
+          categories: {
+            necessary: true,
+            functional: false,
+            analytics: false,
+            marketing: false
+          }
+        };
+      }
+
+      function getCookieConsent() {
+        try {
+          const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+          if (!raw) return getDefaultCookieConsent();
+          const parsed = JSON.parse(raw);
+          return {
+            ...getDefaultCookieConsent(),
+            ...parsed,
+            categories: {
+              ...getDefaultCookieConsent().categories,
+              ...(parsed && parsed.categories ? parsed.categories : {})
+            }
+          };
+        } catch (error) {
+          return getDefaultCookieConsent();
+        }
+      }
+
+      function saveCookieConsent(consent) {
+        const nextConsent = {
+          ...getDefaultCookieConsent(),
+          ...consent,
+          version: COOKIE_CONSENT_VERSION,
+          timestamp: new Date().toISOString(),
+          categories: {
+            ...getDefaultCookieConsent().categories,
+            ...(consent && consent.categories ? consent.categories : {})
+          }
+        };
+        localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(nextConsent));
+        return nextConsent;
+      }
+
+      function syncCookieSettingsForm(consent) {
+        const functional = document.getElementById('cookie-functional');
+        const analytics = document.getElementById('cookie-analytics');
+        const marketing = document.getElementById('cookie-marketing');
+        if (!functional || !analytics || !marketing) return;
+        const settings = consent && consent.categories ? consent.categories : getDefaultCookieConsent().categories;
+        functional.checked = Boolean(settings.functional);
+        analytics.checked = Boolean(settings.analytics);
+        marketing.checked = Boolean(settings.marketing);
+      }
+
+      function openCookieSettingsModal() {
+        syncCookieSettingsForm(getCookieConsent());
+        if (cookieSettingsModal) cookieSettingsModal.hidden = false;
+      }
+
+      function closeCookieSettingsModal() {
+        if (cookieSettingsModal) cookieSettingsModal.hidden = true;
+      }
+
+      function updateCookieBannerState() {
+        const consent = getCookieConsent();
+        const hasValidConsent = consent && consent.status !== 'unset' && consent.version === COOKIE_CONSENT_VERSION;
+        if (cookieBanner) cookieBanner.hidden = hasValidConsent;
+      }
+
+      function applyConsent(choice) {
+        const nextConsent = {
+          version: COOKIE_CONSENT_VERSION,
+          status: choice,
+          categories: {
+            necessary: true,
+            functional: choice === 'accepted' || choice === 'custom',
+            analytics: choice === 'accepted' || choice === 'custom',
+            marketing: choice === 'accepted' || choice === 'custom'
+          }
+        };
+
+        if (choice === 'rejected') {
+          nextConsent.categories = {
+            necessary: true,
+            functional: false,
+            analytics: false,
+            marketing: false
+          };
+          nextConsent.status = 'rejected';
+        }
+
+        if (choice === 'custom') {
+          nextConsent.categories = {
+            necessary: true,
+            functional: document.getElementById('cookie-functional')?.checked ?? false,
+            analytics: document.getElementById('cookie-analytics')?.checked ?? false,
+            marketing: document.getElementById('cookie-marketing')?.checked ?? false
+          };
+          nextConsent.status = nextConsent.categories.functional || nextConsent.categories.analytics || nextConsent.categories.marketing ? 'custom' : 'rejected';
+        }
+
+        const saved = saveCookieConsent(nextConsent);
+        syncCookieSettingsForm(saved);
+        updateCookieBannerState();
+        closeCookieSettingsModal();
+      }
+
+      cookieAcceptAllButton?.addEventListener('click', () => applyConsent('accepted'));
+      cookieRejectOptionalButton?.addEventListener('click', () => applyConsent('rejected'));
+      cookieOpenSettingsButton?.addEventListener('click', () => openCookieSettingsModal());
+      cookieSettingsTrigger?.addEventListener('click', () => openCookieSettingsModal());
+      cookieCloseModalButton?.addEventListener('click', () => closeCookieSettingsModal());
+      cookieCancelSettingsButton?.addEventListener('click', () => closeCookieSettingsModal());
+      cookieSaveSettingsButton?.addEventListener('click', () => applyConsent('custom'));
+
       const username = localStorage.getItem('chatUsername')?.trim();
       const authToken = localStorage.getItem('chatAuthToken')?.trim();
       const hasValidSession = !!username && (!!authToken || localStorage.getItem('chatRegistered') === 'true');
@@ -288,6 +483,9 @@
         alert('Najprv sa prihlás do chatu. Musíš sa prihlásiť do chatu.');
         window.location.replace('/');
       }
+
+      updateCookieBannerState();
+      syncCookieSettingsForm(getCookieConsent());
     </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="messenger-client.js"></script>
