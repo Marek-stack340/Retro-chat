@@ -249,6 +249,15 @@ let selectedNotificationIds = new Set();
 let robotConversationEnabled = false;
 
 function getCurrentRoleName() {
+  const matchingUser = Array.isArray(activeUsers)
+    ? activeUsers.find((user) => normalizeModerationName(user.username || '') === normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || ''))
+    : null;
+  const actualRole = currentUserRole || (matchingUser && matchingUser.role) || null;
+
+  if (actualRole === 'owner' || actualRole === 'admin') return 'owner';
+  if (actualRole === 'moderator') return 'moderator';
+  if (actualRole === 'tester') return 'user';
+
   const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
   if (!name) return 'user';
   if (['owner', 'administrator', 'spravca', 'správca'].includes(name)) return 'owner';
@@ -1050,6 +1059,7 @@ const diceRiddles = [
 ];
 const savedUsername = localStorage.getItem('chatUsername');
 let currentUsername = savedUsername ? savedUsername.trim() : 'Správca';
+let currentUserRole = localStorage.getItem('chatUserRole') || null;
 let autoPrivateEnabled = localStorage.getItem('autoPrivateEnabled') === 'true';
 let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
 let privateTargetId = null;
@@ -2930,6 +2940,20 @@ socket.on('join-denied', (message) => {
 
 socket.on('user-list', (users) => {
   activeUsers = users;
+  const currentMatch = Array.isArray(users)
+    ? users.find((user) => normalizeModerationName(user.username || '') === normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || ''))
+    : null;
+  if (currentMatch) {
+    currentUserRole = currentMatch.role || null;
+    if (currentUserRole) {
+      localStorage.setItem('chatUserRole', currentUserRole);
+    } else {
+      localStorage.removeItem('chatUserRole');
+    }
+  } else {
+    currentUserRole = null;
+    localStorage.removeItem('chatUserRole');
+  }
   updateUserList(users);
   updateAdminPanel(users);
   notifyFriendOnlineStatus(users);
