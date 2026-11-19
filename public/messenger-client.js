@@ -9,7 +9,7 @@ const privateStatus = document.getElementById('msgr-private-status');
 const privateNameEl = document.getElementById('msgr-private-name');
 const logoutBtn = document.getElementById('msgr-logout');
 
-let currentUsername = (localStorage.getItem('chatUsername') || 'Správca').trim();
+let currentUsername = (localStorage.getItem('chatUsername') || 'Správca celého chatu').trim();
 let activeUsers = [];
 let privateTargetId = null;
 let privateTargetName = null;
@@ -98,7 +98,7 @@ function sendMessage() {
 }
 
 socket.on('connect', () => {
-  currentUsername = (localStorage.getItem('chatUsername') || 'Správca').trim() || 'Správca';
+  currentUsername = (localStorage.getItem('chatUsername') || 'Správca celého chatu').trim() || 'Správca celého chatu';
   currentUserEl.textContent = currentUsername;
   socket.emit('join', { username: currentUsername });
 });

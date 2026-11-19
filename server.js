@@ -10,6 +10,8 @@ const { buildBanScreenData, buildKickScreenData } = require('./ban-utils');
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
+const analyticsEvents = [];
+const MAX_ANALYTICS_EVENTS = 1800;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -103,6 +105,53 @@ app.get('/robots.txt', (req, res) => {
 app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml');
   res.sendFile(path.join(__dirname, 'sitemap.xml'));
+});
+app.get('/analytics', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(__dirname, 'public', 'analytics.html'));
+});
+app.get('/analytics/', (req, res) => res.redirect(301, '/analytics'));
+app.get('/analytics.html', (req, res) => res.redirect(301, '/analytics'));
+app.post('/api/analytics/track', (req, res) => {
+  const payload = req.body || {};
+  const forwardedIp = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+  const remoteIp = Array.isArray(forwardedIp) ? forwardedIp[0] : String(forwardedIp).split(',')[0].trim();
+  const userAgent = String(payload.userAgent || req.get('User-Agent') || 'unknown');
+  const rawPage = String(payload.page || req.path || '/');
+  const page = rawPage.startsWith('http') ? (() => {
+    try {
+      return new URL(rawPage).pathname || '/';
+    } catch (_) {
+      return '/';
+    }
+  })() : rawPage;
+  const referrerRaw = String(payload.referrer || req.get('Referer') || '');
+  const referrer = referrerRaw && referrerRaw.startsWith('http') ? (() => {
+    try {
+      return new URL(referrerRaw).hostname;
+    } catch (_) {
+      return 'Direct';
+    }
+  })() : (referrerRaw ? referrerRaw : 'Direct');
+  const visitorKey = `${remoteIp || 'unknown'}:${String(userAgent).slice(0, 80)}`;
+
+  analyticsEvents.push({
+    id: Date.now() + Math.random().toString(16).slice(2, 8),
+    timestamp: new Date().toISOString(),
+    dayKey: new Date().toISOString().slice(0, 10),
+    page: page || '/',
+    referrer,
+    visitorKey
+  });
+
+  if (analyticsEvents.length > MAX_ANALYTICS_EVENTS) {
+    analyticsEvents.shift();
+  }
+
+  res.json({ ok: true, summary: buildAnalyticsSummary() });
+});
+app.get('/api/analytics/summary', (req, res) => {
+  res.json(buildAnalyticsSummary());
 });
 app.get('/contribute', (req, res) => res.redirect(301, '/chat'));
 app.get('/contribute/', (req, res) => res.redirect(301, '/chat'));
@@ -232,6 +281,43 @@ function broadcastModerationState() {
       socket.emit('moderation-center-state', getModeratorStateForRole(user.role));
     }
   });
+}
+
+function buildAnalyticsSummary() {
+  const now = new Date();
+  const todayKey = now.toISOString().slice(0, 10);
+  const pageCounts = {};
+  const referrerCounts = {};
+  const uniqueVisitors = new Set();
+  const todayVisitors = new Set();
+
+  analyticsEvents.forEach((event) => {
+    uniqueVisitors.add(event.visitorKey);
+    if (event.dayKey === todayKey) {
+      todayVisitors.add(event.visitorKey);
+    }
+
+    const page = event.page || '/';
+    pageCounts[page] = (pageCounts[page] || 0) + 1;
+
+    const source = event.referrer || 'Direct';
+    referrerCounts[source] = (referrerCounts[source] || 0) + 1;
+  });
+
+  return {
+    totalViews: analyticsEvents.length,
+    uniqueVisitors: uniqueVisitors.size,
+    todayViews: analyticsEvents.filter((event) => event.dayKey === todayKey).length,
+    todayVisitors: todayVisitors.size,
+    topPages: Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([page, count]) => ({ page, count })),
+    referrers: Object.entries(referrerCounts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([source, count]) => ({ source, count })),
+    recent: analyticsEvents.slice(-8).reverse().map((event) => ({
+      page: event.page,
+      timestamp: event.timestamp,
+      referrer: event.referrer || 'Direct',
+      visitor: event.visitorKey.slice(0, 12)
+    }))
+  };
 }
 
 function getVisibleUsers() {
@@ -692,8 +778,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const username = normalizeUsername(data && data.username ? data.username : 'Správca');
-    const safeUsername = username || 'Správca';
+    const username = normalizeUsername(data && data.username ? data.username : 'Správca celého chatu');
+    const safeUsername = username || 'Správca celého chatu';
     socket.data.room = normalizeRoomName(data && data.room ? data.room : 'Spoločná');
     const normalizedUsername = safeUsername.toLowerCase();
     if (safeUsername.length > MAX_USERNAME_LENGTH) {

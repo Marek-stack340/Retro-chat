@@ -1,5 +1,5 @@
-const ownerUsernames = new Set(['owner', 'správca', 'spravca', 'administrator']);
-const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca']);
+const ownerUsernames = new Set(['owner', 'správca', 'spravca', 'správca celého chatu', 'spravca celého chatu', 'administrator']);
+const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca', 'správca celého chatu', 'spravca celého chatu']);
 const moderatorUsernames = new Set(['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk', 'marek', 'marekc']);
 
 function normalizeModerationName(value) {

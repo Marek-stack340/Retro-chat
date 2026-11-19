@@ -9,6 +9,16 @@
     <meta property="og:title" content="Oddych Chat">
     <meta property="og:description" content="Retro slovenský chat. Odkazovač, súkromné správy a jednoduché prihlásenie.">
     <meta property="og:type" content="website">
+    <script>
+      window.GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+      if (window.GA_MEASUREMENT_ID && window.GA_MEASUREMENT_ID !== 'G-XXXXXXXXXX' && window.location.hostname !== 'localhost') {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){window.dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', window.GA_MEASUREMENT_ID, { anonymize_ip: true, send_page_view: true });
+      }
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
@@ -128,6 +138,7 @@
           <a href="/chat" id="nav-ignore">Ignorovaní</a>
           <a href="/chat" id="nav-settings">Nastavenia</a>
           <a href="/chat" id="nav-help">Návod</a>
+          <a href="/analytics">360Suite Analytics</a>
           <button id="commands-toggle" class="commands-toggle" type="button">Príkazy</button>
           <button id="moderation-center-btn" class="moderation-btn" type="button" style="display:none;">Centrum moderácie</button>
           <button id="moderation-bell-btn" class="moderation-bell" type="button" aria-label="Notifikácie">
@@ -141,6 +152,9 @@
       <div class="chat-title">Spoločná</div>
       <div class="chat-subtitle">Retro miestnosť pre reálne rozhovory, adresovanie a súkromné šepkanie.</div>
       <div class="chat-detail">V chate vidíš aktuálnych ľudí, môžeš ich osloviť menom alebo poslať súkromnú správu.</div>
+      <div class="chat-ad-strip" style="display:block;">
+        <a href="https://developers.google.com/analytics/" target="_blank" rel="noopener noreferrer">Google Analytics | Google for Developers</a>
+      </div>
       <div id="quicklink-overlay" class="quicklink-overlay" style="display:none;">
         <div class="quicklink-modal" role="dialog" aria-modal="true" aria-labelledby="quicklink-title">
           <div class="quicklink-header">
@@ -455,5 +469,24 @@
     </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
+    <script>
+      async function trackChatAnalytics() {
+        try {
+          await fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              page: window.location.pathname,
+              referrer: document.referrer || 'Direct',
+              userAgent: navigator.userAgent,
+              screen: window.screen ? `${window.screen.width}x${window.screen.height}` : ''
+            })
+          });
+        } catch (error) {
+          console.warn('Chat analytics tracking failed', error);
+        }
+      }
+      trackChatAnalytics();
+    </script>
   </body>
 </html>

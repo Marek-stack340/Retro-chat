@@ -16,6 +16,16 @@
     <meta property="og:image" content="https://oddychchat.duckdns.org/og-image.svg">
     <meta property="og:image:alt" content="Oddych Chat logo a komunitný chat">
     <meta property="og:site_name" content="Oddych Chat">
+    <script>
+      window.GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+      if (window.GA_MEASUREMENT_ID && window.GA_MEASUREMENT_ID !== 'G-XXXXXXXXXX' && window.location.hostname !== 'localhost') {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){window.dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', window.GA_MEASUREMENT_ID, { anonymize_ip: true, send_page_view: true });
+      }
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <link rel="stylesheet" href="style.css">
   </head>
   <body class="landing-page-body">
@@ -36,11 +46,16 @@
           <a href="/">Domov</a>
           <a href="/chat">Chat</a>
           <a href="/chat">Hry</a>
+          <a href="/analytics">360Suite Analytics</a>
           <a href="#leaderboard">Leaderboard</a>
           <a href="/" id="landing-logout">Odhlásiť</a>
         </nav>
         <a class="mini-btn" href="/chat">Vstúpiť</a>
       </header>
+
+      <div class="promo-banner">
+        <a href="https://developers.google.com/analytics/" target="_blank" rel="noopener noreferrer">Google Analytics | Google for Developers</a>
+      </div>
 
       <section class="hero-card">
         <div class="hero-copy">
@@ -149,6 +164,30 @@
         </article>
       </section>
 
+      <section class="analytics-mini-card" aria-label="Základná analýza návštevnosti">
+        <div class="analytics-mini-header">
+          <div>
+            <p class="eyebrow eyebrow-tight">360Suite Analytics</p>
+            <h3>Marketing a návštevnosť</h3>
+          </div>
+          <a href="/analytics" class="mini-btn small">Otvoriť dashboard</a>
+        </div>
+        <div class="analytics-mini-grid">
+          <div class="metric-box">
+            <strong id="landing-total-views">0</strong>
+            <span>zobrazenia</span>
+          </div>
+          <div class="metric-box">
+            <strong id="landing-unique-visitors">0</strong>
+            <span>unikátni návštevníci</span>
+          </div>
+          <div class="metric-box">
+            <strong id="landing-today-visits">0</strong>
+            <span>dnešné návštevy</span>
+          </div>
+        </div>
+      </section>
+
       <footer class="site-footer">
         <button id="ga-cookie-open" type="button">Google Analytics cookies</button>
       </footer>
@@ -171,6 +210,39 @@
     </div>
 
     <script>
+      async function trackLandingAnalytics() {
+        try {
+          await fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              page: window.location.pathname,
+              referrer: document.referrer || 'Direct',
+              userAgent: navigator.userAgent,
+              screen: window.screen ? `${window.screen.width}x${window.screen.height}` : ''
+            })
+          });
+        } catch (error) {
+          console.warn('Analytics tracking failed', error);
+        }
+      }
+
+      async function loadLandingAnalyticsSummary() {
+        try {
+          const response = await fetch('/api/analytics/summary');
+          const summary = await response.json();
+          const totalViews = document.getElementById('landing-total-views');
+          const uniqueVisitors = document.getElementById('landing-unique-visitors');
+          const todayVisits = document.getElementById('landing-today-visits');
+
+          if (totalViews) totalViews.textContent = summary.totalViews ?? 0;
+          if (uniqueVisitors) uniqueVisitors.textContent = summary.uniqueVisitors ?? 0;
+          if (todayVisits) todayVisits.textContent = summary.todayViews ?? 0;
+        } catch (error) {
+          console.warn('Analytics summary failed', error);
+        }
+      }
+
       const nickInput = document.getElementById('entry-nick');
       const form = document.getElementById('entry-form');
       const registerForm = document.getElementById('register-form');
