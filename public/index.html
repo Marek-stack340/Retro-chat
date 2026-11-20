@@ -16,16 +16,6 @@
     <meta property="og:image" content="https://oddychchat.duckdns.org/og-image.svg">
     <meta property="og:image:alt" content="Oddych Chat logo a komunitný chat">
     <meta property="og:site_name" content="Oddych Chat">
-    <script>
-      window.GA_MEASUREMENT_ID = 'G-XXXXXXXXXX';
-      if (window.GA_MEASUREMENT_ID && window.GA_MEASUREMENT_ID !== 'G-XXXXXXXXXX' && window.location.hostname !== 'localhost') {
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){window.dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', window.GA_MEASUREMENT_ID, { anonymize_ip: true, send_page_view: true });
-      }
-    </script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <link rel="stylesheet" href="style.css">
   </head>
   <body class="landing-page-body">
@@ -43,19 +33,8 @@
           </div>
         </div>
         <nav class="top-nav" aria-label="Navigácia">
-          <a href="/">Domov</a>
-          <a href="/chat">Chat</a>
-          <a href="/chat">Hry</a>
-          <a href="/analytics">360Suite Analytics</a>
-          <a href="#leaderboard">Leaderboard</a>
-          <a href="/" id="landing-logout">Odhlásiť</a>
         </nav>
-        <a class="mini-btn" href="/chat">Vstúpiť</a>
       </header>
-
-      <div class="promo-banner">
-        <a href="https://developers.google.com/analytics/" target="_blank" rel="noopener noreferrer">Google Analytics | Google for Developers</a>
-      </div>
 
       <section class="hero-card">
         <div class="hero-copy">
@@ -82,10 +61,7 @@
             </div>
           </div>
           <div class="hero-actions">
-            <a class="ghost-link" href="/chat">Otvoriť chat</a>
-            <a class="ghost-link secondary" href="/guestbook">Oddych Kniha návštev</a>
           </div>
-          <a class="youtube-follow-link" href="https://www.youtube.com/@Marekovkan%C3%A1l-l4j" target="_blank" rel="noopener noreferrer">SLEDUJ NA YOUTUBE!</a>
         </div>
         <form id="entry-form" class="entry-card">
           <h2>Vstúpiť do chatu</h2>
@@ -164,49 +140,6 @@
         </article>
       </section>
 
-      <section class="analytics-mini-card" aria-label="Základná analýza návštevnosti">
-        <div class="analytics-mini-header">
-          <div>
-            <p class="eyebrow eyebrow-tight">360Suite Analytics</p>
-            <h3>Marketing a návštevnosť</h3>
-          </div>
-          <a href="/analytics" class="mini-btn small">Otvoriť dashboard</a>
-        </div>
-        <div class="analytics-mini-grid">
-          <div class="metric-box">
-            <strong id="landing-total-views">0</strong>
-            <span>zobrazenia</span>
-          </div>
-          <div class="metric-box">
-            <strong id="landing-unique-visitors">0</strong>
-            <span>unikátni návštevníci</span>
-          </div>
-          <div class="metric-box">
-            <strong id="landing-today-visits">0</strong>
-            <span>dnešné návštevy</span>
-          </div>
-        </div>
-      </section>
-
-      <footer class="site-footer">
-        <button id="ga-cookie-open" type="button">Google Analytics cookies</button>
-      </footer>
-    </div>
-
-    <div id="ga-cookie-banner" class="cookie-banner">
-      <div class="cookie-content">
-        <div class="cookie-copy">
-          <div class="cookie-copy-header">
-            <span aria-hidden="true">📊</span>
-            <h3>Google Analytics cookies</h3>
-          </div>
-          <p>Používame Google Analytics cookies na meranie návštevnosti a zlepšovanie používateľského zážitku. Svoj súhlas môžete potvrdiť alebo zamietnuť.</p>
-        </div>
-        <div class="cookie-actions">
-          <button type="button" class="cookie-btn accept" id="ga-cookie-accept">Prijať</button>
-          <button type="button" class="cookie-btn reject" id="ga-cookie-reject">Odmietnuť</button>
-        </div>
-      </div>
     </div>
 
     <script>
@@ -327,75 +260,11 @@
         }).join('');
       }
 
-      const GA_TRACKING_ID = 'G-XXXXXXXXXX';
-      const GA_CONSENT_KEY = 'gaAnalyticsConsent';
-      const gaCookieBanner = document.getElementById('ga-cookie-banner');
-      const gaAcceptButton = document.getElementById('ga-cookie-accept');
-      const gaRejectButton = document.getElementById('ga-cookie-reject');
-      const gaOpenButton = document.getElementById('ga-cookie-open');
-
-      function enableGoogleAnalytics() {
-        if (window.gtag) return;
-
-        window.dataLayer = window.dataLayer || [];
-        function gtag() {
-          window.dataLayer.push(arguments);
-        }
-        window.gtag = gtag;
-
-        const script = document.createElement('script');
-        script.async = true;
-        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
-        document.head.appendChild(script);
-
-        gtag('js', new Date());
-        gtag('config', GA_TRACKING_ID);
-      }
-
-      function setGoogleAnalyticsConsent(choice) {
-        localStorage.setItem(GA_CONSENT_KEY, choice);
-
-        if (choice === 'accepted') {
-          enableGoogleAnalytics();
-        }
-
-        if (gaCookieBanner) {
-          gaCookieBanner.hidden = true;
-        }
-      }
-
-      function initializeGoogleAnalyticsConsent() {
-        const consent = localStorage.getItem(GA_CONSENT_KEY);
-
-        if (consent === 'accepted') {
-          enableGoogleAnalytics();
-        }
-
-        if (gaCookieBanner) {
-          gaCookieBanner.hidden = consent === 'accepted' || consent === 'rejected';
-        }
-      }
-
-      gaAcceptButton?.addEventListener('click', () => {
-        setGoogleAnalyticsConsent('accepted');
-      });
-
-      gaRejectButton?.addEventListener('click', () => {
-        setGoogleAnalyticsConsent('rejected');
-      });
-
-      gaOpenButton?.addEventListener('click', () => {
-        if (gaCookieBanner) {
-          gaCookieBanner.hidden = false;
-        }
-      });
-
       const savedNick = localStorage.getItem('chatUsername');
       if (savedNick) {
         nickInput.value = savedNick;
       }
 
-      initializeGoogleAnalyticsConsent();
       renderLeaderboard();
 
       landingLogout?.addEventListener('click', (event) => {
