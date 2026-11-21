@@ -155,8 +155,8 @@ function showBanOverlay(data = {}) {
   }
   if (banSubtitleEl) {
     banSubtitleEl.textContent = isKick
-      ? 'Prístup do Oddych Chatu je dočasne obmedzený.'
-      : 'Prístup do Oddych Chatu je dočasne odobraný';
+      ? 'Prístup do Čavko chatu je dočasne obmedzený.'
+      : 'Prístup do Čavko chatu je dočasne odobraný';
   }
   if (banWarningEl) {
     if (isTest) {
@@ -1938,7 +1938,7 @@ function showWordGame() {
 
 function notifyIncomingMessage(fromName, previewText) {
   if (!('Notification' in window)) return;
-  const title = 'Oddych chat';
+  const title = 'Čavko chat';
   const body = fromName ? `${fromName}: ${previewText || 'nova sprava'}` : (previewText || 'Nova sprava');
 
   if (Notification.permission === 'granted') {
@@ -2566,7 +2566,7 @@ function notifyFriendOnlineStatus(users) {
         const now = new Date();
         addMessage({
           system: true,
-          text: `✉ Tvoj priateľ ${user.username} je na chate. ${now.toLocaleString()} | Tvoj oddych chat`,
+          text: `✉ Tvoj priateľ ${user.username} je na chate. ${now.toLocaleString()} | Tvoj Čavko chat`,
           timestamp: now.toISOString()
         });
       }
