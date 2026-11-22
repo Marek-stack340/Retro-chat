@@ -1,8 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /chat
-Disallow: /messenger
-Disallow: /register
-Disallow: /guestbook
+Allow: /api/
+Allow: /chat
+Allow: /messenger
+Allow: /register
+Allow: /guestbook
 Sitemap: https://cavkochat.duckdns.org/sitemap.xml
