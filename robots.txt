@@ -5,4 +5,4 @@ Disallow: /chat
 Disallow: /messenger
 Disallow: /register
 Disallow: /guestbook
-Sitemap: https://oddychchat.duckdns.org/sitemap.xml
+Sitemap: https://cavkochat.duckdns.org/sitemap.xml
