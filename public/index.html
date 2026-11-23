@@ -313,7 +313,7 @@
             localStorage.setItem('chatAuthToken', data.token);
           }
           updateLeaderboard(username);
-          window.location.href = '/chat';
+          alert('Prihlásenie bolo úspešné. Ostávaš na úvodnej stránke. Prihlasovanie do chatu môžeš spustiť ručne z odkazu alebo z menu.');
         } catch (error) {
           alert('Vstup do chatu zlyhal. Skús to znova.');
         }
@@ -344,8 +344,7 @@
           localStorage.setItem('chatUsername', username);
           localStorage.setItem('chatRegistered', 'true');
           updateLeaderboard(username);
-          alert('Registrácia bola úspešná. Môžeš sa prihlásiť do chatu.');
-          window.location.href = '/chat';
+          alert('Registrácia bola úspešná. Ostávaš na úvodnej stránke. Chatu sa môžeš pripojiť ručne.');
         } catch (error) {
           alert('Registrácia zlyhala. Skús to znova.');
         }
