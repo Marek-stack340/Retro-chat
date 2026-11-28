@@ -30,4 +30,5 @@ gcloud run deploy oddych-chat --image gcr.io/YOUR_PROJECT_ID/oddych-chat --platf
 
 Notes
 - The app uses `sqlite3` by default — consider switching to Cloud SQL for production.
+- Add a GitHub Actions repository secret named `MODERATION_PANEL_HASH` for Cloud Run deployments. Its value must be the bcrypt hash from the `MODERATION_PANEL_HASH` line in your local `.env`, not the plain-text password.
 - If you need to restore previous project files, see `README.old.md` and `package.old.json`.
