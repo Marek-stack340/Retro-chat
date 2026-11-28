@@ -98,6 +98,15 @@ app.get('/guestbook', (req, res) => {
 });
 app.get('/guestbook/', (req, res) => res.redirect(301, '/guestbook'));
 app.get('/guestbook.html', (req, res) => res.redirect(301, '/guestbook'));
+app.get('/privacy', servePublicPage('privacy'));
+app.get('/privacy/', (req, res) => res.redirect(301, '/privacy'));
+app.get('/privacy.html', (req, res) => res.redirect(301, '/privacy'));
+app.get('/terms', servePublicPage('terms'));
+app.get('/terms/', (req, res) => res.redirect(301, '/terms'));
+app.get('/terms.html', (req, res) => res.redirect(301, '/terms'));
+app.get('/contact', servePublicPage('contact'));
+app.get('/contact/', (req, res) => res.redirect(301, '/contact'));
+app.get('/contact.html', (req, res) => res.redirect(301, '/contact'));
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
   res.sendFile(path.join(__dirname, 'robots.txt'));
@@ -176,6 +185,19 @@ const moderationReports = [];
 const appeals = [];
 const moderationNotifications = [];
 const moderationHistory = [];
+function readLocalSecret(key) {
+  if (process.env[key]) return String(process.env[key]);
+  try {
+    const raw = require('fs').readFileSync(path.join(__dirname, '.env'), 'utf8');
+    const line = raw.split(/\r?\n/).find((entry) => entry.startsWith(`${key}=`));
+    return line ? line.slice(key.length + 1).trim() : '';
+  } catch (error) {
+    return '';
+  }
+}
+const MODERATION_PANEL_HASH = readLocalSecret('MODERATION_PANEL_HASH');
+const moderationPanelUnlocks = new Map();
+const moderationPanelFailures = new Map();
 const { ownerUsernames, adminUsernames, moderatorUsernames, isOwnerName, isAdminName, isModeratorName, getModeratorRole, getEffectiveModeratorRole, canModerateAction } = require('./moderation');
 const testerUsernames = new Set(['kika_c123']);
 const protectedUsernames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
@@ -240,10 +262,10 @@ function addModerationNotification(notification) {
   };
   moderationNotifications.push(entry);
   if (moderationNotifications.length > 200) moderationNotifications.shift();
-  const humanModerators = Array.from(users.values()).filter((user) => user && ['owner', 'moderator'].includes(user.role));
+  const humanModerators = Array.from(users.values()).filter((user) => user && hasModerationPanelRole(user.role));
   humanModerators.forEach((user) => {
     const socket = io.sockets.sockets.get(user.id);
-    if (socket) {
+    if (socket && isModerationPanelUnlocked(socket.id)) {
       socket.emit('moderation-notification', entry);
       socket.emit('moderation-sound', { type: entry.type || 'alert' });
     }
@@ -259,7 +281,8 @@ function getModeratorStateForRole(role) {
     totalAppeals: sortedAppeals.length,
     openAppeals: sortedAppeals.filter((item) => item.status === 'pending' || item.status === 'review').length,
     totalActions: moderationHistory.length,
-    activeUsers: users.size
+    activeUsers: users.size,
+    totalMessages: messages.length
   };
 
   return {
@@ -273,11 +296,24 @@ function getModeratorStateForRole(role) {
   };
 }
 
+function isModerationPanelUnlocked(socketId) {
+  const until = moderationPanelUnlocks.get(socketId);
+  if (!until || Date.now() > until) {
+    if (until) moderationPanelUnlocks.delete(socketId);
+    return false;
+  }
+  return true;
+}
+
+function hasModerationPanelRole(role) {
+  return ['owner', 'admin', 'moderator'].includes(role);
+}
+
 function broadcastModerationState() {
-  const targets = Array.from(users.values()).filter((user) => user && ['owner', 'moderator'].includes(user.role));
+  const targets = Array.from(users.values()).filter((user) => user && hasModerationPanelRole(user.role));
   targets.forEach((user) => {
     const socket = io.sockets.sockets.get(user.id);
-    if (socket) {
+    if (socket && isModerationPanelUnlocked(socket.id)) {
       socket.emit('moderation-center-state', getModeratorStateForRole(user.role));
     }
   });
@@ -685,9 +721,11 @@ async function handleEntryRequest({ username, password }) {
   const newAccount = {
     username: normalizedUsername,
     passwordHash: passwordValue ? await bcrypt.hash(passwordValue, 10) : null,
-    role: isAdminName(normalizedKey)
-      ? 'admin'
-      : (isModeratorName(normalizedKey) ? 'moderator' : (testerUsernames.has(normalizedKey) ? 'tester' : null))
+    role: isOwnerName(normalizedKey)
+      ? 'owner'
+      : (isAdminName(normalizedKey)
+        ? 'admin'
+        : (isModeratorName(normalizedKey) ? 'moderator' : (testerUsernames.has(normalizedKey) ? 'tester' : null)))
   };
   accounts.set(normalizedKey, newAccount);
   return {
@@ -1026,10 +1064,49 @@ io.on('connection', (socket) => {
     socket.emit('system-message', 'Správa bola nahlásená moderátorom.');
   });
 
+  socket.on('moderation-panel:unlock', async (data) => {
+    const user = users.get(socket.id);
+    if (!user || !hasModerationPanelRole(user.role)) {
+      socket.emit('moderation-panel:unlock-result', { ok: false, message: 'Prístup zamietnutý.' });
+      return;
+    }
+
+    const failure = moderationPanelFailures.get(socket.id) || { count: 0, lockedUntil: 0 };
+    if (failure.lockedUntil && Date.now() < failure.lockedUntil) {
+      socket.emit('moderation-panel:unlock-result', { ok: false, message: 'Príliš veľa pokusov. Skús to neskôr.' });
+      return;
+    }
+
+    const password = String(data && data.password ? data.password : '');
+    let matches = false;
+    if (password.length > 0 && password.length <= 128 && MODERATION_PANEL_HASH) {
+      try {
+        matches = await bcrypt.compare(password, MODERATION_PANEL_HASH);
+      } catch (error) {
+        matches = false;
+      }
+    }
+    if (!matches) {
+      failure.count += 1;
+      if (failure.count >= 5) {
+        failure.lockedUntil = Date.now() + 15 * 60 * 1000;
+        failure.count = 0;
+      }
+      moderationPanelFailures.set(socket.id, failure);
+      socket.emit('moderation-panel:unlock-result', { ok: false, message: 'Nesprávne heslo.' });
+      return;
+    }
+
+    moderationPanelFailures.delete(socket.id);
+    moderationPanelUnlocks.set(socket.id, Date.now() + 30 * 60 * 1000);
+    socket.emit('moderation-panel:unlock-result', { ok: true });
+    socket.emit('moderation-center-state', getModeratorStateForRole(user.role));
+  });
+
   socket.on('moderation:discard-report', (data) => {
     const user = users.get(socket.id);
-    if (!user || !['owner', 'moderator'].includes(user.role)) {
-      socket.emit('system-message', 'Iba správca a moderátori môžu zahadzovať reporty.');
+    if (!user || !hasModerationPanelRole(user.role) || !isModerationPanelUnlocked(socket.id)) {
+      socket.emit('system-message', 'Čavko moderácia je zamknutá.');
       return;
     }
 
@@ -1082,7 +1159,7 @@ io.on('connection', (socket) => {
   socket.on('moderation-center:request', () => {
     const user = users.get(socket.id);
     const role = user && user.role ? user.role : null;
-    if (!role || !['owner', 'moderator'].includes(role)) {
+    if (!role || !hasModerationPanelRole(role) || !isModerationPanelUnlocked(socket.id)) {
       return;
     }
     socket.emit('moderation-center-state', getModeratorStateForRole(role));
@@ -1091,8 +1168,8 @@ io.on('connection', (socket) => {
 
   socket.on('moderation:assign-role', (data) => {
     const actor = users.get(socket.id);
-    if (!actor || !['owner', 'moderator'].includes(actor.role)) {
-      socket.emit('system-message', 'Iba správca a moderátori môžu meniť role používateľov.');
+    if (!actor || !hasModerationPanelRole(actor.role) || !isModerationPanelUnlocked(socket.id)) {
+      socket.emit('system-message', 'Čavko moderácia je zamknutá.');
       return;
     }
 
@@ -1134,8 +1211,8 @@ io.on('connection', (socket) => {
 
   socket.on('moderation:execute', (data) => {
     const user = users.get(socket.id);
-    if (!user || !['owner', 'moderator'].includes(user.role)) {
-      socket.emit('system-message', 'Iba správca a moderátori môžu vykonávať zásahy.');
+    if (!user || !hasModerationPanelRole(user.role) || !isModerationPanelUnlocked(socket.id)) {
+      socket.emit('system-message', 'Čavko moderácia je zamknutá.');
       return;
     }
 
@@ -1344,7 +1421,7 @@ io.on('connection', (socket) => {
 
   socket.on('appeal:decide', (data) => {
     const user = users.get(socket.id);
-    if (!user || !['owner', 'moderator'].includes(user.role)) {
+    if (!user || !hasModerationPanelRole(user.role) || !isModerationPanelUnlocked(socket.id)) {
       return;
     }
 
@@ -1569,6 +1646,8 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('disconnected', socket.id);
+    moderationPanelUnlocks.delete(socket.id);
+    moderationPanelFailures.delete(socket.id);
     const leavingUser = users.get(socket.id);
     users.delete(socket.id);
     broadcastUserList();

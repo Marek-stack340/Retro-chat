@@ -83,6 +83,12 @@ const moderationBellBtn = document.getElementById('moderation-bell-btn');
 const moderationNotificationBadge = document.getElementById('moderation-notification-badge');
 const moderationCenterModal = document.getElementById('moderation-center-modal');
 const moderationCenterClose = document.getElementById('moderation-center-close');
+const moderationGateModal = document.getElementById('moderation-gate-modal');
+const moderationGateForm = document.getElementById('moderation-gate-form');
+const moderationGatePassword = document.getElementById('moderation-gate-password');
+const moderationGateError = document.getElementById('moderation-gate-error');
+const moderationGateClose = document.getElementById('moderation-gate-close');
+let moderationPanelUnlocked = false;
 const moderationDiscardReportBtn = document.getElementById('moderation-discard-report-btn');
 const moderationBellOpen = document.getElementById('moderation-bell-open');
 const moderationStats = document.getElementById('moderation-stats');
@@ -90,6 +96,10 @@ const moderationContent = document.getElementById('moderation-content');
 const moderationRolePill = document.getElementById('moderation-pill-role');
 const moderationRoleSubtitle = document.getElementById('moderation-role-subtitle');
 const moderationTabs = document.querySelectorAll('.moderation-tab');
+const adminDashboard = document.getElementById('admin-dashboard');
+const adminThemeToggle = document.getElementById('admin-theme-toggle');
+const adminRefreshButton = document.getElementById('admin-refresh');
+const adminLogoutButton = document.getElementById('admin-logout');
 const moderationActionModal = document.getElementById('moderation-action-modal');
 const moderationActionClose = document.getElementById('moderation-action-close');
 const moderationActionCancel = document.getElementById('moderation-action-cancel');
@@ -288,6 +298,126 @@ function formatModerationDate(value) {
   }
 }
 
+function formatRelativeAdminTime(value) {
+  const timestamp = new Date(value || '').getTime();
+  if (!Number.isFinite(timestamp)) return 'čas neznámy';
+  const elapsed = Math.max(0, Date.now() - timestamp);
+  if (elapsed < 60000) return 'teraz';
+  if (elapsed < 3600000) return `pred ${Math.floor(elapsed / 60000)} min`;
+  if (elapsed < 86400000) return `pred ${Math.floor(elapsed / 3600000)} h`;
+  return formatModerationDate(value);
+}
+
+function getAdminActivitySeries() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const history = moderationState.history || [];
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const count = history.filter((entry) => {
+      const eventDate = new Date(entry.timestamp || entry.createdAt || '');
+      if (!Number.isFinite(eventDate.getTime())) return false;
+      const eventKey = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+      return eventKey === key;
+    }).length;
+
+    return {
+      count,
+      label: new Intl.DateTimeFormat('sk-SK', { weekday: 'short' }).format(date).replace('.', ''),
+      date
+    };
+  });
+}
+
+function renderAdminActivityChart() {
+  const series = getAdminActivitySeries();
+  const maxCount = Math.max(1, ...series.map((item) => item.count));
+  const points = series.map((item, index) => `${38 + index * 92},${150 - (item.count / maxCount) * 108}`).join(' ');
+  const areaPoints = `${points} 590,150 38,150`;
+
+  return `
+    <svg class="admin-activity-chart" viewBox="0 0 628 204" role="img" aria-label="Moderátorské akcie za posledných sedem dní">
+      <defs>
+        <linearGradient id="admin-chart-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#1685ff" stop-opacity="0.58"/>
+          <stop offset="1" stop-color="#1685ff" stop-opacity="0.04"/>
+        </linearGradient>
+      </defs>
+      <g class="admin-chart-grid">
+        <line x1="38" y1="42" x2="590" y2="42"/>
+        <line x1="38" y1="78" x2="590" y2="78"/>
+        <line x1="38" y1="114" x2="590" y2="114"/>
+        <line x1="38" y1="150" x2="590" y2="150"/>
+      </g>
+      <polygon points="${areaPoints}" fill="url(#admin-chart-fill)"/>
+      <polyline points="${points}" class="admin-chart-line"/>
+      ${series.map((item, index) => `<circle cx="${38 + index * 92}" cy="${150 - (item.count / maxCount) * 108}" r="5" class="admin-chart-point"><title>${item.count} akcií</title></circle>`).join('')}
+      ${series.map((item, index) => `<text x="${38 + index * 92}" y="190" text-anchor="middle">${escapeHtml(item.label)}</text>`).join('')}
+    </svg>
+  `;
+}
+
+function getAdminRecentEvents() {
+  const notifications = moderationState.notifications || [];
+  if (notifications.length) {
+    return notifications
+      .map((item) => ({
+        title: item.title || 'Oznámenie',
+        body: item.message || item.body || '—',
+        time: item.createdAt || item.timestamp,
+        tone: item.type === 'report' ? 'report' : (item.type === 'appeal' ? 'appeal' : 'notice'),
+        icon: item.type === 'report' ? '⚑' : (item.type === 'appeal' ? '↗' : '●')
+      }))
+      .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
+      .slice(0, 5);
+  }
+
+  return [
+    ...(moderationState.reports || []).map((item) => ({
+      title: 'Nahlásená správa',
+      body: `${item.reportedUser || 'Používateľ'} · ${item.reason || 'Bez dôvodu'}`,
+      time: item.createdAt,
+      tone: 'report',
+      icon: '⚑'
+    })),
+    ...(moderationState.appeals || []).map((item) => ({
+      title: 'Nové odvolanie',
+      body: `${item.username || 'Používateľ'} · ${item.type || 'Odvolanie'}`,
+      time: item.createdAt,
+      tone: 'appeal',
+      icon: '↗'
+    })),
+    ...(moderationState.history || []).map((item) => ({
+      title: item.type || 'Moderátorská akcia',
+      body: `${item.actor || 'Moderátor'} → ${item.target || '—'} · ${item.reason || '—'}`,
+      time: item.timestamp || item.createdAt,
+      tone: 'action',
+      icon: '●'
+    }))
+  ].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).slice(0, 5);
+}
+
+function applyAdminDashboardTheme(theme) {
+  if (!adminDashboard) return;
+  const isLight = theme === 'light';
+  adminDashboard.classList.toggle('is-light', isLight);
+  if (adminThemeToggle) {
+    adminThemeToggle.textContent = isLight ? '☾' : '☼';
+    adminThemeToggle.setAttribute('aria-label', isLight ? 'Prepnúť na tmavý vzhľad' : 'Prepnúť na svetlý vzhľad');
+  }
+}
+
+function toggleAdminDashboardTheme() {
+  const nextTheme = adminDashboard && adminDashboard.classList.contains('is-light') ? 'dark' : 'light';
+  localStorage.setItem('cavkoAdminTheme', nextTheme);
+  applyAdminDashboardTheme(nextTheme);
+}
+
+applyAdminDashboardTheme(localStorage.getItem('cavkoAdminTheme') || 'dark');
+
 function getRoleBadgeMarkup(role) {
   const normalizedRole = String(role || '').toLowerCase();
   if (normalizedRole === 'moderator') {
@@ -302,12 +432,37 @@ function getRoleBadgeMarkup(role) {
 function renderModerationStats() {
   if (!moderationStats) return;
   const stats = moderationState.summary || {};
+  const metrics = [
+    { label: 'Aktívni používatelia', value: stats.activeUsers || 0, detail: 'aktuálne online', icon: '♟', tone: 'blue' },
+    { label: 'Odoslané správy', value: stats.totalMessages || 0, detail: 'v aktuálnej relácii', icon: '•••', tone: 'violet' },
+    { label: 'Nahlásenia', value: stats.totalReports || 0, detail: 'na kontrolu', icon: '⚑', tone: 'orange' },
+    { label: 'Bezpečnosť', value: moderationPanelUnlocked ? 'Aktívna' : 'Uzamknutá', detail: 'heslom chránený panel', icon: '⛨', tone: 'green' }
+  ];
   moderationStats.innerHTML = `
-    <div class="metric-card"><span>Hlášeni</span><strong>${stats.totalReports || 0}</strong></div>
-    <div class="metric-card"><span>Odvolania</span><strong>${stats.totalAppeals || 0}</strong></div>
-    <div class="metric-card"><span>Otvorené</span><strong>${stats.openAppeals || 0}</strong></div>
-    <div class="metric-card"><span>Akcie</span><strong>${stats.totalActions || 0}</strong></div>
+    ${metrics.map((metric) => `
+      <article class="admin-stat-card ${metric.tone}">
+        <span class="admin-stat-icon" aria-hidden="true">${metric.icon}</span>
+        <div class="admin-stat-copy"><span>${metric.label}</span><strong>${escapeHtml(metric.value)}</strong><small>${metric.detail}</small></div>
+      </article>
+    `).join('')}
   `;
+
+  const reportCount = document.getElementById('admin-report-count');
+  const appealCount = document.getElementById('admin-appeal-count');
+  const notificationCount = document.getElementById('admin-notification-count');
+  const userName = document.getElementById('admin-user-name');
+  const userRole = document.getElementById('admin-user-role');
+  const connectionDot = document.getElementById('admin-connection-dot');
+  const connectionLabel = document.getElementById('admin-connection-label');
+  const currentDate = document.getElementById('admin-now');
+  if (reportCount) reportCount.textContent = String(stats.totalReports || 0);
+  if (appealCount) appealCount.textContent = String(stats.openAppeals || 0);
+  if (notificationCount) notificationCount.textContent = String(unreadNotificationCount || 0);
+  if (userName) userName.textContent = currentUsername || 'Administrátor';
+  if (userRole) userRole.textContent = getCurrentRoleName() === 'owner' ? 'Administrátor' : 'Moderátor';
+  if (connectionDot) connectionDot.classList.toggle('is-online', socket.connected);
+  if (connectionLabel) connectionLabel.textContent = socket.connected ? 'Online' : 'Odpojené';
+  if (currentDate) currentDate.textContent = new Intl.DateTimeFormat('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date());
 }
 
 function dismissModerationNotification(notificationId) {
@@ -407,6 +562,61 @@ function discardSelectedReports() {
   }
 
   showDiscardReportConfirm(selectedIds);
+}
+
+function renderAdminOverview() {
+  const events = getAdminRecentEvents();
+  const activitySeries = getAdminActivitySeries();
+  const hasActivity = activitySeries.some((item) => item.count > 0);
+  const systemOnline = socket.connected;
+
+  moderationContent.innerHTML = `
+    <div class="admin-overview-grid">
+      <section class="admin-panel-card admin-chart-card">
+        <div class="admin-panel-heading">
+          <div><h2>Štatistiky za posledných 7 dní</h2><p>Moderátorské akcie podľa dňa</p></div>
+          <span class="admin-chart-legend"><i></i>Akcie</span>
+        </div>
+        ${renderAdminActivityChart()}
+        ${hasActivity ? '' : '<p class="admin-chart-empty">Zatiaľ nie sú zaznamenané moderátorské akcie.</p>'}
+      </section>
+
+      <section class="admin-panel-card admin-events-card">
+        <div class="admin-panel-heading">
+          <div><h2>Najnovšie udalosti</h2><p>Aktivita moderácie a komunity</p></div>
+          <button class="admin-text-action" type="button" data-admin-tab="notifications">Zobraziť všetko <span aria-hidden="true">→</span></button>
+        </div>
+        ${events.length ? `<div class="admin-event-list">${events.map((event) => `
+          <article class="admin-event-row">
+            <span class="admin-event-icon ${event.tone}" aria-hidden="true">${event.icon}</span>
+            <span class="admin-event-copy"><strong>${escapeHtml(event.title)}</strong><small>${escapeHtml(event.body)}</small></span>
+            <time>${escapeHtml(formatRelativeAdminTime(event.time))}</time>
+          </article>
+        `).join('')}</div>` : '<p class="admin-empty-state">Zatiaľ tu nie sú žiadne udalosti.</p>'}
+      </section>
+
+      <section class="admin-panel-card admin-quick-card">
+        <div class="admin-panel-heading"><div><h2>Rýchle akcie</h2><p>Najčastejšie moderátorské úlohy</p></div></div>
+        <div class="admin-quick-grid">
+          <button class="admin-quick-action blue" type="button" data-admin-tab="users"><span aria-hidden="true">♟</span><strong>Spravovať<br>používateľov</strong></button>
+          <button class="admin-quick-action red" type="button" data-admin-tab="reports"><span aria-hidden="true">⚑</span><strong>Skontrolovať<br>hlásenia</strong></button>
+          <button class="admin-quick-action orange" type="button" data-admin-tab="users"><span aria-hidden="true">⊗</span><strong>Spravovať<br>blokovania</strong></button>
+          <button class="admin-quick-action violet" type="button" data-admin-tab="security"><span aria-hidden="true">⚙</span><strong>Stav<br>bezpečnosti</strong></button>
+        </div>
+      </section>
+
+      <section class="admin-panel-card admin-system-card">
+        <div class="admin-system-copy">
+          <div class="admin-system-heading"><span class="admin-system-check" aria-hidden="true">✓</span><div><h2>${systemOnline ? 'Systém je pripojený' : 'Spojenie prerušené'}</h2><p>${systemOnline ? 'Živé spojenie s chatovým serverom.' : 'Čaká sa na obnovenie spojenia so serverom.'}</p></div></div>
+          <div class="admin-system-meta"><span>Ochrana panelu</span><strong>${moderationPanelUnlocked ? 'Heslom odomknutá' : 'Uzamknutá'}</strong></div>
+          <button class="admin-system-refresh" id="admin-system-refresh" type="button">Obnoviť stav <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="admin-server-stack" aria-hidden="true"><i></i><i></i><i></i></div>
+      </section>
+    </div>
+  `;
+
+  document.getElementById('admin-system-refresh')?.addEventListener('click', () => socket.emit('moderation-center:request'));
 }
 
 function renderModerationContent() {
@@ -664,15 +874,67 @@ function renderModerationContent() {
     return;
   }
 
-  moderationContent.innerHTML = `
-    <div class="moderation-overview-box">
-      <h3>Prehľad</h3>
-      <p>Aktívne nahlásenia: <strong>${reports.length}</strong></p>
-      <p>Odvolania: <strong>${appeals.length}</strong></p>
-      <p>Upozornenia: <strong>${notifications.length}</strong></p>
-      <p>Aktívni používatelia: <strong>${moderationState.summary.activeUsers || 0}</strong></p>
-    </div>
-  `;
+  if (activeModerationTab === 'stats') {
+    moderationContent.innerHTML = `
+      <section class="admin-panel-card admin-stats-detail">
+        <div class="admin-panel-heading"><div><h2>Štatistiky moderácie</h2><p>Aktuálne hodnoty zo servera</p></div></div>
+        ${renderAdminActivityChart()}
+        <div class="admin-stat-table">
+          <div><span>Aktívni používatelia</span><strong>${moderationState.summary.activeUsers || 0}</strong></div>
+          <div><span>Správy v aktuálnej relácii</span><strong>${moderationState.summary.totalMessages || 0}</strong></div>
+          <div><span>Aktívne nahlásenia</span><strong>${reports.length}</strong></div>
+          <div><span>Otvorené odvolania</span><strong>${moderationState.summary.openAppeals || 0}</strong></div>
+          <div><span>Moderátorské akcie</span><strong>${moderationState.summary.totalActions || 0}</strong></div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  if (activeModerationTab === 'settings') {
+    const currentTheme = adminDashboard && adminDashboard.classList.contains('is-light') ? 'Svetlý' : 'Tmavý';
+    moderationContent.innerHTML = `
+      <section class="admin-panel-card admin-settings-card">
+        <div class="admin-panel-heading"><div><h2>Nastavenia panela</h2><p>Predvoľby sa ukladajú v tomto prehliadači.</p></div></div>
+        <div class="admin-setting-row"><div><strong>Farebný vzhľad</strong><small>Aktuálny režim: ${currentTheme}</small></div><button class="admin-setting-button" type="button" data-admin-theme-toggle>Prepnúť vzhľad</button></div>
+        <div class="admin-setting-row"><div><strong>Bezpečnostná brána</strong><small>Panel vyžaduje overenie heslom.</small></div><span class="admin-setting-status">Aktívna</span></div>
+      </section>
+    `;
+    return;
+  }
+
+  if (activeModerationTab === 'security') {
+    moderationContent.innerHTML = `
+      <section class="admin-panel-card admin-info-card">
+        <div class="admin-panel-heading"><div><h2>Bezpečnostná relácia</h2><p>Stav prístupu k moderátorskému panelu</p></div></div>
+        <div class="admin-security-state"><span aria-hidden="true">⛨</span><div><strong>${moderationPanelUnlocked ? 'Panel odomknutý' : 'Panel uzamknutý'}</strong><p>${moderationPanelUnlocked ? 'Server overil heslo pre túto reláciu.' : 'Na prístup je potrebné opätovné overenie heslom.'}</p></div></div>
+        <div class="admin-stat-table">
+          <div><span>Úloha</span><strong>${escapeHtml(getCurrentRoleName())}</strong></div>
+          <div><span>Socket spojenie</span><strong>${socket.connected ? 'Aktívne' : 'Neaktívne'}</strong></div>
+          <div><span>Nezodpovedané odvolania</span><strong>${moderationState.summary.openAppeals || 0}</strong></div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  if (activeModerationTab === 'system') {
+    moderationContent.innerHTML = `
+      <section class="admin-panel-card admin-info-card">
+        <div class="admin-panel-heading"><div><h2>Stav systému</h2><p>Informácie o aktuálnom spojení a paneli</p></div></div>
+        <div class="admin-system-detail"><span class="admin-system-indicator ${socket.connected ? 'online' : ''}"></span><strong>${socket.connected ? 'Chatový server je dostupný' : 'Chatový server nie je dostupný'}</strong></div>
+        <div class="admin-stat-table">
+          <div><span>Real-time spojenie</span><strong>${socket.connected ? 'Socket.IO pripojené' : 'Čaká sa na spojenie'}</strong></div>
+          <div><span>Aktívni používatelia</span><strong>${moderationState.summary.activeUsers || 0}</strong></div>
+          <div><span>Čas kontroly</span><strong>${escapeHtml(new Intl.DateTimeFormat('sk-SK', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date()))}</strong></div>
+        </div>
+        <button class="admin-setting-button" type="button" data-admin-refresh>Obnoviť stav</button>
+      </section>
+    `;
+    return;
+  }
+
+  renderAdminOverview();
 }
 
 function renderModerationPanel() {
@@ -687,8 +949,25 @@ function renderModerationPanel() {
   }
 }
 
+function openModerationGate() {
+  if (!moderationGateModal) return;
+  if (moderationGateError) moderationGateError.textContent = '';
+  if (moderationGatePassword) moderationGatePassword.value = '';
+  moderationGateModal.style.display = 'flex';
+  moderationGatePassword?.focus();
+}
+
+function closeModerationGate() {
+  if (moderationGateModal) moderationGateModal.style.display = 'none';
+  if (moderationGatePassword) moderationGatePassword.value = '';
+}
+
 function openModerationCenter() {
   if (!moderationCenterModal) return;
+  if (!moderationPanelUnlocked) {
+    openModerationGate();
+    return;
+  }
   moderationCenterModal.style.display = 'flex';
   socket.emit('moderation-center:request');
 }
@@ -731,6 +1010,18 @@ function playCinkTone() {
 
 if (moderationCenterBtn) {
   moderationCenterBtn.addEventListener('click', openModerationCenter);
+}
+if (moderationGateClose) {
+  moderationGateClose.addEventListener('click', closeModerationGate);
+}
+if (moderationGateForm) {
+  moderationGateForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const password = moderationGatePassword ? moderationGatePassword.value : '';
+    if (moderationGatePassword) moderationGatePassword.value = '';
+    if (moderationGateError) moderationGateError.textContent = '';
+    socket.emit('moderation-panel:unlock', { password });
+  });
 }
 if (moderationDiscardReportBtn) {
   moderationDiscardReportBtn.addEventListener('click', discardSelectedReports);
@@ -786,10 +1077,35 @@ if (appealSubmitBtn) {
 moderationTabs.forEach((tab) => {
   tab.addEventListener('click', () => {
     activeModerationTab = tab.dataset.tab;
-    moderationTabs.forEach((item) => item.classList.toggle('active', item === tab));
+    moderationTabs.forEach((item) => {
+      const isActive = item === tab;
+      item.classList.toggle('active', isActive);
+      if (isActive) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
     renderModerationContent();
   });
 });
+
+moderationContent?.addEventListener('click', (event) => {
+  const tabButton = event.target.closest('[data-admin-tab]');
+  if (tabButton) {
+    const tabName = tabButton.dataset.adminTab;
+    const targetTab = Array.from(moderationTabs).find((tab) => tab.dataset.tab === tabName);
+    targetTab?.click();
+    return;
+  }
+  if (event.target.closest('[data-admin-theme-toggle]')) {
+    toggleAdminDashboardTheme();
+    renderModerationContent();
+    return;
+  }
+  if (event.target.closest('[data-admin-refresh]')) socket.emit('moderation-center:request');
+});
+
+adminThemeToggle?.addEventListener('click', toggleAdminDashboardTheme);
+adminRefreshButton?.addEventListener('click', () => socket.emit('moderation-center:request'));
+adminLogoutButton?.addEventListener('click', () => navLogout?.click());
 
 let publicMessageHistory = [];
 let currentRoom = normalizeRoomName(localStorage.getItem('chatCurrentRoom') || 'Spoločná');
@@ -2910,6 +3226,23 @@ socket.on('kick-screen', (data) => {
 socket.on('moderation-center-state', (payload) => {
   Object.assign(moderationState, payload || {});
   renderModerationPanel();
+});
+
+socket.on('moderation-panel:unlock-result', (result) => {
+  if (!result || !result.ok) {
+    moderationPanelUnlocked = false;
+    if (moderationGateError) moderationGateError.textContent = (result && result.message) || 'Prístup zamietnutý.';
+    return;
+  }
+  moderationPanelUnlocked = true;
+  closeModerationGate();
+  if (moderationCenterModal) moderationCenterModal.style.display = 'flex';
+});
+
+socket.on('disconnect', () => {
+  moderationPanelUnlocked = false;
+  closeModerationCenter();
+  closeModerationGate();
 });
 
 socket.on('moderation-unread-count', (count) => {

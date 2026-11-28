@@ -334,35 +334,85 @@
         </aside>
       </main>
     </div>
-    <div id="moderation-center-modal" class="moderation-center-modal" style="display:none;" aria-modal="true" role="dialog">
-      <div class="moderation-center-panel">
+    <div id="moderation-gate-modal" class="moderation-center-modal" style="display:none;" aria-modal="true" role="dialog">
+      <form id="moderation-gate-form" class="moderation-gate-panel">
         <div class="moderation-center-header">
           <div>
-            <div class="moderation-kicker">Centrum moderácie</div>
+            <div class="moderation-kicker">Zamknuté</div>
             <h2>Čavko moderácia</h2>
           </div>
-          <div class="moderation-header-actions">
-            <button id="moderation-discard-report-btn" class="moderation-action reject moderation-discard-report-button" type="button">Zahodiť report/-y</button>
-            <button id="moderation-center-close" class="moderation-close" type="button" aria-label="Zavrieť moderáciu">×</button>
+          <button id="moderation-gate-close" class="moderation-close" type="button" aria-label="Zavrieť">×</button>
+        </div>
+        <div class="moderation-gate-body">
+          <p>Toto okno je chránené heslom. Bez správneho hesla sa obsah nezobrazí.</p>
+          <label for="moderation-gate-password">Heslo</label>
+          <input id="moderation-gate-password" type="password" autocomplete="current-password" required>
+          <p id="moderation-gate-error" class="moderation-gate-error"></p>
+          <button class="moderation-confirm-btn" type="submit">Odomknúť</button>
+        </div>
+      </form>
+    </div>
+    <div id="moderation-center-modal" class="moderation-center-modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="admin-title">
+      <div id="admin-dashboard" class="moderation-center-panel admin-dashboard">
+        <aside class="admin-sidebar">
+          <a class="admin-brand" href="/" aria-label="Čavko Chat domov">
+            <img src="/favicon.svg" alt="Čavko Chat logo">
+            <span>Čavko<br>Chat</span>
+          </a>
+          <nav class="admin-nav" aria-label="Sekcie administrácie">
+            <button class="moderation-tab active" type="button" data-tab="overview" aria-current="page"><span aria-hidden="true">⌂</span>Prehľad</button>
+            <button class="moderation-tab" type="button" data-tab="users"><span aria-hidden="true">♟</span>Používatelia</button>
+            <button class="moderation-tab" type="button" data-tab="history"><span aria-hidden="true">⛨</span>Moderácia</button>
+            <button class="moderation-tab" type="button" data-tab="reports"><span aria-hidden="true">⚑</span>Hlásenia <b id="admin-report-count">0</b></button>
+            <button class="moderation-tab" type="button" data-tab="appeals"><span aria-hidden="true">⊗</span>Odvolania <b id="admin-appeal-count">0</b></button>
+            <button class="moderation-tab" type="button" data-tab="stats"><span aria-hidden="true">▥</span>Štatistiky</button>
+            <button class="moderation-tab" type="button" data-tab="notifications"><span aria-hidden="true">▣</span>Oznámenia <b id="admin-notification-count">0</b></button>
+            <button class="moderation-tab" type="button" data-tab="settings"><span aria-hidden="true">⚙</span>Nastavenia</button>
+            <button class="moderation-tab" type="button" data-tab="security"><span aria-hidden="true">⛨</span>Bezpečnosť</button>
+            <button class="moderation-tab" type="button" data-tab="system"><span aria-hidden="true">⌘</span>Systém</button>
+          </nav>
+          <div class="admin-sidebar-bottom">
+            <div class="admin-profile">
+              <span class="admin-avatar" aria-hidden="true">♛</span>
+              <span class="admin-profile-copy"><strong id="admin-user-name">Admin</strong><small id="admin-user-role">Administrátor</small></span>
+              <span class="admin-profile-status" aria-label="Pripojený"></span>
+            </div>
+            <button id="admin-logout" class="admin-logout" type="button"><span aria-hidden="true">⇥</span>Odhlásiť</button>
           </div>
+        </aside>
+
+        <div class="admin-workspace">
+          <header class="admin-topbar">
+            <div class="admin-heading">
+              <span class="admin-heading-mark" aria-hidden="true">⛨</span>
+              <div>
+                <p class="admin-eyebrow">Administrácia</p>
+                <h1 id="admin-title">Čavko Chat – Admin Panel</h1>
+                <p class="admin-subtitle">Bezpečné, férové a priateľské miesto pre všetkých!</p>
+              </div>
+            </div>
+            <div class="admin-toolbar">
+              <div class="admin-live-status"><span id="admin-connection-dot"></span><span id="admin-connection-label">Kontrolujem spojenie</span></div>
+              <div class="admin-datetime"><span aria-hidden="true">▦</span><time id="admin-now">—</time></div>
+              <button id="moderation-bell-open" class="admin-icon-button" type="button" aria-label="Otvoriť oznámenia">♟</button>
+              <button id="admin-theme-toggle" class="admin-icon-button" type="button" aria-label="Prepnúť vzhľad" title="Prepnúť vzhľad">☼</button>
+              <button id="moderation-center-close" class="admin-icon-button admin-close" type="button" aria-label="Zavrieť administráciu">×</button>
+            </div>
+          </header>
+
+          <main class="admin-main">
+            <div id="moderation-stats" class="admin-stats"></div>
+            <div class="admin-main-toolbar">
+              <div class="moderation-role-stack">
+                <div class="moderation-pill" id="moderation-pill-role">Správca</div>
+                <div class="moderation-role-subtitle" id="moderation-role-subtitle">[Admin chatu]</div>
+              </div>
+              <button id="admin-refresh" class="admin-refresh" type="button"><span aria-hidden="true">↻</span>Obnoviť údaje</button>
+              <button id="moderation-discard-report-btn" class="moderation-action reject moderation-discard-report-button" type="button">Zahodiť reporty</button>
+            </div>
+            <div id="moderation-content" class="moderation-content admin-content" aria-live="polite"></div>
+          </main>
         </div>
-        <div class="moderation-center-meta">
-          <div class="moderation-role-stack">
-            <div class="moderation-pill" id="moderation-pill-role">Správca</div>
-            <div class="moderation-role-subtitle" id="moderation-role-subtitle">[Admin chatu]</div>
-          </div>
-          <button id="moderation-bell-open" class="moderation-bell-inline" type="button">🔔 Notifikácie</button>
-        </div>
-        <div id="moderation-stats" class="moderation-stats"></div>
-        <div class="moderation-tabs">
-          <button class="moderation-tab active" type="button" data-tab="overview">Prehľad</button>
-          <button class="moderation-tab" type="button" data-tab="notifications">Notifikácie</button>
-          <button class="moderation-tab" type="button" data-tab="users">Používatelia</button>
-          <button class="moderation-tab" type="button" data-tab="reports">Nahlásenia</button>
-          <button class="moderation-tab" type="button" data-tab="appeals">Odvolania</button>
-          <button class="moderation-tab" type="button" data-tab="history">História</button>
-        </div>
-        <div id="moderation-content" class="moderation-content"></div>
       </div>
     </div>
     <div id="moderation-action-modal" class="moderation-action-modal" style="display:none;" aria-modal="true" role="dialog">

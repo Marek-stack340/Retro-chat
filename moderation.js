@@ -27,10 +27,12 @@ function getModeratorRole(name) {
 }
 
 function getEffectiveModeratorRole(name, storedRole) {
+  const namedRole = getModeratorRole(name);
+  if (namedRole === 'owner') return 'owner';
   if (storedRole && ['owner', 'admin', 'moderator', 'tester', 'user'].includes(storedRole)) {
     return storedRole;
   }
-  return getModeratorRole(name);
+  return namedRole;
 }
 
 function canModerateAction(actorRole, targetRole) {
