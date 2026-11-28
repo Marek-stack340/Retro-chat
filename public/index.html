@@ -79,8 +79,8 @@
           <h2>Vstúpiť do chatu</h2>
           <label for="entry-nick">Prezývka</label>
           <input id="entry-nick" name="username" type="text" maxlength="20" placeholder="napr. Marek" required>
-          <label for="entry-password">Heslo (voliteľné)</label>
-          <input id="entry-password" name="password" type="password" placeholder="Ak chceš, môžeš pridať heslo">
+          <label for="entry-password">Heslo účtu (prázdne = hosť)</label>
+          <input id="entry-password" name="password" type="password" autocomplete="current-password" placeholder="Pri prvom vstupe vytvorí účet">
           <button type="submit">Vstúpiť</button>
         </form>
       </section>
@@ -353,6 +353,7 @@
 
           localStorage.setItem('chatUsername', username);
           localStorage.setItem('chatRegistered', 'true');
+          if (data.token) localStorage.setItem('chatAuthToken', data.token);
           updateLeaderboard(username);
           window.location.href = '/chat';
         } catch (error) {

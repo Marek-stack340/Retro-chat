@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io({ auth: { token: localStorage.getItem('chatAuthToken') || '' } });
 const messagesDiv = document.getElementById('messages');
 const sendBtn = document.getElementById('send-btn');
 const quickQuizBtn = document.getElementById('quick-quiz-btn');
@@ -268,10 +268,6 @@ function getCurrentRoleName() {
   if (actualRole === 'moderator') return 'moderator';
   if (actualRole === 'tester') return 'user';
 
-  const name = normalizeModerationName(currentUsername || localStorage.getItem('chatUsername') || '');
-  if (!name) return 'user';
-  if (['owner', 'administrator', 'spravca', 'správca', 'spravca celého chatu', 'správca celého chatu'].includes(name)) return 'owner';
-  if (name === 'marek' || name === 'marekc' || name.includes('moderator') || name.includes('mod')) return 'moderator';
   return 'user';
 }
 
@@ -1374,8 +1370,8 @@ const diceRiddles = [
   { value: 6, text: 'Hádanka: Čo máš vždy pred sebou, ale nikdy nevidíš?' }
 ];
 const savedUsername = localStorage.getItem('chatUsername');
-let currentUsername = savedUsername ? savedUsername.trim() : 'Správca celého chatu';
-let currentUserRole = localStorage.getItem('chatUserRole') || null;
+let currentUsername = savedUsername ? savedUsername.trim() : '';
+let currentUserRole = null;
 let autoPrivateEnabled = localStorage.getItem('autoPrivateEnabled') === 'true';
 let autoPrivateTargetName = localStorage.getItem('autoPrivateTargetName') || '';
 let privateTargetId = null;
@@ -1463,6 +1459,8 @@ function performAutoLogout(reason) {
   alert(reason);
   localStorage.removeItem('chatUsername');
   localStorage.removeItem('chatRegistered');
+  localStorage.removeItem('chatAuthToken');
+  localStorage.removeItem('chatUserRole');
   window.location.href = '/';
 }
 
@@ -2683,19 +2681,11 @@ function refreshMyPoints() {
 }
 
 function isCurrentUserAdmin() {
-  const name = normalizeModerationName(currentUsername);
-  return ['admin', 'administrator', 'spravca', 'spravca', 'spravca celého chatu', 'správca celého chatu', 'marek', 'marekc'].includes(name);
+  return getCurrentRoleName() === 'owner';
 }
 
 function isCurrentUserModerator() {
-  const name = normalizeModerationName(currentUsername);
-  const assignedUser = Array.isArray(activeUsers)
-    ? activeUsers.find((user) => normalizeModerationName(user.username || '') === name)
-    : null;
-  if (currentUserRole === 'moderator' || (assignedUser && assignedUser.role === 'moderator')) return true;
-  return ['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk'].includes(name)
-    || name.includes('moderator')
-    || name.includes('mod');
+  return getCurrentRoleName() === 'moderator';
 }
 
 function updateAdminPanel(users) {
@@ -3121,8 +3111,11 @@ function initEmojiLine() {
 
 
 function sendJoin() {
-  currentUsername = localStorage.getItem('chatUsername')?.trim() || 'Správca celého chatu';
-  if (!currentUsername) currentUsername = 'Správca celého chatu';
+  currentUsername = localStorage.getItem('chatUsername')?.trim() || '';
+  if (!localStorage.getItem('chatAuthToken') || !currentUsername) {
+    window.location.replace('/');
+    return;
+  }
   if (currentUsernameDisplay) {
     currentUsernameDisplay.textContent = currentUsername;
   }
@@ -3275,6 +3268,12 @@ socket.on('join-denied', (message) => {
   addMessage({ system: true, text: `⚠ ${message || 'Toto meno je už obsadené. Zvoľ si iné.'}`, timestamp: new Date().toISOString() });
 });
 
+socket.on('auth-required', () => {
+  localStorage.removeItem('chatAuthToken');
+  localStorage.removeItem('chatUserRole');
+  window.location.replace('/');
+});
+
 socket.on('user-list', (users) => {
   activeUsers = users;
   const currentMatch = Array.isArray(users)
@@ -3282,15 +3281,7 @@ socket.on('user-list', (users) => {
     : null;
   if (currentMatch) {
     currentUserRole = currentMatch.role || null;
-    if (currentUserRole) {
-      localStorage.setItem('chatUserRole', currentUserRole);
-    } else {
-      localStorage.removeItem('chatUserRole');
-    }
-  } else {
-    currentUserRole = null;
-    localStorage.removeItem('chatUserRole');
-  }
+  } else currentUserRole = null;
   updateUserList(users);
   updateAdminPanel(users);
   notifyFriendOnlineStatus(users);
@@ -3626,6 +3617,9 @@ renderNewsHistory();
 navLogout?.addEventListener('click', (event) => {
   event.preventDefault();
   localStorage.removeItem('chatUsername');
+  localStorage.removeItem('chatRegistered');
+  localStorage.removeItem('chatAuthToken');
+  localStorage.removeItem('chatUserRole');
   window.location.href = '/';
 });
 navHelp?.addEventListener('click', (event) => {

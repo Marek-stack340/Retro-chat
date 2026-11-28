@@ -1,8 +1,7 @@
 name: Deploy to Google Cloud Run
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -18,17 +17,9 @@ jobs:
 
       - run: gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT }}/oddych-chat .
 
-      - name: Deploy to Cloud Run
-        env:
-          MODERATION_PANEL_HASH: ${{ secrets.MODERATION_PANEL_HASH }}
-        run: |
-          if [ -z "$MODERATION_PANEL_HASH" ]; then
-            echo "Missing required GitHub Actions secret: MODERATION_PANEL_HASH"
-            exit 1
-          fi
+      - run: |
           gcloud run deploy oddych-chat \
             --image gcr.io/${{ secrets.GCP_PROJECT }}/oddych-chat \
             --platform managed \
             --region ${{ secrets.GCP_REGION }} \
-            --allow-unauthenticated \
-            --update-env-vars "MODERATION_PANEL_HASH=${MODERATION_PANEL_HASH}"
+            --allow-unauthenticated

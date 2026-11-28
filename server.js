@@ -1,9 +1,11 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
+const { accountKey, loadAccountStore, saveAccountStore, verifyAccountPassword } = require('./account-store');
 const nodemailer = require('nodemailer');
 const { ROBOT_NAME, generateRobotReply, generateRobotReplyFromApi } = require('./bot');
 const { buildBanScreenData, buildKickScreenData } = require('./ban-utils');
@@ -179,7 +181,6 @@ const users = new Map();
 const robotUser = { id: 'robot', username: ROBOT_NAME, role: 'bot' };
 const quizReminderCache = new Set();
 const banList = new Map();
-const accounts = new Map();
 const authTokens = new Map();
 const moderationReports = [];
 const appeals = [];
@@ -195,13 +196,14 @@ function readLocalSecret(key) {
     return '';
   }
 }
-const MODERATION_PANEL_HASH = readLocalSecret('MODERATION_PANEL_HASH');
+const accountsFilePath = readLocalSecret('CHAT_ACCOUNTS_FILE') || path.join(__dirname, 'private', 'accounts.json');
+const accounts = loadAccountStore(accountsFilePath);
+if (!Array.from(accounts.values()).some((account) => account.role === 'owner')) {
+  console.warn('No owner account is configured. Run npm run accounts:init before granting moderator roles.');
+}
 const moderationPanelUnlocks = new Map();
 const moderationPanelFailures = new Map();
-const { ownerUsernames, adminUsernames, moderatorUsernames, isOwnerName, isAdminName, isModeratorName, getModeratorRole, getEffectiveModeratorRole, canModerateAction } = require('./moderation');
-const testerUsernames = new Set(['kika_c123']);
-const protectedUsernames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
-const reservedJoinNames = new Set([...ownerUsernames, ...adminUsernames, ...moderatorUsernames]);
+const { canModerateAction } = require('./moderation');
 const resetEmailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: Number(process.env.SMTP_PORT || 587),
@@ -643,7 +645,13 @@ function normalizePassword(value) {
 }
 
 function createAuthToken(username) {
-  return `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}.${username.toLowerCase()}`;
+  const token = crypto.randomBytes(32).toString('hex');
+  authTokens.set(token, {
+    username,
+    isAccount: accounts.has(accountKey(username)),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000
+  });
+  return token;
 }
 
 function hasSmtpConfiguration() {
@@ -674,11 +682,38 @@ async function sendPasswordResetEmail(account, resetCode) {
 
 function cleanupAuthTokens() {
   const now = Date.now();
+  let expiredSession = false;
   for (const [token, record] of authTokens.entries()) {
     if (!record || record.expiresAt <= now) {
       authTokens.delete(token);
+      for (const socket of io.sockets.sockets.values()) {
+        if (socket.data.authToken !== token) continue;
+        socket.emit('auth-required');
+        users.delete(socket.id);
+        socket.disconnect(true);
+        expiredSession = true;
+      }
     }
   }
+  if (expiredSession) broadcastUserList();
+}
+const authTokenCleanupTimer = setInterval(cleanupAuthTokens, 60 * 1000);
+authTokenCleanupTimer.unref();
+
+function revokeGuestSessionsForUsername(username) {
+  const key = accountKey(username);
+  let revoked = false;
+  for (const socket of io.sockets.sockets.values()) {
+    const activeUser = users.get(socket.id);
+    if (!activeUser || accountKey(activeUser.username) !== key) continue;
+    const session = authTokens.get(socket.data.authToken);
+    if (session && session.isAccount) continue;
+    socket.emit('auth-required');
+    users.delete(socket.id);
+    socket.disconnect(true);
+    revoked = true;
+  }
+  if (revoked) broadcastUserList();
 }
 
 function requireAuthToken(req, res, next) {
@@ -693,50 +728,89 @@ function requireAuthToken(req, res, next) {
   next();
 }
 
-async function handleEntryRequest({ username, password }) {
+async function authenticateEntry({ username, password, allowGuest = false, createAccount = false }) {
   const normalizedUsername = normalizeUsername(username);
   const passwordValue = normalizePassword(password);
 
   if (!isValidUsername(normalizedUsername)) {
     throw new Error('Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
   }
+  if (passwordValue.length > 128) throw new Error('Heslo môže mať najviac 128 znakov.');
 
-  const normalizedKey = normalizedUsername.toLowerCase();
+  const normalizedKey = accountKey(normalizedUsername);
   const existingAccount = accounts.get(normalizedKey);
   if (existingAccount) {
-    if (passwordValue && existingAccount.passwordHash) {
-      const passwordOk = await bcrypt.compare(passwordValue, existingAccount.passwordHash);
-      if (!passwordOk) {
-        throw new Error('Nesprávne heslo.');
-      }
+    if (!passwordValue || !existingAccount.passwordHash) {
+      throw new Error('Tento účet vyžaduje heslo.');
     }
+    const passwordOk = await bcrypt.compare(passwordValue, existingAccount.passwordHash);
+    if (!passwordOk) throw new Error('Nesprávne heslo.');
     return {
       ok: true,
       created: false,
       username: existingAccount.username,
-      role: existingAccount.role || null
+      role: existingAccount.role,
+      isAccount: true
     };
   }
 
-  const newAccount = {
-    username: normalizedUsername,
-    passwordHash: passwordValue ? await bcrypt.hash(passwordValue, 10) : null,
-    role: isOwnerName(normalizedKey)
-      ? 'owner'
-      : (isAdminName(normalizedKey)
-        ? 'admin'
-        : (isModeratorName(normalizedKey) ? 'moderator' : (testerUsernames.has(normalizedKey) ? 'tester' : null)))
-  };
+  if (!passwordValue) {
+    if (!allowGuest) throw new Error('Účet s touto prezývkou neexistuje. Najprv sa zaregistruj.');
+    return { ok: true, created: false, username: normalizedUsername, role: null, isAccount: false };
+  }
+  if (!createAccount) throw new Error('Účet s touto prezývkou neexistuje. Najprv sa zaregistruj.');
+  if (passwordValue.length < 4 || passwordValue.length > 128) {
+    throw new Error('Heslo musí mať 4 až 128 znakov.');
+  }
+
+  const passwordHash = await bcrypt.hash(passwordValue, 10);
+  if (accounts.has(normalizedKey)) throw new Error('Účet s touto prezývkou už existuje.');
+  const newAccount = { username: normalizedUsername, passwordHash, role: 'user' };
   accounts.set(normalizedKey, newAccount);
+  try {
+    saveAccountStore(accountsFilePath, accounts);
+  } catch (error) {
+    accounts.delete(normalizedKey);
+    throw new Error('Účet sa nepodarilo bezpečne uložiť.');
+  }
+  revokeGuestSessionsForUsername(normalizedUsername);
   return {
     ok: true,
     created: true,
     username: newAccount.username,
-    role: newAccount.role || null
+    role: newAccount.role,
+    isAccount: true
   };
 }
 
-app.post('/api/enter', async (req, res) => {
+async function registerAccount(username, password) {
+  const normalizedUsername = normalizeUsername(username);
+  const passwordValue = normalizePassword(password);
+  if (!isValidUsername(normalizedUsername)) {
+    throw new Error('Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
+  }
+  if (passwordValue.length < 4 || passwordValue.length > 128) {
+    throw new Error('Heslo musí mať 4 až 128 znakov.');
+  }
+
+  const key = accountKey(normalizedUsername);
+  if (accounts.has(key)) throw new Error('Účet s touto prezývkou už existuje.');
+
+  const passwordHash = await bcrypt.hash(passwordValue, 10);
+  if (accounts.has(key)) throw new Error('Účet s touto prezývkou už existuje.');
+  const account = { username: normalizedUsername, passwordHash, role: 'user' };
+  accounts.set(key, account);
+  try {
+    saveAccountStore(accountsFilePath, accounts);
+  } catch (error) {
+    accounts.delete(key);
+    throw new Error('Účet sa nepodarilo bezpečne uložiť.');
+  }
+  revokeGuestSessionsForUsername(normalizedUsername);
+  return account;
+}
+
+app.post('/api/enter', loginLimiter, async (req, res) => {
   try {
     const username = normalizeUsername(req.body && req.body.username ? req.body.username : '');
     const password = normalizePassword(req.body && req.body.password ? req.body.password : '');
@@ -746,13 +820,9 @@ app.post('/api/enter', async (req, res) => {
       return;
     }
 
-    const result = await handleEntryRequest({ username, password });
+    const result = await authenticateEntry({ username, password, allowGuest: true, createAccount: true });
     const token = createAuthToken(result.username);
-    authTokens.set(token, {
-      username: result.username,
-      role: result.role || null,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
-    });
+    authTokens.get(token).isAccount = result.isAccount;
 
     res.json({ ok: true, created: result.created, token, username: result.username, role: result.role || null });
   } catch (error) {
@@ -770,8 +840,9 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       return;
     }
 
-    const result = await handleEntryRequest({ username, password });
-    res.json({ ok: true, created: result.created, username: result.username, role: result.role || null });
+    const account = await registerAccount(username, password);
+    const token = createAuthToken(account.username);
+    res.json({ ok: true, created: true, token, username: account.username, role: account.role });
   } catch (error) {
     res.status(400).json({ ok: false, message: error.message || 'Registrácia zlyhala.' });
   }
@@ -787,13 +858,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       return;
     }
 
-    const result = await handleEntryRequest({ username, password });
+    const result = await authenticateEntry({ username, password });
     const token = createAuthToken(result.username);
-    authTokens.set(token, {
-      username: result.username,
-      role: result.role || null,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
-    });
 
     res.json({ ok: true, token, username: result.username, role: result.role || null, created: result.created });
   } catch (error) {
@@ -816,10 +882,24 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const username = normalizeUsername(data && data.username ? data.username : 'Správca celého chatu');
-    const safeUsername = username || 'Správca celého chatu';
+    cleanupAuthTokens();
+    const token = normalizePassword(socket.handshake.auth && socket.handshake.auth.token);
+    const authRecord = authTokens.get(token);
+    if (!authRecord) {
+      socket.emit('auth-required');
+      socket.disconnect(true);
+      return;
+    }
+    socket.data.authToken = token;
+
+    const requestedUsername = normalizeUsername(data && data.username ? data.username : '');
+    const safeUsername = authRecord.username;
     socket.data.room = normalizeRoomName(data && data.room ? data.room : 'Spoločná');
-    const normalizedUsername = safeUsername.toLowerCase();
+    const normalizedUsername = accountKey(safeUsername);
+    if (requestedUsername && accountKey(requestedUsername) !== normalizedUsername) {
+      socket.emit('join-denied', 'Prihlásený účet sa nezhoduje s prezývkou.');
+      return;
+    }
     if (safeUsername.length > MAX_USERNAME_LENGTH) {
       socket.emit('join-denied', 'Meno je príliš dlhé. Použi max 20 znakov.');
       return;
@@ -828,9 +908,10 @@ io.on('connection', (socket) => {
       socket.emit('join-denied', 'Meno musí mať 3 až 20 znakov a môže obsahovať iba písmená, čísla alebo _.');
       return;
     }
-    const isProtectedModerationName = isAdminName(normalizedUsername) || isModeratorName(normalizedUsername);
-    if ((protectedUsernames.has(normalizedUsername) || reservedJoinNames.has(normalizedUsername)) && !isProtectedModerationName) {
-      socket.emit('join-denied', 'Meno je už obsadené. Názov správcu alebo moderátora nie je možné použiť.');
+    const account = accounts.get(normalizedUsername);
+    if (authRecord.isAccount !== Boolean(account)) {
+      socket.emit('auth-required');
+      socket.disconnect(true);
       return;
     }
     if (isBanned(safeUsername)) {
@@ -851,12 +932,10 @@ io.on('connection', (socket) => {
       users.delete(duplicateUser.id);
     }
 
-    const storedRole = accounts.get(normalizedUsername)?.role || null;
-    const resolvedRole = getEffectiveModeratorRole(normalizedUsername, storedRole) || (testerUsernames.has(normalizedUsername) ? 'tester' : null);
     users.set(socket.id, {
       id: socket.id,
       username: safeUsername,
-      role: resolvedRole || null
+      role: account ? account.role : null
     });
     socket.data.joined = true;
     socket.emit('security-banner', getSecurityStatus(safeUsername));
@@ -870,11 +949,6 @@ io.on('connection', (socket) => {
 
     const targetName = String(data.target).trim();
     if (!targetName) return;
-    if (isAdminName(targetName) || isModeratorName(targetName)) {
-      socket.emit('system-message', 'Správcu alebo moderátora nevyhodíš alebo nezakážeš.');
-      return;
-    }
-
     const targetEntry = Array.from(users.values()).find((user) => user.username.toLowerCase() === targetName.toLowerCase());
     if (!targetEntry) {
       socket.emit('system-message', `Užívateľ ${targetName} nie je pripojený.`);
@@ -1055,7 +1129,7 @@ io.on('connection', (socket) => {
 
     const adminSockets = [...io.sockets.sockets.values()].filter((targetSocket) => {
       const targetUser = users.get(targetSocket.id);
-      return Boolean(targetUser && targetUser.username && (isAdminName(targetUser.username) || isModeratorName(targetUser.username)));
+      return Boolean(targetUser && hasModerationPanelRole(targetUser.role));
     });
 
     const reportMessage = `⚠ Nahlásenie: ${user.username} nahlásil správu od ${reportedUsername} v miestnosti ${roomName}: "${safeText}"`;
@@ -1078,10 +1152,11 @@ io.on('connection', (socket) => {
     }
 
     const password = String(data && data.password ? data.password : '');
+    const account = accounts.get(accountKey(user.username));
     let matches = false;
-    if (password.length > 0 && password.length <= 128 && MODERATION_PANEL_HASH) {
+    if (password.length > 0 && account && account.passwordHash) {
       try {
-        matches = await bcrypt.compare(password, MODERATION_PANEL_HASH);
+        matches = await verifyAccountPassword(account, password);
       } catch (error) {
         matches = false;
       }
@@ -1180,24 +1255,32 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const normalizedKey = normalizeUsername(targetName).toLowerCase();
+    const normalizedKey = accountKey(targetName);
     const targetUser = Array.from(users.values()).find((entry) => entry.username.toLowerCase() === normalizedKey);
     const account = accounts.get(normalizedKey);
 
-    if (!targetUser && !account) {
-      socket.emit('system-message', `Používateľ ${targetName} nie je zaregistrovaný alebo momentálne pripojený.`);
+    if (!account || !account.passwordHash) {
+      socket.emit('system-message', `Používateľ ${targetName} musí mať zaregistrovaný účet s heslom.`);
       return;
     }
 
-    if (targetUser && targetUser.role === 'owner') {
+    if (account.role === 'owner' || account.role === 'admin' || (targetUser && targetUser.role === 'owner')) {
       socket.emit('system-message', 'Správcu nie je možné zmeniť.');
       return;
     }
 
-    const resolvedRole = nextRole === 'moderator' ? 'moderator' : null;
+    const resolvedRole = nextRole === 'moderator' ? 'moderator' : 'user';
 
     if (account) {
+      const previousRole = account.role;
       account.role = resolvedRole;
+      try {
+        saveAccountStore(accountsFilePath, accounts);
+      } catch (error) {
+        account.role = previousRole;
+        socket.emit('system-message', 'Rolu sa nepodarilo uložiť. Skontroluj prístup k súboru účtov.');
+        return;
+      }
     }
 
     if (targetUser) {

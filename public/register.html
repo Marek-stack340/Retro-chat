@@ -139,8 +139,8 @@
             }
             localStorage.setItem('chatUsername', username);
             localStorage.setItem('chatRegistered', 'true');
-            alert('Účet uložený. Teraz sa môžeš prihlásiť.');
-            window.location.href = '/';
+            if (payload.token) localStorage.setItem('chatAuthToken', payload.token);
+            window.location.href = '/chat';
           })
           .catch((error) => {
             alert(error.message || 'Registrácia zlyhala.');

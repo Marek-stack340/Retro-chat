@@ -11,3 +11,4 @@ build/
 .replit
 replit.nix
 database.sqlite
+private/

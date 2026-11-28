@@ -1,38 +1,5 @@
-const ownerUsernames = new Set(['owner', 'správca', 'spravca', 'správca celého chatu', 'spravca celého chatu', 'administrator']);
-const adminUsernames = new Set(['admin', 'administrator', 'spravca', 'správca', 'správca celého chatu', 'spravca celého chatu']);
-const moderatorUsernames = new Set(['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk', 'marek', 'marekc']);
-
-function normalizeModerationName(value) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-function isOwnerName(value) {
-  return ownerUsernames.has(normalizeModerationName(value));
-}
-
-function isAdminName(value) {
-  return adminUsernames.has(normalizeModerationName(value));
-}
-
-function isModeratorName(value) {
-  const normalized = normalizeModerationName(value);
-  return moderatorUsernames.has(normalized) || normalized.includes('moderator') || normalized.includes('mod');
-}
-
-function getModeratorRole(name) {
-  if (isOwnerName(name)) return 'owner';
-  if (isAdminName(name)) return 'admin';
-  if (isModeratorName(name)) return 'moderator';
-  return null;
-}
-
-function getEffectiveModeratorRole(name, storedRole) {
-  const namedRole = getModeratorRole(name);
-  if (namedRole === 'owner') return 'owner';
-  if (storedRole && ['owner', 'admin', 'moderator', 'tester', 'user'].includes(storedRole)) {
-    return storedRole;
-  }
-  return namedRole;
+function getEffectiveModeratorRole(_username, storedRole) {
+  return ['owner', 'admin', 'moderator', 'tester', 'user'].includes(storedRole) ? storedRole : null;
 }
 
 function canModerateAction(actorRole, targetRole) {
@@ -44,13 +11,6 @@ function canModerateAction(actorRole, targetRole) {
 }
 
 module.exports = {
-  ownerUsernames,
-  adminUsernames,
-  moderatorUsernames,
-  isOwnerName,
-  isAdminName,
-  isModeratorName,
-  getModeratorRole,
   getEffectiveModeratorRole,
   canModerateAction
 };
