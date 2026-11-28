@@ -2373,6 +2373,10 @@ function isCurrentUserAdmin() {
 
 function isCurrentUserModerator() {
   const name = normalizeModerationName(currentUsername);
+  const assignedUser = Array.isArray(activeUsers)
+    ? activeUsers.find((user) => normalizeModerationName(user.username || '') === name)
+    : null;
+  if (currentUserRole === 'moderator' || (assignedUser && assignedUser.role === 'moderator')) return true;
   return ['moderator', 'moderator1', 'moderator2', 'mod', 'chatmod', 'moderatorchat', 'moderator-sk'].includes(name)
     || name.includes('moderator')
     || name.includes('mod');
